@@ -5,7 +5,6 @@ TDD Green Phase - 最小実装
 
 import logging
 from datetime import datetime
-from typing import Any, Dict, Optional
 
 from sqlalchemy.orm import Session
 

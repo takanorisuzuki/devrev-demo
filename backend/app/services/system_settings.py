@@ -3,12 +3,10 @@
 TDD Green Phase - テストを通すための最小実装
 """
 
-from typing import Optional
-
 from sqlalchemy.orm import Session
 
 from app.models.system_settings import SystemSettings
-from app.schemas.system_settings import BusinessHours, SystemSettingsUpdate
+from app.schemas.system_settings import SystemSettingsUpdate
 
 
 class SystemSettingsService:
