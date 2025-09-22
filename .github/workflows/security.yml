@@ -160,42 +160,40 @@ jobs:
         with:
           category: "/language:${{matrix.language}}"
 
-  # Docker イメージのセキュリティスキャン
-  docker-security-scan:
-    name: Docker Security Scan
+  # Podman イメージのセキュリティスキャン
+  podman-security-scan:
+    name: Podman Security Scan
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - name: Install Podman
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y podman
 
-      - name: Build backend image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./backend
-          file: ./backend/Dockerfile
-          push: false
-          tags: driverev-backend:security-scan
-          load: true
+      - name: Configure Podman for rootless
+        run: |
+          echo 'unqualified-search-registries = ["docker.io"]' | sudo tee -a /etc/containers/registries.conf
+          sudo chmod 644 /etc/containers/registries.conf
 
-      - name: Build frontend image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./frontend
-          file: ./frontend/Dockerfile
-          push: false
-          tags: driverev-frontend:security-scan
-          load: true
+      - name: Build backend image with Podman
+        run: |
+          podman build -t driverev-backend:security-scan ./backend
 
-      - name: Run Trivy vulnerability scanner
+      - name: Build frontend image with Podman
+        run: |
+          podman build -t driverev-frontend:security-scan ./frontend
+
+      - name: Run Trivy vulnerability scanner on backend
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: "driverev-backend:security-scan"
           format: "sarif"
           output: "trivy-backend-results.sarif"
+          scanner: "image"
 
       - name: Upload Trivy scan results (Backend)
         uses: github/codeql-action/upload-sarif@v2
@@ -244,7 +242,7 @@ jobs:
         dependency-scan,
         code-security-scan,
         codeql-analysis,
-        docker-security-scan,
+        podman-security-scan,
         secret-scan,
       ]
     if: always()
@@ -259,7 +257,7 @@ jobs:
           echo "- Dependency Scan: ${{ needs.dependency-scan.result }}" >> security-report.md
           echo "- Code Security Scan: ${{ needs.code-security-scan.result }}" >> security-report.md
           echo "- CodeQL Analysis: ${{ needs.codeql-analysis.result }}" >> security-report.md
-          echo "- Docker Security Scan: ${{ needs.docker-security-scan.result }}" >> security-report.md
+          echo "- Podman Security Scan: ${{ needs.podman-security-scan.result }}" >> security-report.md
           echo "- Secret Detection: ${{ needs.secret-scan.result }}" >> security-report.md
           echo "" >> security-report.md
           echo "## Recommendations" >> security-report.md
