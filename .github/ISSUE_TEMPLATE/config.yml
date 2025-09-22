@@ -1,0 +1,17 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📖 Documentation
+    url: https://github.com/takanorisuzuki/devrev-demo/wiki
+    about: プロジェクトのドキュメントやガイドを確認してください
+  - name: 💬 Discussions
+    url: https://github.com/takanorisuzuki/devrev-demo/discussions
+    about: 一般的な質問や議論はこちらで行ってください
+  - name: 🐛 Bug Report
+    url: https://github.com/takanorisuzuki/devrev-demo/issues/new?template=bug_report.yml
+    about: バグを報告する場合はこちらを使用してください
+  - name: ✨ Feature Request
+    url: https://github.com/takanorisuzuki/devrev-demo/issues/new?template=feature_request.yml
+    about: 新機能の提案はこちらを使用してください
+  - name: ❓ Question / Support
+    url: https://github.com/takanorisuzuki/devrev-demo/issues/new?template=question.yml
+    about: 質問やサポートが必要な場合はこちらを使用してください
