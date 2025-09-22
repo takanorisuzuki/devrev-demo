@@ -525,11 +525,11 @@ class ReservationService:
         Returns:
             {"available": bool, "reason": str, "conflicting_reservations": List}
         """
-        # デバッグログ
-        print(f"DEBUG: _check_vehicle_availability called with:")
-        print(f"  vehicle_id: {vehicle_id}")
-        print(f"  pickup_datetime: {pickup_datetime}")
-        print(f"  return_datetime: {return_datetime}")
+        # デバッグログ（本番では削除推奨）
+        # print(f"DEBUG: _check_vehicle_availability called with:")
+        # print(f"  vehicle_id: {vehicle_id}")
+        # print(f"  pickup_datetime: {pickup_datetime}")
+        # print(f"  return_datetime: {return_datetime}")
 
         query = self.db.query(Reservation).filter(
             Reservation.vehicle_id == vehicle_id,
@@ -566,8 +566,20 @@ class ReservationService:
                 ),
             )
 
-            reason = f"指定された期間（{pickup_datetime.strftime('%Y年%m月%d日 %H:%M')} ～ {return_datetime.strftime('%Y年%m月%d日 %H:%M')}）は、既存の予約（確認番号: {closest_conflict.confirmation_number}）と重複しています。"
-            reason += f" 既存の予約期間: {closest_conflict.pickup_datetime.strftime('%Y年%m月%d日 %H:%M')} ～ {closest_conflict.return_datetime.strftime('%Y年%m月%d日 %H:%M')}"
+            pickup_str = pickup_datetime.strftime('%Y年%m月%d日 %H:%M')
+            return_str = return_datetime.strftime('%Y年%m月%d日 %H:%M')
+            existing_pickup = closest_conflict.pickup_datetime.strftime(
+                '%Y年%m月%d日 %H:%M'
+            )
+            existing_return = closest_conflict.return_datetime.strftime(
+                '%Y年%m月%d日 %H:%M'
+            )
+
+            reason = (
+                f"指定された期間（{pickup_str} ～ {return_str}）は、"
+                f"既存の予約（確認番号: {closest_conflict.confirmation_number}）と重複しています。"
+            )
+            reason += f" 既存の予約期間: {existing_pickup} ～ {existing_return}"
 
             return {
                 "available": False,
