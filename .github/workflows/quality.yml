@@ -1,0 +1,243 @@
+name: Code Quality Checks
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # 毎週日曜日の午前2時（JST）に実行
+    - cron: '0 17 * * 0'
+
+env:
+  NODE_VERSION: '18'
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  # フロントエンドのコード品質チェック
+  frontend-quality:
+    name: Frontend Code Quality
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+
+    - name: Install dependencies
+      working-directory: ./frontend
+      run: npm ci
+
+    - name: ESLint check
+      working-directory: ./frontend
+      run: npm run lint
+
+    - name: TypeScript type check
+      working-directory: ./frontend
+      run: npm run type-check
+
+    - name: Prettier format check
+      working-directory: ./frontend
+      run: npx prettier --check "**/*.{js,jsx,ts,tsx,json,css,scss,md}"
+
+    - name: Build analysis
+      working-directory: ./frontend
+      run: npm run build:analyze
+
+    - name: Bundle size check
+      working-directory: ./frontend
+      run: |
+        npm run build
+        npx bundlesize
+
+  # バックエンドのコード品質チェック
+  backend-quality:
+    name: Backend Code Quality
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+        cache-dependency-path: backend/requirements.txt
+
+    - name: Install dependencies
+      working-directory: ./backend
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Flake8 linting
+      working-directory: ./backend
+      run: |
+        flake8 app/ --max-line-length=88 --extend-ignore=E203,W503
+
+    - name: Black format check
+      working-directory: ./backend
+      run: black --check --diff app/
+
+    - name: isort import sorting check
+      working-directory: ./backend
+      run: isort --check-only --diff app/
+
+    - name: MyPy type checking
+      working-directory: ./backend
+      run: mypy app/ --ignore-missing-imports
+
+    - name: Bandit security linting
+      working-directory: ./backend
+      run: |
+        pip install bandit
+        bandit -r app/ -f json -o bandit-report.json || true
+
+    - name: Upload Bandit report
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: bandit-security-report
+        path: backend/bandit-report.json
+
+  # コード複雑度チェック
+  complexity-check:
+    name: Code Complexity Analysis
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install complexity tools
+      run: |
+        pip install radon xenon
+
+    - name: Python complexity analysis
+      run: |
+        echo "=== Cyclomatic Complexity ==="
+        radon cc backend/app/ -a
+        echo "=== Maintainability Index ==="
+        radon mi backend/app/ -a
+        echo "=== Halstead Complexity ==="
+        radon hal backend/app/ -a
+
+    - name: Xenon complexity check
+      run: |
+        xenon backend/app/ --max-absolute B --max-modules A --max-average A
+
+  # ドキュメント生成とチェック
+  documentation-check:
+    name: Documentation Check
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install documentation tools
+      working-directory: ./backend
+      run: |
+        pip install sphinx sphinx-rtd-theme
+
+    - name: Check docstring coverage
+      working-directory: ./backend
+      run: |
+        pip install docstr-coverage
+        docstr-coverage app/ --fail-under=80
+
+    - name: Generate API documentation
+      working-directory: ./backend
+      run: |
+        # FastAPIの自動ドキュメント生成
+        python -c "
+        from app.main import app
+        import json
+        openapi_schema = app.openapi()
+        with open('openapi.json', 'w') as f:
+            json.dump(openapi_schema, f, indent=2)
+        "
+
+    - name: Upload documentation
+      uses: actions/upload-artifact@v3
+      with:
+        name: api-documentation
+        path: backend/openapi.json
+
+  # パフォーマンステスト
+  performance-check:
+    name: Performance Tests
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+
+    - name: Install dependencies
+      working-directory: ./frontend
+      run: npm ci
+
+    - name: Lighthouse CI
+      working-directory: ./frontend
+      run: |
+        npm install -g @lhci/cli
+        npm run build
+        lhci autorun
+
+  # 品質レポートの統合
+  quality-report:
+    name: Quality Report
+    runs-on: ubuntu-latest
+    needs: [frontend-quality, backend-quality, complexity-check, documentation-check]
+    if: always()
+
+    steps:
+    - name: Generate quality report
+      run: |
+        echo "# Code Quality Report" > quality-report.md
+        echo "Generated on: $(date)" >> quality-report.md
+        echo "" >> quality-report.md
+        echo "## Frontend Quality" >> quality-report.md
+        echo "- ESLint: ${{ needs.frontend-quality.result }}" >> quality-report.md
+        echo "- TypeScript: ${{ needs.frontend-quality.result }}" >> quality-report.md
+        echo "" >> quality-report.md
+        echo "## Backend Quality" >> quality-report.md
+        echo "- Flake8: ${{ needs.backend-quality.result }}" >> quality-report.md
+        echo "- Black: ${{ needs.backend-quality.result }}" >> quality-report.md
+        echo "- MyPy: ${{ needs.backend-quality.result }}" >> quality-report.md
+        echo "" >> quality-report.md
+        echo "## Complexity Analysis" >> quality-report.md
+        echo "- Status: ${{ needs.complexity-check.result }}" >> quality-report.md
+
+    - name: Upload quality report
+      uses: actions/upload-artifact@v3
+      with:
+        name: quality-report
+        path: quality-report.md
+
