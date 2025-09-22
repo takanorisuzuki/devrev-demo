@@ -1,0 +1,180 @@
+# ================================
+# JP Rental Car Demo - .gitignore
+# ================================
+
+# --------------------------------
+# Environment & Secrets
+# --------------------------------
+.env
+.env.local
+.env.production
+.env.*.local
+*.env
+
+# --------------------------------
+# Python Backend
+# --------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv/
+
+# pytest
+.pytest_cache/
+.coverage
+htmlcov/
+*.cover
+*.py,cover
+.cache
+nosetests.xml
+coverage.xml
+*.lcov
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# --------------------------------
+# Node.js Frontend
+# --------------------------------
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Next.js
+.next/
+out/
+next-env.d.ts
+.vercel
+
+# Production build
+build/
+dist/
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# nyc test coverage
+.nyc_output
+
+# ESLint cache
+.eslintcache
+
+# Optional npm cache directory
+.npm
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# --------------------------------
+# Databases
+# --------------------------------
+*.db
+*.sqlite
+*.sqlite3
+*.db-shm
+*.db-wal
+
+# PostgreSQL
+*.dump
+*.sql.gz
+
+# Database backups
+backups/
+dump/
+
+# --------------------------------
+# Logs
+# --------------------------------
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --------------------------------
+# Container & Docker
+# --------------------------------
+docker-compose.override.yml
+
+# Volume mounts
+data/
+postgres-data/
+redis-data/
+
+# --------------------------------
+# Development Tools
+# --------------------------------
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+*.orig
+
+# --------------------------------
+# Testing
+# --------------------------------
+# Test results
+test-results/
+playwright-report/
+test-output/
+
+# E2E test artifacts
+screenshots/
+videos/
+
+# ================================
+# End of .gitignore
+# ================================DriveRev/

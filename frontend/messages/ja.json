@@ -1,0 +1,73 @@
+{
+  "common": {
+    "appName": "DriveRev",
+    "loading": "読み込み中...",
+    "error": "エラーが発生しました",
+    "success": "成功しました",
+    "cancel": "キャンセル",
+    "confirm": "確認",
+    "save": "保存",
+    "edit": "編集",
+    "delete": "削除",
+    "search": "検索",
+    "back": "戻る",
+    "next": "次へ",
+    "previous": "前へ"
+  },
+  "nav": {
+    "home": "ホーム",
+    "cars": "車両検索",
+    "reservations": "予約管理",
+    "about": "会社概要",
+    "contact": "お問い合わせ",
+    "login": "ログイン",
+    "logout": "ログアウト",
+    "register": "新規登録",
+    "myAccount": "マイアカウント"
+  },
+  "home": {
+    "title": "DriveRev - あなたの理想のドライブを",
+    "subtitle": "日本全国の高品質なレンタカーを、いつでもどこでも簡単予約",
+    "searchTitle": "車両を検索",
+    "pickupLocation": "出発店舗",
+    "returnLocation": "返却店舗",
+    "pickupDate": "出発日",
+    "returnDate": "返却日",
+    "pickupTime": "出発時間",
+    "returnTime": "返却時間",
+    "searchButton": "車両を検索",
+    "featuredCars": "おすすめ車両",
+    "viewAllCars": "すべての車両を見る",
+    "whyChooseUs": "DriveRevを選ぶ理由",
+    "features": {
+      "quality": {
+        "title": "高品質な車両",
+        "description": "厳格な品質管理基準をクリアした、安全で清潔な車両のみを提供"
+      },
+      "convenience": {
+        "title": "簡単予約",
+        "description": "オンラインで24時間いつでも予約可能。スマートフォンからも簡単操作"
+      },
+      "support": {
+        "title": "充実サポート",
+        "description": "日本語での丁寧なカスタマーサポート。困ったときもすぐに対応"
+      },
+      "price": {
+        "title": "明確な料金",
+        "description": "隠れた費用は一切なし。事前に総額が分かるので安心してご利用可能"
+      }
+    }
+  },
+  "cars": {
+    "searchResults": "検索結果",
+    "noResults": "条件に合致する車両が見つかりませんでした",
+    "filters": "絞り込み",
+    "category": "カテゴリー",
+    "priceRange": "価格帯",
+    "features": "設備・機能",
+    "transmission": "トランスミッション",
+    "fuelType": "燃料タイプ",
+    "seats": "乗車人数",
+    "perDay": "/日"
+  }
+}

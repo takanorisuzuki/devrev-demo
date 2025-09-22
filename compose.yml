@@ -1,0 +1,115 @@
+# Docker Compose file for DriveRev
+# version field is now optional in modern compose
+
+services:
+  # PostgreSQL データベース
+  postgres:
+    image: postgres:15-alpine
+    container_name: driverev-postgres
+    environment:
+      POSTGRES_DB: driverev_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres123}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - driverev-network
+
+  # Redis キャッシュ
+  redis:
+    image: redis:7-alpine
+    container_name: driverev-redis
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data:Z
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    networks:
+      - driverev-network
+
+  # FastAPI バックエンド
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: driverev-backend
+    environment:
+      - DATABASE_URL=postgresql://postgres:${DB_PASSWORD:-postgres123}@postgres:5432/driverev_db
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=driverev_db
+      - DB_USER=postgres
+      - DB_PASSWORD=${DB_PASSWORD:-postgres123}
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-in-production}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=30
+      - REFRESH_TOKEN_EXPIRE_DAYS=7
+      - EMAIL_HOST=${EMAIL_HOST:-smtp.gmail.com}
+      - EMAIL_PORT=${EMAIL_PORT:-587}
+      - EMAIL_USER=${EMAIL_USER:-}
+      - EMAIL_PASSWORD=${EMAIL_PASSWORD:-}
+      - APP_NAME=DriveRev
+      - DEBUG=true
+      - ENVIRONMENT=development
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - ./assets:/app/assets
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    entrypoint: ["/app/entrypoint.sh"]
+    networks:
+      - driverev-network
+
+  # Next.js フロントエンド
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: driverev-frontend
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NEXT_PUBLIC_APP_ENV=development
+      - NEXT_PUBLIC_APP_NAME=DriveRev
+      - NEXT_PUBLIC_DEFAULT_LOCALE=ja
+      - NEXT_PUBLIC_SUPPORTED_LOCALES=["ja", "en"]
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app:Z
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      - backend
+    command: npm run dev
+    networks:
+      - driverev-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  driverev-network:
+    driver: bridge

@@ -1,0 +1,132 @@
+#!/usr/bin/env python3
+"""
+既存車両にstore_idを割り当てるスクリプト
+車両-店舗関係の基盤実装
+"""
+
+import os
+import sys
+from pathlib import Path
+import random
+
+# プロジェクトルートをPythonパスに追加
+project_root = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(project_root))
+
+from sqlalchemy.orm import Session
+from app.db.database import SessionLocal
+from app.models.vehicle import Vehicle
+from app.models.store import Store
+
+
+def assign_stores_to_vehicles():
+    """既存の車両にstore_idを割り当てる"""
+
+    db = SessionLocal()
+    try:
+        # 全店舗と車両を取得
+        stores = db.query(Store).filter(Store.is_active == True).all()
+        vehicles = db.query(Vehicle).filter(Vehicle.store_id == None).all()
+
+        if not stores:
+            print("❌ エラー: アクティブな店舗がありません")
+            return
+
+        if not vehicles:
+            print("ℹ️  store_idが未設定の車両はありません")
+            return
+
+        print(f"🏢 利用可能店舗: {len(stores)}店舗")
+        print(f"🚗 割り当て対象車両: {len(vehicles)}台")
+        print()
+
+        # 店舗情報を表示
+        for store in stores:
+            airport_flag = "✈️" if store.is_airport else ""
+            station_flag = "🚃" if store.is_station else ""
+            print(f"  - {store.name} ({store.code}) {airport_flag}{station_flag}")
+        print()
+
+        # 車両カテゴリ別の店舗割り当て戦略
+        store_assignments = {
+            # 空港店はプレミアム・スポーツ車重視
+            "HND001": ["premium", "exotic", "sports", "convertible", "electric"],
+            "NRT001": ["premium", "exotic", "sports", "convertible", "electric"],
+            "KIX001": ["premium", "sports", "convertible", "electric"],
+            # 駅前店は一般車重視
+            "TKY001": ["compact", "standard", "suv", "electric"],
+            "SBY001": ["compact", "standard", "electric", "premium"],
+            "SJK001": ["compact", "standard", "suv", "premium"],
+            "YOK001": ["compact", "standard", "suv", "van"],
+            "OSK001": ["compact", "standard", "suv", "van"],
+        }
+
+        # store_code から store_id のマッピングを作成
+        store_code_to_id = {store.code: store.id for store in stores}
+
+        # 車両を店舗に割り当て
+        assigned_count = 0
+        assignments_by_store = {}
+
+        for vehicle in vehicles:
+            # 車両カテゴリに適した店舗を選択
+            suitable_stores = []
+
+            for store_code, preferred_categories in store_assignments.items():
+                if vehicle.category in preferred_categories:
+                    suitable_stores.append(store_code)
+
+            # 適合する店舗がない場合は全店舗から選択
+            if not suitable_stores:
+                suitable_stores = list(store_code_to_id.keys())
+
+            # ランダムに店舗を選択（負荷分散のため）
+            selected_store_code = random.choice(suitable_stores)
+            selected_store_id = store_code_to_id[selected_store_code]
+
+            # 車両に店舗を割り当て
+            vehicle.store_id = selected_store_id
+
+            # 統計用カウント
+            if selected_store_code not in assignments_by_store:
+                assignments_by_store[selected_store_code] = []
+            assignments_by_store[selected_store_code].append(vehicle)
+
+            assigned_count += 1
+
+        # データベースに保存
+        db.commit()
+
+        print(f"✅ 車両割り当て完了: {assigned_count}台")
+        print()
+
+        # 割り当て結果を表示
+        print("📊 店舗別割り当て結果:")
+        for store_code, assigned_vehicles in assignments_by_store.items():
+            store_name = next(s.name for s in stores if s.code == store_code)
+            print(f"\n🏢 {store_name} ({store_code}): {len(assigned_vehicles)}台")
+
+            # カテゴリ別内訳
+            category_counts = {}
+            for vehicle in assigned_vehicles:
+                category_counts[vehicle.category] = (
+                    category_counts.get(vehicle.category, 0) + 1
+                )
+
+            for category, count in sorted(category_counts.items()):
+                print(f"   - {category}: {count}台")
+
+        print(f"\n🎉 車両-店舗関係の設定が完了しました!")
+
+    except Exception as e:
+        print(f"❌ エラーが発生しました: {e}")
+        db.rollback()
+        raise
+    finally:
+        db.close()
+
+
+if __name__ == "__main__":
+    # ランダムシードを設定（再現可能な結果のため）
+    random.seed(42)
+    assign_stores_to_vehicles()

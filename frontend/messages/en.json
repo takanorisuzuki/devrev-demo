@@ -1,0 +1,73 @@
+{
+  "common": {
+    "appName": "DriveRev",
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "success": "Success",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "save": "Save",
+    "edit": "Edit",
+    "delete": "Delete",
+    "search": "Search",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous"
+  },
+  "nav": {
+    "home": "Home",
+    "cars": "Find Cars",
+    "reservations": "Reservations",
+    "about": "About",
+    "contact": "Contact",
+    "login": "Login",
+    "logout": "Logout",
+    "register": "Sign Up",
+    "myAccount": "My Account"
+  },
+  "home": {
+    "title": "DriveRev - Your Perfect Drive Awaits",
+    "subtitle": "Premium car rentals across Japan, available anytime, anywhere",
+    "searchTitle": "Find Your Car",
+    "pickupLocation": "Pickup Location",
+    "returnLocation": "Return Location",
+    "pickupDate": "Pickup Date",
+    "returnDate": "Return Date",
+    "pickupTime": "Pickup Time",
+    "returnTime": "Return Time",
+    "searchButton": "Search Cars",
+    "featuredCars": "Featured Cars",
+    "viewAllCars": "View All Cars",
+    "whyChooseUs": "Why Choose DriveRev",
+    "features": {
+      "quality": {
+        "title": "Premium Quality",
+        "description": "Only the highest quality, safe and clean vehicles that meet our strict standards"
+      },
+      "convenience": {
+        "title": "Easy Booking",
+        "description": "Book online 24/7 from any device. Simple and convenient mobile experience"
+      },
+      "support": {
+        "title": "Excellent Support",
+        "description": "Friendly customer service in Japanese and English. We're here to help anytime"
+      },
+      "price": {
+        "title": "Transparent Pricing",
+        "description": "No hidden fees. See the total cost upfront so you can book with confidence"
+      }
+    }
+  },
+  "cars": {
+    "searchResults": "Search Results",
+    "noResults": "No vehicles found matching your criteria",
+    "filters": "Filters",
+    "category": "Category",
+    "priceRange": "Price Range",
+    "features": "Features",
+    "transmission": "Transmission",
+    "fuelType": "Fuel Type",
+    "seats": "Seating",
+    "perDay": "/day"
+  }
+}
