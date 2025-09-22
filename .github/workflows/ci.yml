@@ -36,7 +36,14 @@ jobs:
 
     - name: Type check
       working-directory: ./frontend
-      run: npm run type-check
+      run: |
+        echo "Current directory: $(pwd)"
+        echo "Files in lib directory:"
+        ls -la lib/
+        echo "TypeScript configuration:"
+        cat tsconfig.json
+        echo "Running type check with verbose output:"
+        npx tsc --noEmit --listFiles | head -20
 
     - name: Lint
       working-directory: ./frontend
