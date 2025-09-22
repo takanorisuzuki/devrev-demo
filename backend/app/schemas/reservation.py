@@ -4,10 +4,11 @@ TDD Green Phase - テストを通すための最小実装
 API_DESIGN.md準拠
 """
 
-from typing import Optional, Dict, Any
 from datetime import datetime, timezone
 from decimal import Decimal
-from pydantic import BaseModel, Field, field_validator, ConfigDict
+from typing import Any, Dict, Optional
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ReservationCreate(BaseModel):
@@ -115,17 +116,21 @@ class ReservationResponse(BaseModel):
 
 class ReservationStatusUpdate(BaseModel):
     """予約ステータス更新用スキーマ（管理者用）"""
-    
+
     status: str = Field(..., description="新しい予約ステータス")
-    reason: Optional[str] = Field(None, max_length=500, description="ステータス変更理由")
-    
-    @field_validator('status')
+    reason: Optional[str] = Field(
+        None, max_length=500, description="ステータス変更理由"
+    )
+
+    @field_validator("status")
     @classmethod
     def validate_status(cls, v):
         """ステータス値の検証"""
-        valid_statuses = ['pending', 'confirmed', 'active', 'completed', 'cancelled']
+        valid_statuses = ["pending", "confirmed", "active", "completed", "cancelled"]
         if v not in valid_statuses:
-            raise ValueError(f'ステータスは次のいずれかである必要があります: {", ".join(valid_statuses)}')
+            raise ValueError(
+                f'ステータスは次のいずれかである必要があります: {", ".join(valid_statuses)}'
+            )
         return v
 
 
@@ -140,12 +145,12 @@ class ReservationListResponse(BaseModel):
     status: str = Field(..., description="予約ステータス")
     total_amount: Decimal = Field(..., description="合計金額")
     created_at: datetime = Field(..., description="作成日時")
-    
+
     # 決済情報
     payment_status: Optional[str] = Field(None, description="支払いステータス")
     payment_method: Optional[str] = Field(None, description="支払い方法")
     payment_reference: Optional[str] = Field(None, description="支払い参照番号")
-    
+
     # 車両情報
     vehicle: Optional[Dict[str, Any]] = Field(None, description="車両情報")
     # 店舗情報
@@ -163,11 +168,11 @@ class ReservationUpdate(BaseModel):
     # 予約期間
     pickup_datetime: Optional[datetime] = Field(None, description="借り出し日時")
     return_datetime: Optional[datetime] = Field(None, description="返却日時")
-    
+
     # 店舗変更
     pickup_store_id: Optional[str] = Field(None, description="借り出し店舗ID")
     return_store_id: Optional[str] = Field(None, description="返却店舗ID")
-    
+
     # 要望・オプション
     special_requests: Optional[str] = Field(
         None, max_length=500, description="特別要望"

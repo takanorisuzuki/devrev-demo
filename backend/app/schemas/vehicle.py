@@ -4,10 +4,11 @@ TDD Green Phase - テストを通すための最小実装
 API_DESIGN.md準拠
 """
 
-from typing import Optional
-from decimal import Decimal
 from datetime import datetime
-from pydantic import BaseModel, Field, ConfigDict
+from decimal import Decimal
+from typing import Optional
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class StoreInfo(BaseModel):
@@ -48,7 +49,7 @@ class VehicleCreate(BaseModel):
     image_filename: Optional[str] = Field(
         None, max_length=100, description="画像ファイル名"
     )
-    
+
     # 喫煙可否
     is_smoking_allowed: Optional[bool] = Field(False, description="喫煙可否")
 
@@ -77,7 +78,7 @@ class VehicleResponse(BaseModel):
 
     # ステータス
     is_available: bool = Field(..., description="利用可能フラグ")
-    
+
     # 喫煙可否
     is_smoking_allowed: bool = Field(..., description="喫煙可否")
 
@@ -94,7 +95,9 @@ class VehicleResponse(BaseModel):
     created_at: datetime = Field(..., description="作成日時")
     updated_at: datetime = Field(..., description="更新日時")
 
-    model_config = ConfigDict(from_attributes=True)  # SQLAlchemyモデルからの変換を有効化
+    model_config = ConfigDict(
+        from_attributes=True
+    )  # SQLAlchemyモデルからの変換を有効化
 
 
 class VehicleUpdate(BaseModel):
@@ -111,7 +114,9 @@ class VehicleUpdate(BaseModel):
     class_type: Optional[str] = Field(None, max_length=20, description="クラス分類")
 
     # 仕様
-    transmission: Optional[str] = Field(None, max_length=10, description="トランスミッション")
+    transmission: Optional[str] = Field(
+        None, max_length=10, description="トランスミッション"
+    )
     fuel_type: Optional[str] = Field(None, max_length=15, description="燃料タイプ")
 
     # 料金
@@ -120,7 +125,7 @@ class VehicleUpdate(BaseModel):
     # ステータス（管理者が更新可能）
     is_available: Optional[bool] = Field(None, description="利用可能フラグ")
     is_active: Optional[bool] = Field(None, description="アクティブフラグ")
-    
+
     # 喫煙可否
     is_smoking_allowed: Optional[bool] = Field(None, description="喫煙可否")
 

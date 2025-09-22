@@ -5,12 +5,13 @@ TDD Green Phase - テストを通すための最小実装
 
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.core.config import settings
 from app.api.v1.router import api_router
+from app.core.config import settings
 
 
 @asynccontextmanager
@@ -20,12 +21,13 @@ async def lifespan(app: FastAPI):
     print(f"🚀 {settings.APP_NAME} API v{settings.APP_VERSION} starting up...")
     print(f"📍 Environment: {settings.ENVIRONMENT}")
     print(f"🔧 Debug mode: {settings.DEBUG}")
-    print(f"📚 Documentation: http://localhost:8000/docs")
+    print("📚 Documentation: http://localhost:8000/docs")
 
     yield
 
     # 終了時の処理
     print(f"👋 {settings.APP_NAME} API shutting down...")
+
 
 # FastAPIアプリケーション作成
 app = FastAPI(
@@ -91,7 +93,6 @@ async def api_info():
     }
 
 
-
 # カスタム404エラーハンドラー
 @app.exception_handler(404)
 async def not_found_handler(request, exc):
@@ -100,7 +101,7 @@ async def not_found_handler(request, exc):
         status_code=404,
         content={
             "error": "Not Found",
-            "message": f"The requested endpoint was not found",
+            "message": "The requested endpoint was not found",
             "path": str(request.url.path),
             "app_name": settings.APP_NAME,
         },

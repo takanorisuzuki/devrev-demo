@@ -14,10 +14,11 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 from sqlalchemy.orm import Session
+
 from app.db.database import SessionLocal, engine
 from app.models.vehicle import Vehicle
-from app.services.vehicle import VehicleService
 from app.schemas.vehicle import VehicleCreate
+from app.services.vehicle import VehicleService
 
 
 def get_image_filename_by_vehicle(make: str, model: str) -> str:

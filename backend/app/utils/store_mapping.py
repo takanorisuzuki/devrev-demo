@@ -9,7 +9,7 @@ from uuid import UUID
 
 class StoreMapping:
     """店舗IDマッピング管理クラス"""
-    
+
     # デモ店舗IDとバックエンドUUIDの対応表
     # 実際の運用では、データベースから動的に取得することを推奨
     DEMO_STORE_MAPPING: Dict[str, str] = {
@@ -19,28 +19,28 @@ class StoreMapping:
         "store-4": "d0686ef0-dc17-4f5a-8fe6-421e58829ded",  # 横浜店
         "store-5": "e1797f01-ed28-4f6b-8ff7-532f69930efe",  # 大阪店
     }
-    
+
     @classmethod
     def get_backend_store_id(cls, demo_store_id: str) -> Optional[str]:
         """
         デモ店舗IDをバックエンドUUIDに変換
-        
+
         Args:
             demo_store_id: デモ店舗ID（例: "store-1"）
-            
+
         Returns:
             バックエンドUUID文字列、見つからない場合はNone
         """
         return cls.DEMO_STORE_MAPPING.get(demo_store_id)
-    
+
     @classmethod
     def get_demo_store_id(cls, backend_store_id: str) -> Optional[str]:
         """
         バックエンドUUIDをデモ店舗IDに変換
-        
+
         Args:
             backend_store_id: バックエンドUUID文字列
-            
+
         Returns:
             デモ店舗ID（例: "store-1"）、見つからない場合はNone
         """
@@ -48,35 +48,35 @@ class StoreMapping:
             if backend_id == backend_store_id:
                 return demo_id
         return None
-    
+
     @classmethod
     def is_valid_demo_store_id(cls, demo_store_id: str) -> bool:
         """
         デモ店舗IDが有効かどうかをチェック
-        
+
         Args:
             demo_store_id: デモ店舗ID
-            
+
         Returns:
             有効な場合はTrue、無効な場合はFalse
         """
         return demo_store_id in cls.DEMO_STORE_MAPPING
-    
+
     @classmethod
     def get_all_demo_store_ids(cls) -> list[str]:
         """
         すべてのデモ店舗IDを取得
-        
+
         Returns:
             デモ店舗IDのリスト
         """
         return list(cls.DEMO_STORE_MAPPING.keys())
-    
+
     @classmethod
     def get_all_backend_store_ids(cls) -> list[str]:
         """
         すべてのバックエンド店舗IDを取得
-        
+
         Returns:
             バックエンドUUIDのリスト
         """

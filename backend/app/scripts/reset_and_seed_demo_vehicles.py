@@ -13,10 +13,11 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 from sqlalchemy.orm import Session
+
 from app.db.database import SessionLocal, engine
 from app.models.vehicle import Vehicle
-from app.services.vehicle import VehicleService
 from app.schemas.vehicle import VehicleCreate
+from app.services.vehicle import VehicleService
 
 
 def reset_and_seed_demo_vehicles():
@@ -144,12 +145,12 @@ def reset_and_seed_demo_vehicles():
         vehicle_service = VehicleService(db)
 
         print("🗑️  既存車両データの削除を開始します...")
-        
+
         # 既存の車両データをすべて削除
         existing_vehicles = db.query(Vehicle).all()
         for vehicle in existing_vehicles:
             db.delete(vehicle)
-        
+
         db.commit()
         print(f"✅ 既存車両データ {len(existing_vehicles)}台を削除しました")
 
@@ -172,7 +173,9 @@ def reset_and_seed_demo_vehicles():
 
         print(f"\n🎉 デモ車両データ作成完了!")
         print(f"📈 新規作成: {created_count}台")
-        print(f"💾 データベース: フロントエンドのデモデータと同じ車両データが利用可能になりました")
+        print(
+            f"💾 データベース: フロントエンドのデモデータと同じ車両データが利用可能になりました"
+        )
 
     except Exception as e:
         print(f"❌ 予期しないエラー: {str(e)}")

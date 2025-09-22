@@ -3,13 +3,15 @@
 TDD Green Phase - 最小実装
 """
 
-from typing import Optional, Dict, Any
-from datetime import datetime
-from sqlalchemy.orm import Session
 import logging
+from datetime import datetime
+from typing import Any, Dict, Optional
+
+from sqlalchemy.orm import Session
 
 from app.models.store import Store
-from app.schemas.store_hours_policy import StoreHours, StorePolicy, StoreHoursResponse, StorePolicyResponse
+from app.schemas.store_hours_policy import (StoreHours, StoreHoursResponse,
+                                            StorePolicy, StorePolicyResponse)
 
 logger = logging.getLogger(__name__)
 
@@ -25,11 +27,12 @@ class StoreHoursPolicyService:
         try:
             # UUID形式の検証
             import uuid
+
             try:
                 uuid.UUID(store_id)
             except ValueError:
                 raise ValueError(f"無効な店舗ID形式です: {store_id}")
-            
+
             # 店舗の存在確認
             store = self.db.query(Store).filter(Store.id == store_id).first()
             if not store:
@@ -44,29 +47,32 @@ class StoreHoursPolicyService:
                 friday={"open": "09:00", "close": "18:00"},
                 saturday={"open": "10:00", "close": "17:00"},
                 sunday={"open": "10:00", "close": "17:00"},
-                holidays={"open": "10:00", "close": "17:00"}
+                holidays={"open": "10:00", "close": "17:00"},
             )
 
             return StoreHoursResponse(
                 store_id=store_id,
                 hours=default_hours,
-                last_updated=datetime.now().isoformat()
+                last_updated=datetime.now().isoformat(),
             )
 
         except Exception as e:
             logger.error(f"Store hours retrieval failed: {str(e)}")
             raise
 
-    def update_store_hours(self, store_id: str, hours: StoreHours) -> StoreHoursResponse:
+    def update_store_hours(
+        self, store_id: str, hours: StoreHours
+    ) -> StoreHoursResponse:
         """店舗営業時間を更新する"""
         try:
             # UUID形式の検証
             import uuid
+
             try:
                 uuid.UUID(store_id)
             except ValueError:
                 raise ValueError(f"無効な店舗ID形式です: {store_id}")
-            
+
             # 店舗の存在確認
             store = self.db.query(Store).filter(Store.id == store_id).first()
             if not store:
@@ -80,9 +86,7 @@ class StoreHoursPolicyService:
             logger.info(f"Store hours updated for store {store_id}")
 
             return StoreHoursResponse(
-                store_id=store_id,
-                hours=hours,
-                last_updated=datetime.now().isoformat()
+                store_id=store_id, hours=hours, last_updated=datetime.now().isoformat()
             )
 
         except Exception as e:
@@ -94,11 +98,12 @@ class StoreHoursPolicyService:
         try:
             # UUID形式の検証
             import uuid
+
             try:
                 uuid.UUID(store_id)
             except ValueError:
                 raise ValueError(f"無効な店舗ID形式です: {store_id}")
-            
+
             # 店舗の存在確認
             store = self.db.query(Store).filter(Store.id == store_id).first()
             if not store:
@@ -109,51 +114,54 @@ class StoreHoursPolicyService:
                 cancellation_policy={
                     "free_cancellation_hours": 24,
                     "cancellation_fee_percentage": 10,
-                    "no_show_fee_percentage": 50
+                    "no_show_fee_percentage": 50,
                 },
                 pricing_policy={
                     "base_rate": 5000,
                     "weekend_multiplier": 1.2,
                     "holiday_multiplier": 1.5,
-                    "late_return_fee_per_hour": 1000
+                    "late_return_fee_per_hour": 1000,
                 },
                 insurance_policy={
                     "required": True,
                     "coverage_amount": 1000000,
-                    "daily_rate": 500
+                    "daily_rate": 500,
                 },
                 age_restriction={
                     "minimum_age": 18,
                     "maximum_age": 75,
-                    "young_driver_surcharge": 2000
+                    "young_driver_surcharge": 2000,
                 },
                 license_requirement={
                     "required": True,
                     "validity_period_months": 12,
-                    "international_license_accepted": True
-                }
+                    "international_license_accepted": True,
+                },
             )
 
             return StorePolicyResponse(
                 store_id=store_id,
                 policy=default_policy,
-                last_updated=datetime.now().isoformat()
+                last_updated=datetime.now().isoformat(),
             )
 
         except Exception as e:
             logger.error(f"Store policy retrieval failed: {str(e)}")
             raise
 
-    def update_store_policy(self, store_id: str, policy: StorePolicy) -> StorePolicyResponse:
+    def update_store_policy(
+        self, store_id: str, policy: StorePolicy
+    ) -> StorePolicyResponse:
         """店舗ポリシーを更新する"""
         try:
             # UUID形式の検証
             import uuid
+
             try:
                 uuid.UUID(store_id)
             except ValueError:
                 raise ValueError(f"無効な店舗ID形式です: {store_id}")
-            
+
             # 店舗の存在確認
             store = self.db.query(Store).filter(Store.id == store_id).first()
             if not store:
@@ -169,7 +177,7 @@ class StoreHoursPolicyService:
             return StorePolicyResponse(
                 store_id=store_id,
                 policy=policy,
-                last_updated=datetime.now().isoformat()
+                last_updated=datetime.now().isoformat(),
             )
 
         except Exception as e:
@@ -179,30 +187,41 @@ class StoreHoursPolicyService:
     def _validate_hours(self, hours: StoreHours) -> None:
         """営業時間の妥当性を検証する"""
         days = [
-            hours.monday, hours.tuesday, hours.wednesday, hours.thursday,
-            hours.friday, hours.saturday, hours.sunday, hours.holidays
+            hours.monday,
+            hours.tuesday,
+            hours.wednesday,
+            hours.thursday,
+            hours.friday,
+            hours.saturday,
+            hours.sunday,
+            hours.holidays,
         ]
 
         for day in days:
             open_time = datetime.strptime(day.open, "%H:%M").time()
             close_time = datetime.strptime(day.close, "%H:%M").time()
-            
+
             if open_time >= close_time:
-                raise ValueError(f"開店時間は閉店時間より早い必要があります: {day.open} >= {day.close}")
+                raise ValueError(
+                    f"開店時間は閉店時間より早い必要があります: {day.open} >= {day.close}"
+                )
 
     def _validate_policy(self, policy: StorePolicy) -> None:
         """ポリシーの妥当性を検証する"""
         # キャンセルポリシー検証
         if policy.cancellation_policy.free_cancellation_hours < 0:
             raise ValueError("無料キャンセル時間は0以上である必要があります")
-        
-        if policy.cancellation_policy.cancellation_fee_percentage < 0 or policy.cancellation_policy.cancellation_fee_percentage > 100:
+
+        if (
+            policy.cancellation_policy.cancellation_fee_percentage < 0
+            or policy.cancellation_policy.cancellation_fee_percentage > 100
+        ):
             raise ValueError("キャンセル料率は0-100%の範囲である必要があります")
 
         # 料金ポリシー検証
         if policy.pricing_policy.base_rate < 0:
             raise ValueError("基本料金は0以上である必要があります")
-        
+
         if policy.pricing_policy.weekend_multiplier < 1.0:
             raise ValueError("週末料金倍率は1.0以上である必要があります")
 

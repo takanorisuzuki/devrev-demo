@@ -14,10 +14,11 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 from sqlalchemy.orm import Session
+
 from app.db.database import SessionLocal, engine
 from app.models.store import Store
-from app.services.store import StoreService
 from app.schemas.store import StoreCreate
+from app.services.store import StoreService
 
 
 def create_sample_stores():

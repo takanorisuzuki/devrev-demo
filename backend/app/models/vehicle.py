@@ -3,21 +3,15 @@
 TDD Green Phase - テストを通すための最小実装
 """
 
-from sqlalchemy import (
-    Column,
-    String,
-    Integer,
-    Boolean,
-    DECIMAL,
-    DateTime,
-    Text,
-    ForeignKey,
-)
-from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.sql import func
-from sqlalchemy.orm import relationship
-from app.db.database import Base
 import uuid
+
+from sqlalchemy import (DECIMAL, Boolean, Column, DateTime, ForeignKey,
+                        Integer, String, Text)
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
+
+from app.db.database import Base
 
 
 class Vehicle(Base):
@@ -54,7 +48,7 @@ class Vehicle(Base):
 
     # ステータス（デフォルト値設定）
     is_available = Column(Boolean, default=True)
-    
+
     # 喫煙可否
     is_smoking_allowed = Column(Boolean, default=False)
 

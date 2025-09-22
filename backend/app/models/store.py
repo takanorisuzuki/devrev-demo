@@ -3,12 +3,14 @@
 TDD Green Phase - テストを通すための最小実装
 """
 
-from sqlalchemy import Column, String, Boolean, DECIMAL, DateTime, Text
-from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.sql import func
-from sqlalchemy.orm import relationship
-from app.db.database import Base
 import uuid
+
+from sqlalchemy import DECIMAL, Boolean, Column, DateTime, String
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
+
+from app.db.database import Base
 
 
 class Store(Base):

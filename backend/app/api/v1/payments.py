@@ -5,29 +5,23 @@ TDD Green Phase - テストを通すための最小実装
 セキュリティ権限テスト対応
 """
 
-from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Query, Header
-from sqlalchemy.orm import Session
 import logging
+from typing import Optional
 
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
+from sqlalchemy.orm import Session
+
+from app.api.v1.auth import get_current_user
 from app.db.database import get_db
-from app.schemas.payment import (
-    PaymentRequest,
-    PaymentResponse,
-    PaymentHistoryResponse,
-    RefundRequest,
-    RefundResponse,
-    AdminPaymentHistoryResponse,
-)
-from app.schemas.webhook_receipt import (
-    WebhookPayload,
-    WebhookResponse,
-    ReceiptResponse,
-)
+from app.models.user import User
+from app.schemas.payment import (AdminPaymentHistoryResponse,
+                                 PaymentHistoryResponse, PaymentRequest,
+                                 PaymentResponse, RefundRequest,
+                                 RefundResponse)
+from app.schemas.webhook_receipt import (ReceiptResponse, WebhookPayload,
+                                         WebhookResponse)
 from app.services.payment import PaymentService
 from app.services.webhook_receipt import WebhookReceiptService
-from app.api.v1.auth import get_current_user
-from app.models.user import User
 
 # 決済API ルーター
 router = APIRouter()
@@ -37,10 +31,12 @@ logger = logging.getLogger(__name__)
 
 # 共通RBAC依存関数と内部エラーヘルパー
 
+
 def require_roles(*roles: str):
     """要求されたロールのいずれかを持つユーザーのみ許可する依存関数。
     成功時は `User` を返すので、そのまま `current_user` として受け取れる。
     """
+
     def _dep(user: User = Depends(get_current_user)) -> User:
         if user.role.value not in roles:
             raise HTTPException(
@@ -94,13 +90,13 @@ async def process_payment(
 ) -> PaymentResponse:
     """
     予約の決済処理
-    
+
     - **reservation_id**: 予約ID
     - **payment_method**: 決済方法 (card, cash, bank_transfer)
     - **card_token**: カードトークン (Stripe)
     - **amount**: 決済金額
     - **Idempotency-Key (header)**: 冪等性キー（重複決済防止）
-    
+
     顧客権限が必要です。
     """
     try:
@@ -111,34 +107,48 @@ async def process_payment(
             idempotency_key=idempotency_key,
         )
         return payment
-        
+
     except HTTPException as e:
         if e.status_code == status.HTTP_409_CONFLICT:
-            logger.exception("duplicate request detected", extra={
-                "reservation_id": str(reservation_id),
-                "actor": str(current_user.id),
-                "idempotency_key": idempotency_key,
-            })
+            logger.exception(
+                "duplicate request detected",
+                extra={
+                    "reservation_id": str(reservation_id),
+                    "actor": str(current_user.id),
+                    "idempotency_key": idempotency_key,
+                },
+            )
         elif e.status_code == status.HTTP_402_PAYMENT_REQUIRED:
-            logger.exception("payment declined", extra={
-                "reservation_id": str(reservation_id),
-                "actor": str(current_user.id),
-                "idempotency_key": idempotency_key,
-            })
+            logger.exception(
+                "payment declined",
+                extra={
+                    "reservation_id": str(reservation_id),
+                    "actor": str(current_user.id),
+                    "idempotency_key": idempotency_key,
+                },
+            )
         elif e.status_code == status.HTTP_504_GATEWAY_TIMEOUT:
-            logger.exception("payment gateway timeout", extra={
-                "reservation_id": str(reservation_id),
-                "actor": str(current_user.id),
-                "idempotency_key": idempotency_key,
-            })
+            logger.exception(
+                "payment gateway timeout",
+                extra={
+                    "reservation_id": str(reservation_id),
+                    "actor": str(current_user.id),
+                    "idempotency_key": idempotency_key,
+                },
+            )
         raise
     except Exception:
-        logger.exception("process_payment failed", extra={
-            "reservation_id": str(reservation_id),
-            "actor": str(current_user.id),
-            "idempotency_key": idempotency_key,
-        })
-        raise _internal_error("決済処理に失敗しました。システム管理者にお問い合わせください。")
+        logger.exception(
+            "process_payment failed",
+            extra={
+                "reservation_id": str(reservation_id),
+                "actor": str(current_user.id),
+                "idempotency_key": idempotency_key,
+            },
+        )
+        raise _internal_error(
+            "決済処理に失敗しました。システム管理者にお問い合わせください。"
+        )
 
 
 @router.get("/history", response_model=PaymentHistoryResponse, tags=["payments"])
@@ -150,31 +160,36 @@ async def get_payment_history(
 ) -> PaymentHistoryResponse:
     """
     自分の決済履歴を取得する
-    
+
     - **skip**: スキップ数（ページング）
     - **limit**: 取得件数上限（最大100）
-    
+
     顧客権限が必要です。
     RBAC: このエンドポイントは RBAC 依存関数により権限が検証されます。
     """
     try:
         history = service.get_customer_payment_history(
-            customer_id=str(current_user.id),
-            skip=skip,
-            limit=limit
+            customer_id=str(current_user.id), skip=skip, limit=limit
         )
         return history
-        
+
     except Exception:
-        logger.exception("get_payment_history failed", extra={
-            "actor": str(current_user.id),
-            "skip": skip,
-            "limit": limit,
-        })
-        raise _internal_error("決済履歴の取得に失敗しました。システム管理者にお問い合わせください。")
+        logger.exception(
+            "get_payment_history failed",
+            extra={
+                "actor": str(current_user.id),
+                "skip": skip,
+                "limit": limit,
+            },
+        )
+        raise _internal_error(
+            "決済履歴の取得に失敗しました。システム管理者にお問い合わせください。"
+        )
 
 
-@router.get("/admin", response_model=AdminPaymentHistoryResponse, tags=["payments:admin"])
+@router.get(
+    "/admin", response_model=AdminPaymentHistoryResponse, tags=["payments:admin"]
+)
 async def get_all_payments_for_admin(
     skip: int = Query(0, ge=0, description="スキップ数"),
     limit: int = Query(100, le=200, description="取得件数上限"),
@@ -183,27 +198,29 @@ async def get_all_payments_for_admin(
 ) -> AdminPaymentHistoryResponse:
     """
     管理者向け全決済履歴取得
-    
+
     - **skip**: スキップ数（ページング）
     - **limit**: 取得件数上限（最大200）
-    
+
     管理者権限が必要です。
     RBAC: このエンドポイントは RBAC 依存関数により権限が検証されます。
     """
     try:
-        history = service.get_all_payments_for_admin(
-            skip=skip,
-            limit=limit
-        )
+        history = service.get_all_payments_for_admin(skip=skip, limit=limit)
         return history
-        
+
     except Exception:
-        logger.exception("get_all_payments_for_admin failed", extra={
-            "actor": str(current_user.id),
-            "skip": skip,
-            "limit": limit,
-        })
-        raise _internal_error("決済履歴の取得に失敗しました。システム管理者にお問い合わせください。")
+        logger.exception(
+            "get_all_payments_for_admin failed",
+            extra={
+                "actor": str(current_user.id),
+                "skip": skip,
+                "limit": limit,
+            },
+        )
+        raise _internal_error(
+            "決済履歴の取得に失敗しました。システム管理者にお問い合わせください。"
+        )
 
 
 @router.get(
@@ -219,26 +236,31 @@ async def get_admin_payment_history(
 ) -> AdminPaymentHistoryResponse:
     """
     管理者向け全決済履歴取得
-    
+
     - **skip**: スキップ数（デフォルト: 0）
     - **limit**: 取得件数上限（デフォルト: 100、最大: 1000）
-    
+
     管理者権限が必要です。
     RBAC: このエンドポイントは RBAC 依存関数により権限が検証されます。
-    
+
     顧客情報・予約詳細・店舗情報を含む詳細な決済履歴を返します。
     """
     try:
         history = service.get_all_payments_for_admin(skip=skip, limit=limit)
         return history
-        
+
     except Exception:
-        logger.exception("get_admin_payment_history failed", extra={
-            "actor": str(current_user.id),
-            "skip": skip,
-            "limit": limit,
-        })
-        raise _internal_error("決済履歴の取得に失敗しました。システム管理者にお問い合わせください。")
+        logger.exception(
+            "get_admin_payment_history failed",
+            extra={
+                "actor": str(current_user.id),
+                "skip": skip,
+                "limit": limit,
+            },
+        )
+        raise _internal_error(
+            "決済履歴の取得に失敗しました。システム管理者にお問い合わせください。"
+        )
 
 
 @router.post(
@@ -261,15 +283,15 @@ async def process_refund(
 ) -> RefundResponse:
     """
     管理者向け返金処理
-    
+
     - **payment_id**: 決済ID
     - **amount**: 返金額
     - **reason**: 返金理由
     - **Idempotency-Key (header)**: 冪等性キー（重複返金防止）
-    
+
     管理者権限が必要です。
     RBAC: このエンドポイントは RBAC 依存関数により権限が検証されます。
-    
+
     冪等性: 同じIdempotency-Keyで複数回呼び出された場合、重複処理を防止します。
     現在は簡易実装（実際の本番環境ではRedisやDBに保存されたキーをチェック）。
     """
@@ -277,31 +299,42 @@ async def process_refund(
         refund = service.process_refund(
             payment_id=payment_id,
             refund_data=refund_data,
-            idempotency_key=idempotency_key
+            idempotency_key=idempotency_key,
         )
         return refund
-        
+
     except HTTPException as e:
         if e.status_code == status.HTTP_409_CONFLICT:
-            logger.exception("duplicate refund request detected", extra={
-                "payment_id": payment_id,
-                "actor": str(current_user.id),
-                "idempotency_key": idempotency_key,
-            })
+            logger.exception(
+                "duplicate refund request detected",
+                extra={
+                    "payment_id": payment_id,
+                    "actor": str(current_user.id),
+                    "idempotency_key": idempotency_key,
+                },
+            )
         elif e.status_code == status.HTTP_504_GATEWAY_TIMEOUT:
-            logger.exception("refund gateway timeout", extra={
-                "payment_id": payment_id,
-                "actor": str(current_user.id),
-                "idempotency_key": idempotency_key,
-            })
+            logger.exception(
+                "refund gateway timeout",
+                extra={
+                    "payment_id": payment_id,
+                    "actor": str(current_user.id),
+                    "idempotency_key": idempotency_key,
+                },
+            )
         raise
     except Exception:
-        logger.exception("process_refund failed", extra={
-            "payment_id": payment_id,
-            "actor": str(current_user.id),
-            "idempotency_key": idempotency_key,
-        })
-        raise _internal_error("返金処理に失敗しました。システム管理者にお問い合わせください。")
+        logger.exception(
+            "process_refund failed",
+            extra={
+                "payment_id": payment_id,
+                "actor": str(current_user.id),
+                "idempotency_key": idempotency_key,
+            },
+        )
+        raise _internal_error(
+            "返金処理に失敗しました。システム管理者にお問い合わせください。"
+        )
 
 
 @router.post("/webhook", response_model=WebhookResponse)
@@ -322,7 +355,7 @@ async def receive_payment_webhook(
     try:
         result = service.process_webhook(webhook_payload)
         return WebhookResponse(**result)
-        
+
     except ValueError as e:
         # バリデーションエラー（署名検証失敗など）
         raise HTTPException(
@@ -360,7 +393,7 @@ async def generate_payment_receipt(
     try:
         result = service.generate_receipt(payment_id)
         return ReceiptResponse(**result)
-        
+
     except ValueError as e:
         # バリデーションエラー（決済が見つからないなど）
         raise HTTPException(

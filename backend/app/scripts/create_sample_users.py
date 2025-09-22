@@ -5,7 +5,9 @@
 """
 
 import asyncio
+
 from sqlalchemy.orm import Session
+
 from app.db.database import SessionLocal
 from app.models.user import UserRole
 from app.schemas.user import UserCreate

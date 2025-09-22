@@ -4,18 +4,19 @@
 """
 
 import os
+import random
 import sys
 from datetime import datetime, timedelta
-from uuid import uuid4
-import random
 from decimal import Decimal
+from uuid import uuid4
 
 from sqlalchemy.orm import Session
+
 from app.db.database import SessionLocal
+from app.models.reservation import Reservation
+from app.models.store import Store
 from app.models.user import User
 from app.models.vehicle import Vehicle
-from app.models.store import Store
-from app.models.reservation import Reservation
 
 
 def create_sample_reservations():

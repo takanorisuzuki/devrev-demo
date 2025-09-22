@@ -5,21 +5,18 @@
 """
 
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.db.database import get_db
-from app.schemas.reservation import (
-    ReservationCreate,
-    ReservationResponse,
-    ReservationListResponse,
-    ReservationQuote,
-    ReservationQuoteResponse,
-    ReservationUpdate,
-)
-from app.services.reservation import ReservationService
 from app.api.v1.auth import get_current_user
+from app.db.database import get_db
 from app.models.user import User
+from app.schemas.reservation import (ReservationCreate,
+                                     ReservationListResponse, ReservationQuote,
+                                     ReservationQuoteResponse,
+                                     ReservationResponse, ReservationUpdate)
+from app.services.reservation import ReservationService
 
 # Reservation API ルーター
 router = APIRouter()
@@ -47,23 +44,39 @@ def build_reservation_response(reservation) -> ReservationResponse:
         tax_amount=reservation.tax_amount,
         options=reservation.options,
         special_requests=reservation.special_requests,
-        vehicle={
-            "id": str(reservation.vehicle.id),
-            "make": reservation.vehicle.make,
-            "model": reservation.vehicle.model,
-            "category": reservation.vehicle.category,
-            "image_url": f"/assets/images/cars/{reservation.vehicle.image_filename}" if reservation.vehicle.image_filename else None
-        } if reservation.vehicle else None,
-        pickup_store={
-            "id": str(reservation.pickup_store.id),
-            "name": reservation.pickup_store.name,
-            "address": f"{reservation.pickup_store.prefecture}{reservation.pickup_store.city}{reservation.pickup_store.address_line1}"
-        } if reservation.pickup_store else None,
-        return_store={
-            "id": str(reservation.return_store.id),
-            "name": reservation.return_store.name,
-            "address": f"{reservation.return_store.prefecture}{reservation.return_store.city}{reservation.return_store.address_line1}"
-        } if reservation.return_store else None,
+        vehicle=(
+            {
+                "id": str(reservation.vehicle.id),
+                "make": reservation.vehicle.make,
+                "model": reservation.vehicle.model,
+                "category": reservation.vehicle.category,
+                "image_url": (
+                    f"/assets/images/cars/{reservation.vehicle.image_filename}"
+                    if reservation.vehicle.image_filename
+                    else None
+                ),
+            }
+            if reservation.vehicle
+            else None
+        ),
+        pickup_store=(
+            {
+                "id": str(reservation.pickup_store.id),
+                "name": reservation.pickup_store.name,
+                "address": f"{reservation.pickup_store.prefecture}{reservation.pickup_store.city}{reservation.pickup_store.address_line1}",
+            }
+            if reservation.pickup_store
+            else None
+        ),
+        return_store=(
+            {
+                "id": str(reservation.return_store.id),
+                "name": reservation.return_store.name,
+                "address": f"{reservation.return_store.prefecture}{reservation.return_store.city}{reservation.return_store.address_line1}",
+            }
+            if reservation.return_store
+            else None
+        ),
         created_at=reservation.created_at,
     )
 
@@ -192,25 +205,41 @@ async def get_my_reservations(
                 payment_status=reservation.payment_status,
                 payment_method=reservation.payment_method,
                 payment_reference=reservation.payment_reference,
-                vehicle={
-                    "id": str(reservation.vehicle.id),
-                    "make": reservation.vehicle.make,
-                    "model": reservation.vehicle.model,
-                    "year": reservation.vehicle.year,
-                    "category": reservation.vehicle.category,
-                    "daily_rate": reservation.vehicle.daily_rate,
-                    "image_url": f"/assets/images/cars/{reservation.vehicle.image_filename}" if reservation.vehicle.image_filename else None
-                } if reservation.vehicle else None,
-                pickup_store={
-                    "id": str(reservation.pickup_store.id),
-                    "name": reservation.pickup_store.name,
-                    "address": f"{reservation.pickup_store.prefecture}{reservation.pickup_store.city}{reservation.pickup_store.address_line1}"
-                } if reservation.pickup_store else None,
-                return_store={
-                    "id": str(reservation.return_store.id),
-                    "name": reservation.return_store.name,
-                    "address": f"{reservation.return_store.prefecture}{reservation.return_store.city}{reservation.return_store.address_line1}"
-                } if reservation.return_store else None,
+                vehicle=(
+                    {
+                        "id": str(reservation.vehicle.id),
+                        "make": reservation.vehicle.make,
+                        "model": reservation.vehicle.model,
+                        "year": reservation.vehicle.year,
+                        "category": reservation.vehicle.category,
+                        "daily_rate": reservation.vehicle.daily_rate,
+                        "image_url": (
+                            f"/assets/images/cars/{reservation.vehicle.image_filename}"
+                            if reservation.vehicle.image_filename
+                            else None
+                        ),
+                    }
+                    if reservation.vehicle
+                    else None
+                ),
+                pickup_store=(
+                    {
+                        "id": str(reservation.pickup_store.id),
+                        "name": reservation.pickup_store.name,
+                        "address": f"{reservation.pickup_store.prefecture}{reservation.pickup_store.city}{reservation.pickup_store.address_line1}",
+                    }
+                    if reservation.pickup_store
+                    else None
+                ),
+                return_store=(
+                    {
+                        "id": str(reservation.return_store.id),
+                        "name": reservation.return_store.name,
+                        "address": f"{reservation.return_store.prefecture}{reservation.return_store.city}{reservation.return_store.address_line1}",
+                    }
+                    if reservation.return_store
+                    else None
+                ),
             )
             for reservation in reservations
         ]

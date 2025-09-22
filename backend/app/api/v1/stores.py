@@ -4,22 +4,18 @@ Store API エンドポイント
 """
 
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
 
 from app.db.database import get_db
-from app.schemas.store import StoreCreate, StoreResponse, StoreListResponse
-from app.schemas.store_hours_policy import (
-    StoreHours,
-    StorePolicy,
-    StoreHoursResponse,
-    StorePolicyResponse,
-)
+from app.schemas.store import StoreCreate, StoreListResponse, StoreResponse
+from app.schemas.store_hours_policy import (StoreHours, StoreHoursResponse,
+                                            StorePolicy, StorePolicyResponse)
 from app.services.store import StoreService
 from app.services.store_hours_policy import StoreHoursPolicyService
 from app.utils.validators import validate_uuid_format
-
 
 # Store API ルーター
 router = APIRouter()
@@ -30,7 +26,9 @@ def get_store_service(db: Session = Depends(get_db)) -> StoreService:
     return StoreService(db)
 
 
-def get_store_hours_policy_service(db: Session = Depends(get_db)) -> StoreHoursPolicyService:
+def get_store_hours_policy_service(
+    db: Session = Depends(get_db),
+) -> StoreHoursPolicyService:
     """StoreHoursPolicyServiceの依存性注入"""
     return StoreHoursPolicyService(db)
 
@@ -221,7 +219,7 @@ async def get_store_hours(
     try:
         result = service.get_store_hours(store_id)
         return result
-        
+
     except ValueError as e:
         # バリデーションエラー（店舗が見つからないなど）
         raise HTTPException(
@@ -259,7 +257,7 @@ async def update_store_hours(
     try:
         result = service.update_store_hours(store_id, hours)
         return result
-        
+
     except ValueError as e:
         # バリデーションエラー（店舗が見つからない、時間フォーマットエラーなど）
         raise HTTPException(
@@ -295,7 +293,7 @@ async def get_store_policy(
     try:
         result = service.get_store_policy(store_id)
         return result
-        
+
     except ValueError as e:
         # バリデーションエラー（店舗が見つからないなど）
         raise HTTPException(
@@ -333,7 +331,7 @@ async def update_store_policy(
     try:
         result = service.update_store_policy(store_id, policy)
         return result
-        
+
     except ValueError as e:
         # バリデーションエラー（店舗が見つからない、ポリシー値エラーなど）
         raise HTTPException(

@@ -3,11 +3,13 @@
 TDD Green Phase - テストを通すための最小実装
 """
 
-from sqlalchemy import Column, String, Boolean, DateTime, Text, JSON
+import uuid
+
+from sqlalchemy import JSON, Boolean, Column, DateTime, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
+
 from app.db.database import Base
-import uuid
 
 
 class SystemSettings(Base):

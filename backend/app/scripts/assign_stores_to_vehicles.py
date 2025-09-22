@@ -5,18 +5,19 @@
 """
 
 import os
+import random
 import sys
 from pathlib import Path
-import random
 
 # プロジェクトルートをPythonパスに追加
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 from sqlalchemy.orm import Session
+
 from app.db.database import SessionLocal
-from app.models.vehicle import Vehicle
 from app.models.store import Store
+from app.models.vehicle import Vehicle
 
 
 def assign_stores_to_vehicles():

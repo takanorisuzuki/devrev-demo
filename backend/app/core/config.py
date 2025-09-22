@@ -3,8 +3,9 @@ DriveRev アプリケーション設定
 """
 
 from typing import List, Optional
+
+from pydantic import ConfigDict, field_validator
 from pydantic_settings import BaseSettings
-from pydantic import field_validator, ConfigDict
 
 
 class Settings(BaseSettings):
@@ -70,10 +71,7 @@ class Settings(BaseSettings):
             f"{info.data.get('DB_PORT')}/{info.data.get('DB_NAME')}"
         )
 
-    model_config = ConfigDict(
-        env_file=".env",
-        case_sensitive=True
-    )
+    model_config = ConfigDict(env_file=".env", case_sensitive=True)
 
 
 # 設定インスタンス
