@@ -10,6 +10,7 @@ import {
   validateSearchConditions 
 } from "../lib/utils/time-management";
 import ErrorBanner from "@/components/ui/error-banner";
+import { ErrorType } from "@/lib/utils/error-handler";
 
 export default function HomePage() {
   const router = useRouter();
@@ -84,7 +85,7 @@ export default function HomePage() {
     );
     
     if (!validation.isValid) {
-      setValidationError(validation.errorMessage);
+      setValidationError(validation.errorMessage || 'Validation error');
       return;
     }
 
@@ -135,7 +136,7 @@ export default function HomePage() {
           {/* バリデーションエラー表示 */}
           {validationError && (
             <ErrorBanner
-              error={validationError}
+              error={{ type: ErrorType.VALIDATION, message: validationError, timestamp: new Date().toISOString() }}
               onDismiss={() => setValidationError(null)}
             />
           )}

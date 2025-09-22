@@ -26,6 +26,7 @@ import { reservationApi } from "@/lib/api/reservations";
 import ConfirmationModal from "@/components/ui/confirmation-modal";
 import { useToast } from "@/components/ui/toast";
 import ErrorBanner from "@/components/ui/error-banner";
+import { ErrorType } from "@/lib/utils/error-handler";
 
 // 車両画像URLを構築する関数
 const getVehicleImageUrl = (vehicle: any) => {
@@ -281,7 +282,7 @@ export default function DashboardPage() {
                           {getVehicleImageUrl(reservation.vehicle) ? (
                             <img
                               src={getVehicleImageUrl(reservation.vehicle)}
-                              alt={`${reservation.vehicle.make} ${reservation.vehicle.model}`}
+                              alt={`${reservation.vehicle?.make || ''} ${reservation.vehicle?.model || ''}`}
                               className="w-full h-full object-cover rounded-md"
                             />
                           ) : (
@@ -440,7 +441,7 @@ export default function DashboardPage() {
                         {getVehicleImageUrl(reservation.vehicle) ? (
                           <img
                             src={getVehicleImageUrl(reservation.vehicle)}
-                            alt={`${reservation.vehicle.make} ${reservation.vehicle.model}`}
+                            alt={`${reservation.vehicle?.make || ''} ${reservation.vehicle?.model || ''}`}
                             className="w-full h-full object-cover rounded-md"
                           />
                         ) : (
@@ -530,7 +531,7 @@ export default function DashboardPage() {
       {/* エラーバナー */}
       {cancelError && (
         <ErrorBanner
-          error={cancelError}
+          error={{ type: ErrorType.SERVER, message: cancelError, timestamp: new Date().toISOString() }}
           onDismiss={() => setCancelError(null)}
         />
       )}

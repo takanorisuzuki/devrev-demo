@@ -96,7 +96,7 @@ export default function AdminPaymentsPage() {
   const handleRefund = async (paymentId: string, refundData: RefundFormData) => {
     setRefundLoading(paymentId);
     try {
-      await processRefundApi(paymentId, refundData);
+      await processRefundApi(paymentId, { ...refundData, reason: refundData.reason || 'Admin refund' } as any);
       setShowRefundForm(null);
       // 決済履歴を再取得
       fetchPaymentHistory(1, false);
