@@ -12,6 +12,7 @@ on:
 env:
   NODE_VERSION: "20"
   PYTHON_VERSION: "3.11"
+  FORCE_CACHE_REFRESH: "true"
 
 jobs:
   # 依存関係の脆弱性スキャン
@@ -37,7 +38,7 @@ jobs:
           npm audit --json > npm-audit.json || true
 
       - name: Upload frontend audit report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: frontend-audit-report
@@ -57,7 +58,7 @@ jobs:
           safety check --json --output safety-report.json || true
 
       - name: Upload backend audit report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: backend-audit-report
@@ -87,7 +88,7 @@ jobs:
           bandit -r backend/app/ -ll
 
       - name: Upload Bandit report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: bandit-security-report
@@ -99,7 +100,7 @@ jobs:
           semgrep --config=auto backend/
 
       - name: Upload Semgrep report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: semgrep-security-report
@@ -267,7 +268,7 @@ jobs:
           echo "4. Rotate any exposed secrets" >> security-report.md
 
       - name: Upload security report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: security-report
           path: security-report.md
