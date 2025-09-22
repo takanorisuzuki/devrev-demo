@@ -46,7 +46,8 @@ class WebhookReceiptService:
                 )
 
             logger.info(
-                f"Webhook processed successfully for payment {webhook_payload.payment_id}"
+                f"Webhook processed successfully for payment "
+                f"{webhook_payload.payment_id}"
             )
 
             return {
@@ -124,7 +125,10 @@ class WebhookReceiptService:
 
     def _calculate_signature(self, webhook_payload: WebhookPayload) -> str:
         """署名を計算する"""
-        message = f"{webhook_payload.payment_id}:{webhook_payload.status}:{webhook_payload.amount}"
+        message = (
+            f"{webhook_payload.payment_id}:{webhook_payload.status}:"
+            f"{webhook_payload.amount}"
+        )
         return hmac.new(
             self.webhook_secret.encode(), message.encode(), hashlib.sha256
         ).hexdigest()
