@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { ArrowLeft, Filter, Car, MapPin, Calendar, Clock } from "lucide-react";
 import { useVehicles } from "@/lib/hooks/useVehicles";
 import { useStores } from "@/lib/hooks/useStores";
 import { formatJSTDate, formatJSTTime } from "@/lib/utils/time-management";
 
-export default function VehiclesPage() {
+function VehiclesPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const {
@@ -80,7 +80,7 @@ export default function VehiclesPage() {
       });
 
       router.push(
-        `/vehicles/${selectedVehicle.id}/reserve?${reservationParams.toString()}`
+        `/vehicles/${selectedVehicle.id}/reserve?${reservationParams.toString()}`,
       );
     }
   };
@@ -310,7 +310,8 @@ export default function VehiclesPage() {
                           currency: "JPY",
                           minimumFractionDigits: 0,
                           maximumFractionDigits: 0,
-                        }).format(vehicle.daily_rate)}/日
+                        }).format(vehicle.daily_rate)}
+                        /日
                       </span>
                     </div>
 
@@ -348,5 +349,19 @@ export default function VehiclesPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function VehiclesPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          Loading...
+        </div>
+      }
+    >
+      <VehiclesPageContent />
+    </Suspense>
   );
 }

@@ -3,23 +3,25 @@
  * バックエンドの管理者専用Vehicle APIと通信
  */
 
-import { apiClient } from './client';
-import { 
-  Vehicle, 
+import { apiClient } from "./client";
+import {
+  Vehicle,
   VehicleCreate,
   VehicleUpdate,
-  VehicleSearchParams
-} from '../types/vehicle';
+  VehicleSearchParams,
+} from "../types/vehicle";
 
 /**
  * 管理者用車両作成
  */
-export async function createVehicle(vehicleData: VehicleCreate): Promise<Vehicle> {
+export async function createVehicle(
+  vehicleData: VehicleCreate,
+): Promise<Vehicle> {
   try {
-    const response = await apiClient.post('/api/v1/vehicles/', vehicleData);
+    const response = await apiClient.post("/api/v1/vehicles/", vehicleData);
     return response.data;
   } catch (error) {
-    console.error('車両作成に失敗しました:', error);
+    console.error("車両作成に失敗しました:", error);
     throw error;
   }
 }
@@ -27,9 +29,15 @@ export async function createVehicle(vehicleData: VehicleCreate): Promise<Vehicle
 /**
  * 管理者用車両更新
  */
-export async function updateVehicle(vehicleId: string, vehicleData: VehicleUpdate): Promise<Vehicle> {
+export async function updateVehicle(
+  vehicleId: string,
+  vehicleData: VehicleUpdate,
+): Promise<Vehicle> {
   try {
-    const response = await apiClient.put(`/api/v1/vehicles/${vehicleId}`, vehicleData);
+    const response = await apiClient.put(
+      `/api/v1/vehicles/${vehicleId}`,
+      vehicleData,
+    );
     return response.data;
   } catch (error) {
     console.error(`車両更新に失敗しました (ID: ${vehicleId}):`, error);
@@ -40,7 +48,9 @@ export async function updateVehicle(vehicleId: string, vehicleData: VehicleUpdat
 /**
  * 管理者用車両削除（論理削除）
  */
-export async function deleteVehicle(vehicleId: string): Promise<{ message: string; vehicle_id: string; deleted_by: string }> {
+export async function deleteVehicle(
+  vehicleId: string,
+): Promise<{ message: string; vehicle_id: string; deleted_by: string }> {
   try {
     const response = await apiClient.delete(`/api/v1/vehicles/${vehicleId}`);
     return response.data;
@@ -53,10 +63,12 @@ export async function deleteVehicle(vehicleId: string): Promise<{ message: strin
 /**
  * 管理者用車両一覧取得（全車両、フィルタリング可能）
  */
-export async function getAdminVehicles(params?: VehicleSearchParams): Promise<Vehicle[]> {
+export async function getAdminVehicles(
+  params?: VehicleSearchParams,
+): Promise<Vehicle[]> {
   try {
     const searchParams = new URLSearchParams();
-    
+
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
@@ -65,11 +77,11 @@ export async function getAdminVehicles(params?: VehicleSearchParams): Promise<Ve
       });
     }
 
-    const url = `/api/v1/vehicles/${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
+    const url = `/api/v1/vehicles/${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
     const response = await apiClient.get(url);
     return response.data;
   } catch (error) {
-    console.error('管理者車両一覧の取得に失敗しました:', error);
+    console.error("管理者車両一覧の取得に失敗しました:", error);
     throw error;
   }
 }
@@ -82,7 +94,10 @@ export async function getAdminVehicle(vehicleId: string): Promise<Vehicle> {
     const response = await apiClient.get(`/api/v1/vehicles/${vehicleId}`);
     return response.data;
   } catch (error) {
-    console.error(`管理者車両詳細の取得に失敗しました (ID: ${vehicleId}):`, error);
+    console.error(
+      `管理者車両詳細の取得に失敗しました (ID: ${vehicleId}):`,
+      error,
+    );
     throw error;
   }
 }

@@ -7,7 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 import { VehicleCreate } from "@/lib/types/vehicle";
-import { VEHICLE_CATEGORIES, FUEL_TYPES, TRANSMISSIONS } from "@/lib/types/vehicle";
+import {
+  VEHICLE_CATEGORIES,
+  FUEL_TYPES,
+  TRANSMISSIONS,
+} from "@/lib/types/vehicle";
 import { useAuthStore } from "@/lib/stores/auth";
 
 // シンプルなフォームデータ型
@@ -30,7 +34,11 @@ interface VehicleCreateModalProps {
   onVehicleCreated: () => void;
 }
 
-export function VehicleCreateModal({ open, onOpenChange, onVehicleCreated }: VehicleCreateModalProps) {
+export function VehicleCreateModal({
+  open,
+  onOpenChange,
+  onVehicleCreated,
+}: VehicleCreateModalProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState<VehicleCreateFormData>({
     make: "",
@@ -48,8 +56,11 @@ export function VehicleCreateModal({ open, onOpenChange, onVehicleCreated }: Veh
   const { addToast } = useToast();
   const token = useAuthStore((state) => state.token);
 
-  const handleInputChange = (field: keyof VehicleCreateFormData, value: string | number) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+  const handleInputChange = (
+    field: keyof VehicleCreateFormData,
+    value: string | number,
+  ) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -83,7 +94,7 @@ export function VehicleCreateModal({ open, onOpenChange, onVehicleCreated }: Veh
       }
 
       const newVehicle = await response.json();
-      
+
       addToast({
         type: "success",
         title: "車両作成完了",
@@ -109,7 +120,8 @@ export function VehicleCreateModal({ open, onOpenChange, onVehicleCreated }: Veh
       addToast({
         type: "error",
         title: "エラー",
-        message: error instanceof Error ? error.message : "車両の作成に失敗しました",
+        message:
+          error instanceof Error ? error.message : "車両の作成に失敗しました",
       });
     } finally {
       setIsLoading(false);
@@ -173,7 +185,9 @@ export function VehicleCreateModal({ open, onOpenChange, onVehicleCreated }: Veh
                 type="number"
                 placeholder="2023"
                 value={formData.year}
-                onChange={(e) => handleInputChange("year", parseInt(e.target.value))}
+                onChange={(e) =>
+                  handleInputChange("year", parseInt(e.target.value))
+                }
                 required
               />
             </div>
@@ -198,7 +212,9 @@ export function VehicleCreateModal({ open, onOpenChange, onVehicleCreated }: Veh
             <Input
               placeholder="品川 500 あ 1234"
               value={formData.license_plate}
-              onChange={(e) => handleInputChange("license_plate", e.target.value)}
+              onChange={(e) =>
+                handleInputChange("license_plate", e.target.value)
+              }
               required
             />
           </div>
@@ -230,7 +246,9 @@ export function VehicleCreateModal({ open, onOpenChange, onVehicleCreated }: Veh
               <Input
                 placeholder="セダン"
                 value={formData.class_type}
-                onChange={(e) => handleInputChange("class_type", e.target.value)}
+                onChange={(e) =>
+                  handleInputChange("class_type", e.target.value)
+                }
                 required
               />
             </div>
@@ -244,7 +262,9 @@ export function VehicleCreateModal({ open, onOpenChange, onVehicleCreated }: Veh
               <select
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 value={formData.transmission}
-                onChange={(e) => handleInputChange("transmission", e.target.value)}
+                onChange={(e) =>
+                  handleInputChange("transmission", e.target.value)
+                }
                 required
               >
                 <option value="">トランスミッションを選択</option>
@@ -284,13 +304,19 @@ export function VehicleCreateModal({ open, onOpenChange, onVehicleCreated }: Veh
               type="number"
               placeholder="8000"
               value={formData.daily_rate}
-              onChange={(e) => handleInputChange("daily_rate", parseFloat(e.target.value))}
+              onChange={(e) =>
+                handleInputChange("daily_rate", parseFloat(e.target.value))
+              }
               required
             />
           </div>
 
           <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+            >
               キャンセル
             </Button>
             <Button type="submit" disabled={isLoading}>

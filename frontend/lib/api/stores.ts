@@ -2,8 +2,8 @@
  * 店舗API クライアント
  */
 
-import { apiClient } from './client';
-import { Store, StoreDetail, StoreSearchParams } from '../types/store';
+import { apiClient } from "./client";
+import { Store, StoreDetail, StoreSearchParams } from "../types/store";
 
 /**
  * 店舗一覧を取得
@@ -11,7 +11,7 @@ import { Store, StoreDetail, StoreSearchParams } from '../types/store';
 export async function getStores(params?: StoreSearchParams): Promise<Store[]> {
   try {
     const searchParams = new URLSearchParams();
-    
+
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
@@ -20,15 +20,15 @@ export async function getStores(params?: StoreSearchParams): Promise<Store[]> {
       });
     }
 
-    const url = `/api/v1/stores${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
-    console.log('API Request URL:', url); // DEBUG
-    
+    const url = `/api/v1/stores${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
+    console.log("API Request URL:", url); // DEBUG
+
     const response = await apiClient.get(url);
-    
-    console.log('API Response:', response.data); // DEBUG
+
+    console.log("API Response:", response.data); // DEBUG
     return response.data;
   } catch (error) {
-    console.error('店舗一覧の取得に失敗しました:', error);
+    console.error("店舗一覧の取得に失敗しました:", error);
     throw error;
   }
 }
@@ -56,7 +56,9 @@ export async function getActiveStores(): Promise<Store[]> {
 /**
  * 都道府県別の店舗一覧を取得
  */
-export async function getStoresByPrefecture(prefecture: string): Promise<Store[]> {
+export async function getStoresByPrefecture(
+  prefecture: string,
+): Promise<Store[]> {
   return getStores({ prefecture, is_active: true });
 }
 

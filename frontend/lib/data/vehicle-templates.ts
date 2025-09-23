@@ -36,7 +36,7 @@ export const VEHICLE_TEMPLATES: VehicleTemplate[] = [
     fuel_type: "gasoline",
     daily_rate: 4500,
     image_filename: "toyota-yaris.jpg",
-    description: "燃費が良くて運転しやすいコンパクトカー"
+    description: "燃費が良くて運転しやすいコンパクトカー",
   },
   {
     id: "template-compact-2",
@@ -51,7 +51,7 @@ export const VEHICLE_TEMPLATES: VehicleTemplate[] = [
     fuel_type: "gasoline",
     daily_rate: 4800,
     image_filename: "honda-fit.jpg",
-    description: "室内が広く使いやすいコンパクトカー"
+    description: "室内が広く使いやすいコンパクトカー",
   },
   // SUV
   {
@@ -67,7 +67,7 @@ export const VEHICLE_TEMPLATES: VehicleTemplate[] = [
     fuel_type: "gasoline",
     daily_rate: 8500,
     image_filename: "toyota-rav4.jpg",
-    description: "人気のミドルサイズSUV"
+    description: "人気のミドルサイズSUV",
   },
   // プレミアム
   {
@@ -83,7 +83,7 @@ export const VEHICLE_TEMPLATES: VehicleTemplate[] = [
     fuel_type: "gasoline",
     daily_rate: 15000,
     image_filename: "lexus-es.jpg",
-    description: "ラグジュアリーセダン"
+    description: "ラグジュアリーセダン",
   },
   // 電気自動車
   {
@@ -99,23 +99,23 @@ export const VEHICLE_TEMPLATES: VehicleTemplate[] = [
     fuel_type: "electric",
     daily_rate: 7500,
     image_filename: "nissan-leaf.jpg",
-    description: "人気の電気自動車"
-  }
+    description: "人気の電気自動車",
+  },
 ];
 
 // カテゴリ別テンプレート
 export const TEMPLATES_BY_CATEGORY = {
-  compact: VEHICLE_TEMPLATES.filter(t => t.category === "compact"),
-  suv: VEHICLE_TEMPLATES.filter(t => t.category === "suv"),
-  premium: VEHICLE_TEMPLATES.filter(t => t.category === "premium"),
-  sports: VEHICLE_TEMPLATES.filter(t => t.category === "sports"),
-  electric: VEHICLE_TEMPLATES.filter(t => t.category === "electric"),
+  compact: VEHICLE_TEMPLATES.filter((t) => t.category === "compact"),
+  suv: VEHICLE_TEMPLATES.filter((t) => t.category === "suv"),
+  premium: VEHICLE_TEMPLATES.filter((t) => t.category === "premium"),
+  sports: VEHICLE_TEMPLATES.filter((t) => t.category === "sports"),
+  electric: VEHICLE_TEMPLATES.filter((t) => t.category === "electric"),
 };
 
 // メーカー別テンプレート
 export const TEMPLATES_BY_MAKE = {
-  "トヨタ": VEHICLE_TEMPLATES.filter(t => t.make === "トヨタ"),
-  "ホンダ": VEHICLE_TEMPLATES.filter(t => t.make === "ホンダ"),
-  "日産": VEHICLE_TEMPLATES.filter(t => t.make === "日産"),
-  "レクサス": VEHICLE_TEMPLATES.filter(t => t.make === "レクサス"),
+  トヨタ: VEHICLE_TEMPLATES.filter((t) => t.make === "トヨタ"),
+  ホンダ: VEHICLE_TEMPLATES.filter((t) => t.make === "ホンダ"),
+  日産: VEHICLE_TEMPLATES.filter((t) => t.make === "日産"),
+  レクサス: VEHICLE_TEMPLATES.filter((t) => t.make === "レクサス"),
 };

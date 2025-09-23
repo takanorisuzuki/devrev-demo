@@ -42,12 +42,16 @@ import { StoreDeleteModal } from "@/components/admin/store-delete-modal";
 import { SystemSettingsComponent } from "@/components/admin/system-settings";
 import { useAuthStore, useIsAdmin } from "@/lib/stores/auth";
 import { useToast } from "@/components/ui/toast";
-import { reservationApi, GetAdminReservationsParams } from "@/lib/api/reservations";
+import {
+  reservationApi,
+  GetAdminReservationsParams,
+} from "@/lib/api/reservations";
 import { adminApi, AdminStats } from "@/lib/api/admin";
 import { formatJSTDate } from "@/lib/utils/time-management";
 
 export default function AdminDashboard() {
-  const { user, isAuthenticated, logout, isLoading, token, hasHydrated } = useAuthStore();
+  const { user, isAuthenticated, logout, isLoading, token, hasHydrated } =
+    useAuthStore();
   const isAdmin = useIsAdmin();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("overview");
@@ -56,39 +60,39 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     // クライアントサイドでのみ認証チェックを実行
-    if (typeof window === 'undefined') {
+    if (typeof window === "undefined") {
       return;
     }
 
     // ハイドレーションが完了するまで待機
     if (!hasHydrated) {
-      console.log('Waiting for hydration to complete...');
+      console.log("Waiting for hydration to complete...");
       return;
     }
 
-    console.log('Admin Dashboard Auth Check:', {
+    console.log("Admin Dashboard Auth Check:", {
       isAuthenticated,
       userEmail: user?.email,
       userRole: user?.role,
       hasToken: !!token,
       isLoading,
-      hasHydrated
+      hasHydrated,
     });
 
     if (!isAuthenticated) {
-      console.log('Not authenticated, redirecting to login');
+      console.log("Not authenticated, redirecting to login");
       router.push("/login");
       return;
     }
 
     // 管理者でない場合は顧客ダッシュボードにリダイレクト
     if (user?.role !== "admin") {
-      console.log('Not admin role, redirecting to customer dashboard');
+      console.log("Not admin role, redirecting to customer dashboard");
       router.push("/dashboard");
       return;
     }
 
-    console.log('Admin authentication successful');
+    console.log("Admin authentication successful");
   }, [isAuthenticated, user, hasHydrated]);
 
   // 統計データの取得
@@ -103,7 +107,7 @@ export default function AdminDashboard() {
         const statsData = await adminApi.getStats();
         setStats(statsData);
       } catch (error) {
-        console.error('統計データの取得に失敗しました:', error);
+        console.error("統計データの取得に失敗しました:", error);
       } finally {
         setStatsLoading(false);
       }
@@ -118,11 +122,11 @@ export default function AdminDashboard() {
   };
 
   // デバッグ情報を出力
-  console.log('Admin Dashboard Debug:', {
+  console.log("Admin Dashboard Debug:", {
     isLoading,
     isAuthenticated,
     user: user?.email,
-    role: user?.role
+    role: user?.role,
   });
 
   // ハイドレーション中またはローディング中は表示
@@ -132,7 +136,7 @@ export default function AdminDashboard() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-blue-500 border-solid mx-auto mb-4"></div>
           <p className="text-gray-700 text-lg">
-            {!hasHydrated ? '認証状態を確認中...' : '読み込み中...'}
+            {!hasHydrated ? "認証状態を確認中..." : "読み込み中..."}
           </p>
         </div>
       </div>
@@ -151,7 +155,7 @@ export default function AdminDashboard() {
         <div className="text-center">
           <p className="text-gray-700 text-lg">管理者権限が必要です...</p>
           <p className="text-gray-500 text-sm mt-2">
-            role: {user?.role || 'null'}
+            role: {user?.role || "null"}
           </p>
         </div>
       </div>
@@ -232,7 +236,9 @@ export default function AdminDashboard() {
 
           {/* Main Content */}
           <div className="flex-1">
-            {activeTab === "overview" && <OverviewContent stats={stats} statsLoading={statsLoading} />}
+            {activeTab === "overview" && (
+              <OverviewContent stats={stats} statsLoading={statsLoading} />
+            )}
             {activeTab === "users" && <UsersContent />}
             {activeTab === "vehicles" && <VehiclesContent />}
             {activeTab === "reservations" && <ReservationsContent />}
@@ -274,7 +280,13 @@ function SidebarButton({
 }
 
 // 概要コンテンツ
-function OverviewContent({ stats, statsLoading }: { stats: AdminStats | null, statsLoading: boolean }) {
+function OverviewContent({
+  stats,
+  statsLoading,
+}: {
+  stats: AdminStats | null;
+  statsLoading: boolean;
+}) {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-gray-900">管理ダッシュボード</h1>
@@ -283,27 +295,43 @@ function OverviewContent({ stats, statsLoading }: { stats: AdminStats | null, st
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatsCard
           title="総ユーザー数"
-          value={statsLoading ? "読み込み中..." : stats?.total_users?.toString() || "0"}
+          value={
+            statsLoading
+              ? "読み込み中..."
+              : stats?.total_users?.toString() || "0"
+          }
           icon={Users}
           color="blue"
         />
-        <StatsCard 
-          title="利用可能車両数" 
-          value={statsLoading ? "読み込み中..." : stats?.total_vehicles?.toString() || "0"} 
-          icon={Car} 
-          color="green" 
+        <StatsCard
+          title="利用可能車両数"
+          value={
+            statsLoading
+              ? "読み込み中..."
+              : stats?.total_vehicles?.toString() || "0"
+          }
+          icon={Car}
+          color="green"
         />
         <StatsCard
           title="今月の予約数"
-          value={statsLoading ? "読み込み中..." : stats?.monthly_reservations?.toString() || "0"}
+          value={
+            statsLoading
+              ? "読み込み中..."
+              : stats?.monthly_reservations?.toString() || "0"
+          }
           icon={Calendar}
           color="orange"
         />
-        <StatsCard 
-          title="総店舗数" 
-          value={statsLoading ? "読み込み中..." : stats?.total_stores?.toString() || "0"} 
-          icon={MapPin} 
-          color="purple" 
+        <StatsCard
+          title="総店舗数"
+          value={
+            statsLoading
+              ? "読み込み中..."
+              : stats?.total_stores?.toString() || "0"
+          }
+          icon={MapPin}
+          color="purple"
         />
       </div>
 
@@ -354,28 +382,35 @@ function UsersContent() {
     try {
       setUsersLoading(true);
       setUsersError(null);
-      
+
       // Zustandストアからトークンを取得
       const token = useAuthStore.getState().token;
       if (!token) {
-        throw new Error('認証トークンが見つかりません');
+        throw new Error("認証トークンが見つかりません");
       }
-      
-      const response = await fetch('http://localhost:8000/api/v1/admin/users/', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
+
+      const response = await fetch(
+        "http://localhost:8000/api/v1/admin/users/",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         },
-      });
-      
+      );
+
       if (!response.ok) {
-        throw new Error('ユーザー一覧の取得に失敗しました');
+        throw new Error("ユーザー一覧の取得に失敗しました");
       }
-      
+
       const userData = await response.json();
       setUsers(userData);
     } catch (error) {
-      console.error('Error fetching users:', error);
-      setUsersError(error instanceof Error ? error.message : 'ユーザー一覧の取得に失敗しました');
+      console.error("Error fetching users:", error);
+      setUsersError(
+        error instanceof Error
+          ? error.message
+          : "ユーザー一覧の取得に失敗しました",
+      );
     } finally {
       setUsersLoading(false);
     }
@@ -418,7 +453,7 @@ function UsersContent() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900">ユーザー管理</h1>
-        <Button 
+        <Button
           className="flex items-center space-x-2"
           onClick={() => setIsCreateModalOpen(true)}
         >
@@ -469,19 +504,28 @@ function UsersContent() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {usersLoading ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
+                    <td
+                      colSpan={5}
+                      className="px-6 py-4 text-center text-gray-500"
+                    >
                       読み込み中...
                     </td>
                   </tr>
                 ) : usersError ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-4 text-center text-red-500">
+                    <td
+                      colSpan={5}
+                      className="px-6 py-4 text-center text-red-500"
+                    >
                       {usersError}
                     </td>
                   </tr>
                 ) : users.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
+                    <td
+                      colSpan={5}
+                      className="px-6 py-4 text-center text-gray-500"
+                    >
                       ユーザーが見つかりません
                     </td>
                   </tr>
@@ -521,18 +565,18 @@ function UsersContent() {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(user.created_at).toLocaleDateString('ja-JP')}
+                        {new Date(user.created_at).toLocaleDateString("ja-JP")}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                        <Button 
-                          variant="outline" 
+                        <Button
+                          variant="outline"
                           size="sm"
                           onClick={() => handleEditUser(user)}
                         >
                           編集
                         </Button>
-                        <Button 
-                          variant="outline" 
+                        <Button
+                          variant="outline"
                           size="sm"
                           onClick={() => handleDeleteUser(user)}
                         >
@@ -581,9 +625,12 @@ function VehiclesContent() {
   const { addToast } = useToast();
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [showQuickRegistrationModal, setShowQuickRegistrationModal] = useState(false);
+  const [showQuickRegistrationModal, setShowQuickRegistrationModal] =
+    useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState<any>(null);
-  const [selectedVehicles, setSelectedVehicles] = useState<Set<string>>(new Set());
+  const [selectedVehicles, setSelectedVehicles] = useState<Set<string>>(
+    new Set(),
+  );
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [filters, setFilters] = useState({
@@ -596,25 +643,25 @@ function VehiclesContent() {
   const fetchVehicles = async () => {
     try {
       setLoading(true);
-      console.log('車両一覧を取得中...');
-      
-        // 管理者用APIを使用して車両データを取得（削除済み含む）
-        const { getAdminVehicles } = await import('@/lib/api/vehicles');
-        const data = await getAdminVehicles();
-      
-      console.log('取得した車両データ:', data);
-      console.log('車両データ数:', data.length);
+      console.log("車両一覧を取得中...");
+
+      // 管理者用APIを使用して車両データを取得（削除済み含む）
+      const { getAdminVehicles } = await import("@/lib/api/vehicles");
+      const data = await getAdminVehicles();
+
+      console.log("取得した車両データ:", data);
+      console.log("車両データ数:", data.length);
       setVehicles(data);
-      console.log('vehicles state 更新後:', data);
+      console.log("vehicles state 更新後:", data);
     } catch (error) {
-      console.error('車両一覧の取得に失敗しました:', error);
+      console.error("車両一覧の取得に失敗しました:", error);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    console.log('VehiclesContent useEffect 実行');
+    console.log("VehiclesContent useEffect 実行");
     fetchVehicles();
   }, []);
 
@@ -641,16 +688,19 @@ function VehiclesContent() {
 
       let successCount = 0;
       let errorCount = 0;
-      
+
       // 選択された車両を順次削除
       for (const vehicleId of selectedVehicles) {
         try {
-          const response = await fetch(`http://localhost:8000/api/v1/vehicles/${vehicleId}`, {
-            method: "DELETE",
-            headers: {
-              Authorization: `Bearer ${token}`,
+          const response = await fetch(
+            `http://localhost:8000/api/v1/vehicles/${vehicleId}`,
+            {
+              method: "DELETE",
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
             },
-          });
+          );
 
           if (!response.ok) {
             throw new Error(`車両ID ${vehicleId} の削除に失敗しました`);
@@ -661,14 +711,14 @@ function VehiclesContent() {
           errorCount++;
         }
       }
-      
+
       // 選択状態をクリア
       setSelectedVehicles(new Set());
       setShowBulkDeleteModal(false);
-      
+
       // 一覧を再取得
       await fetchVehicles();
-      
+
       // 結果をトーストで表示
       if (errorCount === 0) {
         addToast({
@@ -683,13 +733,13 @@ function VehiclesContent() {
           message: `${successCount}台削除成功、${errorCount}台削除失敗`,
         });
       }
-      
     } catch (error) {
-      console.error('一括削除に失敗しました:', error);
+      console.error("一括削除に失敗しました:", error);
       addToast({
         type: "error",
         title: "エラー",
-        message: error instanceof Error ? error.message : "一括削除に失敗しました",
+        message:
+          error instanceof Error ? error.message : "一括削除に失敗しました",
       });
     } finally {
       setIsBulkDeleting(false);
@@ -712,36 +762,44 @@ function VehiclesContent() {
     if (selectedVehicles.size === filteredVehicles.length) {
       setSelectedVehicles(new Set());
     } else {
-      setSelectedVehicles(new Set(filteredVehicles.map(v => v.id)));
+      setSelectedVehicles(new Set(filteredVehicles.map((v) => v.id)));
     }
   };
 
-  const filteredVehicles = vehicles.filter(vehicle => {
+  const filteredVehicles = vehicles.filter((vehicle) => {
     if (filters.category && vehicle.category !== filters.category) return false;
-    if (filters.make && !vehicle.make.toLowerCase().includes(filters.make.toLowerCase())) return false;
-    if (filters.is_available !== "" && vehicle.is_available.toString() !== filters.is_available) return false;
+    if (
+      filters.make &&
+      !vehicle.make.toLowerCase().includes(filters.make.toLowerCase())
+    )
+      return false;
+    if (
+      filters.is_available !== "" &&
+      vehicle.is_available.toString() !== filters.is_available
+    )
+      return false;
     return true;
   });
 
-  console.log('レンダリング時 - vehicles:', vehicles);
-  console.log('レンダリング時 - filteredVehicles:', filteredVehicles);
-  console.log('レンダリング時 - loading:', loading);
+  console.log("レンダリング時 - vehicles:", vehicles);
+  console.log("レンダリング時 - filteredVehicles:", filteredVehicles);
+  console.log("レンダリング時 - loading:", loading);
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900">車両管理</h1>
         <div className="flex gap-2">
-          <Button 
-            onClick={() => setShowQuickRegistrationModal(true)} 
+          <Button
+            onClick={() => setShowQuickRegistrationModal(true)}
             className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-600"
           >
             <Plus className="h-4 w-4" />
             クイック登録
           </Button>
           {selectedVehicles.size > 0 && (
-            <Button 
-              onClick={() => setShowBulkDeleteModal(true)} 
+            <Button
+              onClick={() => setShowBulkDeleteModal(true)}
               className="flex items-center gap-2 bg-red-500 hover:bg-red-600"
             >
               一括削除 ({selectedVehicles.size}台)
@@ -764,7 +822,9 @@ function VehiclesContent() {
               <select
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 value={filters.category}
-                onChange={(e) => setFilters({...filters, category: e.target.value})}
+                onChange={(e) =>
+                  setFilters({ ...filters, category: e.target.value })
+                }
               >
                 <option value="">すべて</option>
                 <option value="compact">コンパクト</option>
@@ -782,7 +842,9 @@ function VehiclesContent() {
               <Input
                 placeholder="メーカー名で検索"
                 value={filters.make}
-                onChange={(e) => setFilters({...filters, make: e.target.value})}
+                onChange={(e) =>
+                  setFilters({ ...filters, make: e.target.value })
+                }
               />
             </div>
             <div>
@@ -792,7 +854,9 @@ function VehiclesContent() {
               <select
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 value={filters.is_available}
-                onChange={(e) => setFilters({...filters, is_available: e.target.value})}
+                onChange={(e) =>
+                  setFilters({ ...filters, is_available: e.target.value })
+                }
               >
                 <option value="">すべて</option>
                 <option value="true">利用可能</option>
@@ -827,7 +891,10 @@ function VehiclesContent() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       <input
                         type="checkbox"
-                        checked={selectedVehicles.size === filteredVehicles.length && filteredVehicles.length > 0}
+                        checked={
+                          selectedVehicles.size === filteredVehicles.length &&
+                          filteredVehicles.length > 0
+                        }
                         onChange={handleSelectAll}
                         className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                       />
@@ -889,12 +956,14 @@ function VehiclesContent() {
                         }).format(parseFloat(vehicle.daily_rate))}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          vehicle.is_available 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-red-100 text-red-800'
-                        }`}>
-                          {vehicle.is_available ? '利用可能' : '利用不可'}
+                        <span
+                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                            vehicle.is_available
+                              ? "bg-green-100 text-green-800"
+                              : "bg-red-100 text-red-800"
+                          }`}
+                        >
+                          {vehicle.is_available ? "利用可能" : "利用不可"}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -952,20 +1021,27 @@ function VehiclesContent() {
             {/* メッセージ */}
             <div className="p-6">
               <p className="text-gray-700 leading-relaxed mb-4">
-                選択された {selectedVehicles.size} 台の車両を削除しますか？この操作は取り消せません。
+                選択された {selectedVehicles.size}{" "}
+                台の車両を削除しますか？この操作は取り消せません。
               </p>
-              
+
               <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
                 <h4 className="font-medium text-red-800 mb-2">削除対象車両</h4>
                 <div className="space-y-1 text-sm text-red-700">
-                  <p><strong>選択台数:</strong> {selectedVehicles.size}台</p>
-                  <p><strong>対象車両ID:</strong> {Array.from(selectedVehicles).join(', ')}</p>
+                  <p>
+                    <strong>選択台数:</strong> {selectedVehicles.size}台
+                  </p>
+                  <p>
+                    <strong>対象車両ID:</strong>{" "}
+                    {Array.from(selectedVehicles).join(", ")}
+                  </p>
                 </div>
               </div>
-              
+
               <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <p className="text-sm text-yellow-800">
-                  <strong>注意:</strong> 車両を削除すると、その車両の予約履歴や関連データも影響を受ける可能性があります。
+                  <strong>注意:</strong>{" "}
+                  車両を削除すると、その車両の予約履歴や関連データも影響を受ける可能性があります。
                 </p>
               </div>
             </div>
@@ -1028,9 +1104,9 @@ function ReservationsContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState({
-    status: '',
-    customer_email: '',
-    vehicle_id: ''
+    status: "",
+    customer_email: "",
+    vehicle_id: "",
   });
 
   useEffect(() => {
@@ -1041,24 +1117,29 @@ function ReservationsContent() {
     try {
       setLoading(true);
       setError(null);
-      
+
       // デバッグ情報を出力
-      console.log('Admin Dashboard - Loading reservations...');
-      console.log('Auth state:', { isAuthenticated, user: user?.email, role: user?.role });
-      
+      console.log("Admin Dashboard - Loading reservations...");
+      console.log("Auth state:", {
+        isAuthenticated,
+        user: user?.email,
+        role: user?.role,
+      });
+
       // 管理者用予約APIを呼び出し
       const params: GetAdminReservationsParams = {};
       if (filters.status) params.status = filters.status as any;
-      if (filters.customer_email) params.customer_email = filters.customer_email;
+      if (filters.customer_email)
+        params.customer_email = filters.customer_email;
       if (filters.vehicle_id) params.vehicle_id = filters.vehicle_id;
-      
-      console.log('API params:', params);
+
+      console.log("API params:", params);
       const data = await reservationApi.getAdminReservations(params);
-      console.log('API response:', data);
+      console.log("API response:", data);
       setReservations(data);
     } catch (err) {
-      console.error('Error loading reservations:', err);
-      setError(err instanceof Error ? err.message : 'エラーが発生しました');
+      console.error("Error loading reservations:", err);
+      setError(err instanceof Error ? err.message : "エラーが発生しました");
     } finally {
       setLoading(false);
     }
@@ -1066,12 +1147,18 @@ function ReservationsContent() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'confirmed': return 'bg-blue-100 text-blue-800';
-      case 'active': return 'bg-green-100 text-green-800';
-      case 'completed': return 'bg-gray-100 text-gray-800';
-      case 'cancelled': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case "pending":
+        return "bg-yellow-100 text-yellow-800";
+      case "confirmed":
+        return "bg-blue-100 text-blue-800";
+      case "active":
+        return "bg-green-100 text-green-800";
+      case "completed":
+        return "bg-gray-100 text-gray-800";
+      case "cancelled":
+        return "bg-red-100 text-red-800";
+      default:
+        return "bg-gray-100 text-gray-800";
     }
   };
 
@@ -1081,9 +1168,9 @@ function ReservationsContent() {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('ja-JP', {
-      style: 'currency',
-      currency: 'JPY',
+    return new Intl.NumberFormat("ja-JP", {
+      style: "currency",
+      currency: "JPY",
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount);
@@ -1147,7 +1234,9 @@ function ReservationsContent() {
               </label>
               <select
                 value={filters.status}
-                onChange={(e) => setFilters({...filters, status: e.target.value})}
+                onChange={(e) =>
+                  setFilters({ ...filters, status: e.target.value })
+                }
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">すべて</option>
@@ -1165,7 +1254,9 @@ function ReservationsContent() {
               <Input
                 placeholder="メールアドレスで検索"
                 value={filters.customer_email}
-                onChange={(e) => setFilters({...filters, customer_email: e.target.value})}
+                onChange={(e) =>
+                  setFilters({ ...filters, customer_email: e.target.value })
+                }
               />
             </div>
             <div>
@@ -1175,7 +1266,9 @@ function ReservationsContent() {
               <Input
                 placeholder="車両IDで検索"
                 value={filters.vehicle_id}
-                onChange={(e) => setFilters({...filters, vehicle_id: e.target.value})}
+                onChange={(e) =>
+                  setFilters({ ...filters, vehicle_id: e.target.value })
+                }
               />
             </div>
           </div>
@@ -1250,7 +1343,8 @@ function ReservationsContent() {
                         {reservation.vehicle ? (
                           <div>
                             <div className="text-sm font-medium text-gray-900">
-                              {reservation.vehicle.make} {reservation.vehicle.model}
+                              {reservation.vehicle.make}{" "}
+                              {reservation.vehicle.model}
                             </div>
                             <div className="text-sm text-gray-500">
                               {reservation.vehicle.category}
@@ -1269,7 +1363,9 @@ function ReservationsContent() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(reservation.status)}`}>
+                        <span
+                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(reservation.status)}`}
+                        >
                           {reservation.status}
                         </span>
                       </td>
@@ -1314,41 +1410,46 @@ function StoresContent() {
     try {
       setStoresLoading(true);
       setStoresError(null);
-      
+
       const params: any = {};
       if (filters.prefecture) params.prefecture = filters.prefecture;
       if (filters.city) params.city = filters.city;
-      if (filters.is_airport !== "") params.is_airport = filters.is_airport === "true";
-      if (filters.is_station !== "") params.is_station = filters.is_station === "true";
-      if (filters.is_active !== "") params.is_active = filters.is_active === "true";
-      
+      if (filters.is_airport !== "")
+        params.is_airport = filters.is_airport === "true";
+      if (filters.is_station !== "")
+        params.is_station = filters.is_station === "true";
+      if (filters.is_active !== "")
+        params.is_active = filters.is_active === "true";
+
       const searchParams = new URLSearchParams();
       Object.entries(params).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
           searchParams.append(key, value.toString());
         }
       });
-      
-      const url = `http://localhost:8000/api/v1/admin/stores${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
-      
+
+      const url = `http://localhost:8000/api/v1/admin/stores${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
+
       const response = await fetch(url, {
-        method: 'GET',
+        method: "GET",
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || '店舗一覧の取得に失敗しました');
+        throw new Error(errorData.message || "店舗一覧の取得に失敗しました");
       }
 
       const data = await response.json();
       setStores(data.stores);
     } catch (error) {
-      console.error('Error fetching stores:', error);
-      setStoresError(error instanceof Error ? error.message : '店舗一覧の取得に失敗しました');
+      console.error("Error fetching stores:", error);
+      setStoresError(
+        error instanceof Error ? error.message : "店舗一覧の取得に失敗しました",
+      );
     } finally {
       setStoresLoading(false);
     }
@@ -1425,21 +1526,33 @@ function StoresContent() {
               <Input
                 placeholder="都道府県で検索"
                 value={filters.prefecture}
-                onChange={(e) => setFilters(prev => ({ ...prev, prefecture: e.target.value }))}
+                onChange={(e) =>
+                  setFilters((prev) => ({
+                    ...prev,
+                    prefecture: e.target.value,
+                  }))
+                }
               />
             </div>
             <div>
               <Input
                 placeholder="市区町村で検索"
                 value={filters.city}
-                onChange={(e) => setFilters(prev => ({ ...prev, city: e.target.value }))}
+                onChange={(e) =>
+                  setFilters((prev) => ({ ...prev, city: e.target.value }))
+                }
               />
             </div>
             <div>
               <select
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 value={filters.is_airport}
-                onChange={(e) => setFilters(prev => ({ ...prev, is_airport: e.target.value }))}
+                onChange={(e) =>
+                  setFilters((prev) => ({
+                    ...prev,
+                    is_airport: e.target.value,
+                  }))
+                }
               >
                 <option value="">すべて</option>
                 <option value="true">空港店舗のみ</option>
@@ -1450,7 +1563,12 @@ function StoresContent() {
               <select
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 value={filters.is_station}
-                onChange={(e) => setFilters(prev => ({ ...prev, is_station: e.target.value }))}
+                onChange={(e) =>
+                  setFilters((prev) => ({
+                    ...prev,
+                    is_station: e.target.value,
+                  }))
+                }
               >
                 <option value="">すべて</option>
                 <option value="true">駅店舗のみ</option>
@@ -1461,7 +1579,9 @@ function StoresContent() {
               <select
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 value={filters.is_active}
-                onChange={(e) => setFilters(prev => ({ ...prev, is_active: e.target.value }))}
+                onChange={(e) =>
+                  setFilters((prev) => ({ ...prev, is_active: e.target.value }))
+                }
               >
                 <option value="">すべて</option>
                 <option value="true">営業中のみ</option>
@@ -1506,19 +1626,28 @@ function StoresContent() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {storesLoading ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
+                    <td
+                      colSpan={6}
+                      className="px-6 py-4 text-center text-gray-500"
+                    >
                       読み込み中...
                     </td>
                   </tr>
                 ) : storesError ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-4 text-center text-red-500">
+                    <td
+                      colSpan={6}
+                      className="px-6 py-4 text-center text-red-500"
+                    >
                       {storesError}
                     </td>
                   </tr>
                 ) : filteredStores.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
+                    <td
+                      colSpan={6}
+                      className="px-6 py-4 text-center text-gray-500"
+                    >
                       店舗が見つかりません
                     </td>
                   </tr>
@@ -1527,19 +1656,29 @@ function StoresContent() {
                     <tr key={store.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div>
-                          <div className="text-sm font-medium text-gray-900">{store.name}</div>
-                          <div className="text-sm text-gray-500">コード: {store.code}</div>
+                          <div className="text-sm font-medium text-gray-900">
+                            {store.name}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            コード: {store.code}
+                          </div>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">
                           {store.prefecture} {store.city}
                         </div>
-                        <div className="text-sm text-gray-500">{store.address_line1}</div>
+                        <div className="text-sm text-gray-500">
+                          {store.address_line1}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{store.phone || '-'}</div>
-                        <div className="text-sm text-gray-500">{store.email || '-'}</div>
+                        <div className="text-sm text-gray-900">
+                          {store.phone || "-"}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {store.email || "-"}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex flex-col gap-1">
@@ -1561,12 +1700,14 @@ function StoresContent() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          store.is_active 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-red-100 text-red-800'
-                        }`}>
-                          {store.is_active ? '営業中' : '休業中'}
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            store.is_active
+                              ? "bg-green-100 text-green-800"
+                              : "bg-red-100 text-red-800"
+                          }`}
+                        >
+                          {store.is_active ? "営業中" : "休業中"}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -1603,14 +1744,14 @@ function StoresContent() {
         onOpenChange={setIsCreateModalOpen}
         onStoreCreated={handleStoreCreated}
       />
-      
+
       <StoreEditModal
         open={isEditModalOpen}
         onOpenChange={setIsEditModalOpen}
         store={selectedStore}
         onStoreUpdated={handleStoreUpdated}
       />
-      
+
       <StoreDeleteModal
         open={isDeleteModalOpen}
         onOpenChange={setIsDeleteModalOpen}

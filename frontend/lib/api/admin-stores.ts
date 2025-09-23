@@ -2,8 +2,8 @@
  * 管理者用店舗管理API
  */
 
-import { Store, StoreDetail } from '@/lib/types/store';
-import { apiClient } from './client';
+import { Store, StoreDetail } from "@/lib/types/store";
+import { apiClient } from "./client";
 
 export interface AdminStoreListResponse {
   stores: Store[];
@@ -55,7 +55,7 @@ export interface AdminStoreDeleteResponse {
 }
 
 class AdminStoreApi {
-  private baseUrl = '/api/v1/admin/stores';
+  private baseUrl = "/api/v1/admin/stores";
 
   async getStores(params?: {
     skip?: number;
@@ -80,8 +80,14 @@ class AdminStoreApi {
     return response.data;
   }
 
-  async updateStore(storeId: string, storeData: AdminStoreUpdateRequest): Promise<StoreDetail> {
-    const response = await apiClient.put(`${this.baseUrl}/${storeId}`, storeData);
+  async updateStore(
+    storeId: string,
+    storeData: AdminStoreUpdateRequest,
+  ): Promise<StoreDetail> {
+    const response = await apiClient.put(
+      `${this.baseUrl}/${storeId}`,
+      storeData,
+    );
     return response.data;
   }
 

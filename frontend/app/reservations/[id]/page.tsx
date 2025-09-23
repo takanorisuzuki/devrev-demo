@@ -55,7 +55,9 @@ export default function ReservationDetailPage() {
 
     // 管理者の場合は管理者ダッシュボードにリダイレクト
     if (hasHydrated && isAuthenticated && user?.role === "admin") {
-      console.log('Admin user accessing customer reservation page, redirecting to admin dashboard');
+      console.log(
+        "Admin user accessing customer reservation page, redirecting to admin dashboard",
+      );
       router.push("/admin/dashboard");
       return;
     }
@@ -122,7 +124,7 @@ export default function ReservationDetailPage() {
 
     const success = await cancelReservation(
       reservation.id,
-      "ユーザーによるキャンセル"
+      "ユーザーによるキャンセル",
     );
     if (success) {
       addToast({

@@ -1,7 +1,18 @@
 "use client";
 
-import React, { createContext, useContext, useState, useCallback, ReactNode } from "react";
-import { ErrorInfo, handleError, handleAuthenticationError, logError } from "@/lib/utils/error-handler";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  ReactNode,
+} from "react";
+import {
+  ErrorInfo,
+  handleError,
+  handleAuthenticationError,
+  logError,
+} from "@/lib/utils/error-handler";
 import ErrorBanner from "@/components/ui/error-banner";
 
 interface ErrorContextType {
@@ -21,13 +32,13 @@ export function ErrorProvider({ children }: ErrorProviderProps) {
 
   const showError = useCallback((error: any, context?: string) => {
     const errorInfo = handleError(error);
-    
+
     // エラーログ出力
     logError(errorInfo, context);
-    
+
     // 認証エラーの場合は自動ログアウト処理
     handleAuthenticationError(errorInfo);
-    
+
     // エラーを表示
     setCurrentError(errorInfo);
   }, []);
@@ -42,7 +53,7 @@ export function ErrorProvider({ children }: ErrorProviderProps) {
       <ErrorBanner
         error={currentError}
         onDismiss={clearError}
-        autoDismiss={currentError?.type !== 'AUTHENTICATION'}
+        autoDismiss={currentError?.type !== "AUTHENTICATION"}
         autoDismissDelay={5000}
       />
     </ErrorContext.Provider>

@@ -2,7 +2,7 @@
  * オフライン状態を監視するフック
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 
 interface OfflineState {
   isOffline: boolean;
@@ -28,13 +28,13 @@ export function useOffline(): OfflineState {
     };
 
     // イベントリスナーを追加
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
 
     // クリーンアップ
     return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
     };
   }, []);
 

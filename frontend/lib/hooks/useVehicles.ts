@@ -22,9 +22,11 @@ interface UseVehiclesOptions {
 /**
  * 車両一覧データを管理するHook
  */
-export function useVehicles(options: UseVehiclesOptions = {}): UseVehiclesResult {
+export function useVehicles(
+  options: UseVehiclesOptions = {},
+): UseVehiclesResult {
   const { searchParams, autoFetch = true } = options;
-  
+
   const [vehicles, setVehicles] = useState<VehicleListResponse[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -33,7 +35,7 @@ export function useVehicles(options: UseVehiclesOptions = {}): UseVehiclesResult
     try {
       setLoading(true);
       setError(null);
-      
+
       const data = await getVehicles(searchParams);
       setVehicles(data);
     } catch (err: any) {
@@ -69,13 +71,19 @@ export function useVehicleSearch() {
     make?: string,
     fuelType?: string,
     minPrice?: number,
-    maxPrice?: number
+    maxPrice?: number,
   ) => {
     try {
       setLoading(true);
       setError(null);
-      
-      const data = await searchVehicles(category, make, fuelType, minPrice, maxPrice);
+
+      const data = await searchVehicles(
+        category,
+        make,
+        fuelType,
+        minPrice,
+        maxPrice,
+      );
       setVehicles(data);
     } catch (err: any) {
       setError(err.message || "車両検索に失敗しました。");
@@ -90,12 +98,12 @@ export function useVehicleSearch() {
     setError(null);
   };
 
-  return { 
-    vehicles, 
-    loading, 
-    error, 
-    searchVehicles: searchVehiclesByParams, 
-    clearResults 
+  return {
+    vehicles,
+    loading,
+    error,
+    searchVehicles: searchVehiclesByParams,
+    clearResults,
   };
 }
 
@@ -104,23 +112,24 @@ export function useVehicleSearch() {
  */
 export function useVehiclesByCategory(category: string | null) {
   const searchParams = category ? { category, is_available: true } : undefined;
-  
-  return useVehicles({ 
+
+  return useVehicles({
     searchParams,
-    autoFetch: !!category 
+    autoFetch: !!category,
   });
 }
 
 /**
- * 価格帯別車両取得Hook  
+ * 価格帯別車両取得Hook
  */
 export function useVehiclesByPriceRange(minPrice?: number, maxPrice?: number) {
-  const searchParams = (minPrice !== undefined || maxPrice !== undefined) 
-    ? { min_price: minPrice, max_price: maxPrice, is_available: true }
-    : undefined;
-    
-  return useVehicles({ 
+  const searchParams =
+    minPrice !== undefined || maxPrice !== undefined
+      ? { min_price: minPrice, max_price: maxPrice, is_available: true }
+      : undefined;
+
+  return useVehicles({
     searchParams,
-    autoFetch: !!(minPrice !== undefined || maxPrice !== undefined)
+    autoFetch: !!(minPrice !== undefined || maxPrice !== undefined),
   });
 }

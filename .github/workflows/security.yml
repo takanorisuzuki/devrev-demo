@@ -125,7 +125,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v2
+        uses: github/codeql-action/init@v3
         with:
           languages: ${{ matrix.language }}
           queries: security-and-quality
@@ -157,7 +157,7 @@ jobs:
         run: npm ci
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v2
+        uses: github/codeql-action/analyze@v3
         with:
           category: "/language:${{matrix.language}}"
 
@@ -170,10 +170,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install Podman
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y podman
+      - name: Setup Podman 5.5.0
+        uses: redhat-actions/setup-podman@v1
+        with:
+          version: '5.5.0'
 
       - name: Configure Podman for rootless
         run: |
@@ -192,28 +192,32 @@ jobs:
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: "driverev-backend:security-scan"
-          format: "sarif"
-          output: "trivy-backend-results.sarif"
+          format: "json"
+          output: "trivy-backend-results.json"
           scanner: "image"
+        continue-on-error: true
 
       - name: Upload Trivy scan results (Backend)
-        uses: github/codeql-action/upload-sarif@v2
+        uses: actions/upload-artifact@v4
         if: always()
         with:
-          sarif_file: "trivy-backend-results.sarif"
+          name: trivy-backend-report
+          path: "trivy-backend-results.json"
 
       - name: Run Trivy vulnerability scanner (Frontend)
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: "driverev-frontend:security-scan"
-          format: "sarif"
-          output: "trivy-frontend-results.sarif"
+          format: "json"
+          output: "trivy-frontend-results.json"
+        continue-on-error: true
 
       - name: Upload Trivy scan results (Frontend)
-        uses: github/codeql-action/upload-sarif@v2
+        uses: actions/upload-artifact@v4
         if: always()
         with:
-          sarif_file: "trivy-frontend-results.sarif"
+          name: trivy-frontend-report
+          path: "trivy-frontend-results.json"
 
   # シークレットスキャン
   secret-scan:

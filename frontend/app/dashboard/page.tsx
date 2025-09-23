@@ -47,7 +47,7 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<"current" | "history">("current");
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelReservationId, setCancelReservationId] = useState<string | null>(
-    null
+    null,
   );
   const [isCancelling, setIsCancelling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
@@ -63,7 +63,9 @@ export default function DashboardPage() {
 
     // 管理者の場合は管理者ダッシュボードにリダイレクト
     if (hasHydrated && isAuthenticated && user?.role === "admin") {
-      console.log('Admin user accessing customer dashboard, redirecting to admin dashboard');
+      console.log(
+        "Admin user accessing customer dashboard, redirecting to admin dashboard",
+      );
       router.push("/admin/dashboard");
       return;
     }
@@ -84,7 +86,7 @@ export default function DashboardPage() {
     try {
       await reservationApi.cancelReservation(
         cancelReservationId,
-        "ユーザーによるキャンセル"
+        "ユーザーによるキャンセル",
       );
       // 予約データを再取得
       refetch();
@@ -112,7 +114,6 @@ export default function DashboardPage() {
     setCancelError(null);
   };
 
-
   // 認証チェック中
   if (!hasHydrated) {
     return (
@@ -139,10 +140,10 @@ export default function DashboardPage() {
 
   // 予約データのフィルタリング
   const currentReservations = reservations.filter(
-    (r) => r.status === "confirmed" || r.status === "pending"
+    (r) => r.status === "confirmed" || r.status === "pending",
   );
   const historyReservations = reservations.filter(
-    (r) => r.status === "completed" || r.status === "cancelled"
+    (r) => r.status === "completed" || r.status === "cancelled",
   );
 
   const formatDateTime = (dateTime: string) => {
@@ -282,7 +283,7 @@ export default function DashboardPage() {
                           {getVehicleImageUrl(reservation.vehicle) ? (
                             <img
                               src={getVehicleImageUrl(reservation.vehicle)}
-                              alt={`${reservation.vehicle?.make || ''} ${reservation.vehicle?.model || ''}`}
+                              alt={`${reservation.vehicle?.make || ""} ${reservation.vehicle?.model || ""}`}
                               className="w-full h-full object-cover rounded-md"
                             />
                           ) : (
@@ -294,7 +295,7 @@ export default function DashboardPage() {
                             {getStatusIcon(reservation.status)}
                             <span
                               className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(
-                                reservation.status
+                                reservation.status,
                               )}`}
                             >
                               {getStatusText(reservation.status)}
@@ -351,7 +352,7 @@ export default function DashboardPage() {
                               期間:{" "}
                               {calculateRentalDurationDays(
                                 new Date(reservation.pickup_datetime),
-                                new Date(reservation.return_datetime)
+                                new Date(reservation.return_datetime),
                               )}
                               日
                             </div>
@@ -441,7 +442,7 @@ export default function DashboardPage() {
                         {getVehicleImageUrl(reservation.vehicle) ? (
                           <img
                             src={getVehicleImageUrl(reservation.vehicle)}
-                            alt={`${reservation.vehicle?.make || ''} ${reservation.vehicle?.model || ''}`}
+                            alt={`${reservation.vehicle?.make || ""} ${reservation.vehicle?.model || ""}`}
                             className="w-full h-full object-cover rounded-md"
                           />
                         ) : (
@@ -453,7 +454,7 @@ export default function DashboardPage() {
                           {getStatusIcon(reservation.status)}
                           <span
                             className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(
-                              reservation.status
+                              reservation.status,
                             )}`}
                           >
                             {getStatusText(reservation.status)}
@@ -494,7 +495,7 @@ export default function DashboardPage() {
                             期間:{" "}
                             {calculateRentalDurationDays(
                               new Date(reservation.pickup_datetime),
-                              new Date(reservation.return_datetime)
+                              new Date(reservation.return_datetime),
                             )}
                             日
                           </div>
@@ -531,7 +532,11 @@ export default function DashboardPage() {
       {/* エラーバナー */}
       {cancelError && (
         <ErrorBanner
-          error={{ type: ErrorType.SERVER, message: cancelError, timestamp: new Date().toISOString() }}
+          error={{
+            type: ErrorType.SERVER,
+            message: cancelError,
+            timestamp: new Date().toISOString(),
+          }}
           onDismiss={() => setCancelError(null)}
         />
       )}

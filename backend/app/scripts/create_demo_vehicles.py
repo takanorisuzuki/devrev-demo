@@ -157,19 +157,24 @@ def create_demo_vehicles():
                 # 車両作成
                 vehicle = vehicle_service.create_vehicle(vehicle_data)
                 print(
-                    f"✅ 作成完了: {vehicle.year} {vehicle.make} {vehicle.model} - "
-                    f"¥{vehicle.daily_rate}/日 (画像: {vehicle.image_filename})"
+                    f"✅ 作成完了: {vehicle.year} {vehicle.make} "
+                    f"{vehicle.model} - ¥{vehicle.daily_rate}/日 "
+                    f"(画像: {vehicle.image_filename})"
                 )
                 created_count += 1
 
             except Exception as e:
-                print(f"❌ エラー: {vehicle_data.make} {vehicle_data.model} - {str(e)}")
+                print(
+                    f"❌ エラー: {vehicle_data.make} "
+                    f"{vehicle_data.model} - {str(e)}"
+                )
                 continue
 
         print("\n🎉 デモ車両データ作成完了!")
         print(f"📈 新規作成: {created_count}台")
         print(
-            "💾 データベース: フロントエンドのデモデータと同じ車両データが利用可能になりました"
+            "💾 データベース: フロントエンドのデモデータと同じ"
+            "車両データが利用可能になりました"
         )
 
     except Exception as e:

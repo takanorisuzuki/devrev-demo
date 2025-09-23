@@ -162,7 +162,7 @@ export default function PaymentForm({
           amount: data.amount || 0,
           card_token: data.payment_method === "card" ? cardToken : undefined,
         } as any,
-        idempotencyKey
+        idempotencyKey,
       );
 
       console.log("決済成功:", response);

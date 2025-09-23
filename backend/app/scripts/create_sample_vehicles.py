@@ -4,7 +4,6 @@
 既存の車両画像に合わせたリアルなデータ
 """
 
-import os
 import sys
 from decimal import Decimal
 from pathlib import Path
@@ -13,9 +12,7 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from sqlalchemy.orm import Session
-
-from app.db.database import SessionLocal, engine
+from app.db.database import SessionLocal
 from app.models.vehicle import Vehicle
 from app.schemas.vehicle import VehicleCreate
 from app.services.vehicle import VehicleService
@@ -694,7 +691,8 @@ def create_sample_vehicles():
 
                 if existing:
                     print(
-                        f"⚠️  スキップ: {vehicle_data.make} {vehicle_data.model} ({vehicle_data.license_plate}) - 既に存在"
+                        f"⚠️  スキップ: {vehicle_data.make} {vehicle_data.model} "
+                        f"({vehicle_data.license_plate}) - 既に存在"
                     )
                     continue
 
@@ -707,17 +705,22 @@ def create_sample_vehicles():
                 # 車両作成
                 vehicle = vehicle_service.create_vehicle(vehicle_data)
                 print(
-                    f"✅ 作成完了: {vehicle.year} {vehicle.make} {vehicle.model} - ¥{vehicle.daily_rate}/日 (画像: {vehicle.image_filename})"
+                    f"✅ 作成完了: {vehicle.year} {vehicle.make} "
+                    f"{vehicle.model} - ¥{vehicle.daily_rate}/日 "
+                    f"(画像: {vehicle.image_filename})"
                 )
                 created_count += 1
 
             except Exception as e:
-                print(f"❌ エラー: {vehicle_data.make} {vehicle_data.model} - {str(e)}")
+                print(
+                    f"❌ エラー: {vehicle_data.make} "
+                    f"{vehicle_data.model} - {str(e)}"
+                )
                 continue
 
-        print(f"\n🎉 車両サンプルデータ作成完了!")
+        print("\n🎉 車両サンプルデータ作成完了!")
         print(f"📈 新規作成: {created_count}台")
-        print(f"💾 データベース: 車両データが利用可能になりました")
+        print("💾 データベース: 車両データが利用可能になりました")
 
     except Exception as e:
         print(f"❌ 予期しないエラー: {str(e)}")

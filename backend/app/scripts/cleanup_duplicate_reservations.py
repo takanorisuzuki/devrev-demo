@@ -4,17 +4,14 @@
 同じユーザー、同じ車両、同じ時刻の予約が複数ある場合、最新のもの以外を削除する
 """
 
-import os
 import sys
-from datetime import datetime
+from pathlib import Path
 
 from sqlalchemy import and_, func
-from sqlalchemy.orm import Session
 
-# プロジェクトルートをパスに追加
-sys.path.append(
-    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-)
+# プロジェクトルートをPythonパスに追加
+project_root = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(project_root))
 
 from app.db.database import SessionLocal
 from app.models.reservation import Reservation
@@ -59,7 +56,6 @@ def cleanup_duplicate_reservations():
             customer_id = duplicate.customer_id
             vehicle_id = duplicate.vehicle_id
             pickup_datetime = duplicate.pickup_datetime
-            earliest_created = duplicate.earliest_created
             latest_created = duplicate.latest_created
 
             # ユーザーと車両の情報を取得
@@ -86,7 +82,10 @@ def cleanup_duplicate_reservations():
             )
 
             for reservation in reservations_to_delete:
-                print(f"   🗑️  削除: {reservation.id} (作成: {reservation.created_at})")
+                print(
+                    f"   🗑️  削除: {reservation.id} "
+                    f"(作成: {reservation.created_at})"
+                )
                 db.delete(reservation)
                 deleted_count += 1
 

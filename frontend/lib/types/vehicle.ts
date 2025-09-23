@@ -83,7 +83,7 @@ export interface VehicleUpdate {
 // 車両カテゴリの定数
 export const VEHICLE_CATEGORIES = {
   compact: "コンパクト",
-  standard: "スタンダード", 
+  standard: "スタンダード",
   suv: "SUV",
   premium: "プレミアム",
   sports: "スポーツ",
@@ -91,7 +91,7 @@ export const VEHICLE_CATEGORIES = {
   electric_suv: "電気SUV",
   convertible: "コンバーチブル",
   exotic: "エキゾチック",
-  van: "バン・商用車"
+  van: "バン・商用車",
 } as const;
 
 // 燃料タイプの定数
@@ -99,14 +99,14 @@ export const FUEL_TYPES = {
   gasoline: "ガソリン",
   electric: "電気",
   hybrid: "ハイブリッド",
-  diesel: "ディーゼル"
+  diesel: "ディーゼル",
 } as const;
 
 // トランスミッション
 export const TRANSMISSIONS = {
   automatic: "オートマチック",
   manual: "マニュアル",
-  cvt: "CVT"
+  cvt: "CVT",
 } as const;
 
 export type VehicleCategory = keyof typeof VEHICLE_CATEGORIES;

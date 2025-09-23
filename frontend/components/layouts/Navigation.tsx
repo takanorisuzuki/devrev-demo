@@ -16,11 +16,11 @@ export default function Navigation() {
 
   // デバッグログ: 認証状態の変化を追跡
   React.useEffect(() => {
-    console.log('Navigation Auth State:', {
+    console.log("Navigation Auth State:", {
       isAuthenticated,
       userEmail: user?.email,
       userRole: user?.role,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }, [isAuthenticated, user]);
 
@@ -50,20 +50,24 @@ export default function Navigation() {
               onClick={() => {
                 // 統一された時間管理ユーティリティでデフォルト検索条件を設定
                 const defaultConditions = getDefaultSearchConditions();
-                
+
                 // 東京駅店をデフォルト店舗として使用
-                const tokyoStationStore = stores.find(store => store.name === "東京駅店");
-                const defaultStoreId = tokyoStationStore?.id || (stores.length > 0 ? stores[0].id : "");
-                
+                const tokyoStationStore = stores.find(
+                  (store) => store.name === "東京駅店",
+                );
+                const defaultStoreId =
+                  tokyoStationStore?.id ||
+                  (stores.length > 0 ? stores[0].id : "");
+
                 const searchParams = new URLSearchParams({
                   pickup_location: defaultStoreId,
-                  return_location: defaultStoreId, 
+                  return_location: defaultStoreId,
                   pickup_date: defaultConditions.pickupDate,
                   return_date: defaultConditions.returnDate,
                   pickup_time: defaultConditions.pickupTime,
                   return_time: defaultConditions.returnTime,
                 });
-                
+
                 router.push(`/vehicles?${searchParams.toString()}`);
               }}
               className="text-gray-700 hover:text-blue-600 transition-colors"
@@ -85,15 +89,17 @@ export default function Navigation() {
             >
               お問い合わせ
             </a>
-            
+
             {/* 言語切り替え */}
             <LanguageSwitcher />
-            
+
             {/* 認証状態による条件分岐 */}
             {isAuthenticated && user ? (
               <div className="flex items-center space-x-4">
                 <Link
-                  href={user.role === 'admin' ? '/admin/dashboard' : '/dashboard'}
+                  href={
+                    user.role === "admin" ? "/admin/dashboard" : "/dashboard"
+                  }
                   className="flex items-center space-x-2 text-gray-700 hover:text-blue-600 transition-colors"
                 >
                   <User className="w-4 h-4" />
@@ -116,11 +122,9 @@ export default function Navigation() {
               </Link>
             )}
           </nav>
-          
+
           {/* モバイル用メニューボタン (今後実装) */}
-          <button 
-            className="md:hidden inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
+          <button className="md:hidden inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
             メニュー
           </button>
         </div>

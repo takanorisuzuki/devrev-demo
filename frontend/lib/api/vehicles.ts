@@ -3,21 +3,23 @@
  * バックエンドのVehicle APIと通信
  */
 
-import { apiClient } from './client';
-import { 
-  VehicleListResponse, 
-  Vehicle, 
+import { apiClient } from "./client";
+import {
+  VehicleListResponse,
+  Vehicle,
   VehicleSearchParams,
-  VehicleCreate 
-} from '../types/vehicle';
+  VehicleCreate,
+} from "../types/vehicle";
 
 /**
  * 車両一覧を取得（一般ユーザー用 - 利用可能な車両のみ）
  */
-export async function getVehicles(params?: VehicleSearchParams): Promise<VehicleListResponse[]> {
+export async function getVehicles(
+  params?: VehicleSearchParams,
+): Promise<VehicleListResponse[]> {
   try {
     const searchParams = new URLSearchParams();
-    
+
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
@@ -26,15 +28,15 @@ export async function getVehicles(params?: VehicleSearchParams): Promise<Vehicle
       });
     }
 
-    const url = `/api/v1/vehicles/${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
-    console.log('Vehicle API Request URL:', url); // DEBUG
-    
+    const url = `/api/v1/vehicles/${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
+    console.log("Vehicle API Request URL:", url); // DEBUG
+
     const response = await apiClient.get(url);
-    
-    console.log('Vehicle API Response:', response.data); // DEBUG
+
+    console.log("Vehicle API Response:", response.data); // DEBUG
     return response.data;
   } catch (error) {
-    console.error('車両一覧の取得に失敗しました:', error);
+    console.error("車両一覧の取得に失敗しました:", error);
     throw error;
   }
 }
@@ -42,10 +44,12 @@ export async function getVehicles(params?: VehicleSearchParams): Promise<Vehicle
 /**
  * 管理者用車両一覧を取得（全ての車両を表示）
  */
-export async function getAdminVehicles(params?: VehicleSearchParams): Promise<VehicleListResponse[]> {
+export async function getAdminVehicles(
+  params?: VehicleSearchParams,
+): Promise<VehicleListResponse[]> {
   try {
     const searchParams = new URLSearchParams();
-    
+
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
@@ -56,13 +60,13 @@ export async function getAdminVehicles(params?: VehicleSearchParams): Promise<Ve
 
     // 管理者用は全ての車両を取得（利用可能・不可問わず表示）
 
-    const url = `/api/v1/vehicles/${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
-    console.log('Admin Vehicle API Request URL:', url); // DEBUG
+    const url = `/api/v1/vehicles/${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
+    console.log("Admin Vehicle API Request URL:", url); // DEBUG
     const response = await apiClient.get(url);
-    console.log('Admin Vehicle API Response:', response.data); // DEBUG
+    console.log("Admin Vehicle API Response:", response.data); // DEBUG
     return response.data;
   } catch (error) {
-    console.error('管理者車両一覧の取得に失敗しました:', error);
+    console.error("管理者車両一覧の取得に失敗しました:", error);
     throw error;
   }
 }
@@ -90,25 +94,32 @@ export async function getAvailableVehicles(): Promise<VehicleListResponse[]> {
 /**
  * カテゴリ別車両一覧を取得
  */
-export async function getVehiclesByCategory(category: string): Promise<VehicleListResponse[]> {
+export async function getVehiclesByCategory(
+  category: string,
+): Promise<VehicleListResponse[]> {
   return getVehicles({ category, is_available: true });
 }
 
 /**
  * メーカー別車両一覧を取得
  */
-export async function getVehiclesByMake(make: string): Promise<VehicleListResponse[]> {
+export async function getVehiclesByMake(
+  make: string,
+): Promise<VehicleListResponse[]> {
   return getVehicles({ make, is_available: true });
 }
 
 /**
  * 価格帯別車両一覧を取得
  */
-export async function getVehiclesByPriceRange(minPrice: number, maxPrice: number): Promise<VehicleListResponse[]> {
-  return getVehicles({ 
-    min_price: minPrice, 
-    max_price: maxPrice, 
-    is_available: true 
+export async function getVehiclesByPriceRange(
+  minPrice: number,
+  maxPrice: number,
+): Promise<VehicleListResponse[]> {
+  return getVehicles({
+    min_price: minPrice,
+    max_price: maxPrice,
+    is_available: true,
   });
 }
 
@@ -120,7 +131,7 @@ export async function searchVehicles(
   make?: string,
   fuelType?: string,
   minPrice?: number,
-  maxPrice?: number
+  maxPrice?: number,
 ): Promise<VehicleListResponse[]> {
   return getVehicles({
     category,
@@ -128,19 +139,21 @@ export async function searchVehicles(
     fuel_type: fuelType,
     min_price: minPrice,
     max_price: maxPrice,
-    is_available: true
+    is_available: true,
   });
 }
 
 /**
  * 車両作成（管理者用）
  */
-export async function createVehicle(vehicleData: VehicleCreate): Promise<Vehicle> {
+export async function createVehicle(
+  vehicleData: VehicleCreate,
+): Promise<Vehicle> {
   try {
-    const response = await apiClient.post('/api/v1/vehicles/', vehicleData);
+    const response = await apiClient.post("/api/v1/vehicles/", vehicleData);
     return response.data;
   } catch (error) {
-    console.error('車両の作成に失敗しました:', error);
+    console.error("車両の作成に失敗しました:", error);
     throw error;
   }
 }
