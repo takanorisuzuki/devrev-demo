@@ -4,7 +4,6 @@
 assets/images/cars/ の画像ファイルと車両データをマッピング
 """
 
-import os
 import sys
 from pathlib import Path
 
@@ -12,10 +11,8 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from sqlalchemy.orm import Session
-
-from app.db.database import SessionLocal, engine
-from app.models.vehicle import Vehicle
+from app.db.database import SessionLocal  # noqa: E402
+from app.models.vehicle import Vehicle  # noqa: E402
 
 
 def get_image_filename_by_vehicle(make: str, model: str) -> str:
@@ -118,7 +115,9 @@ def update_vehicle_images():
                 # 現在の画像ファイル名を確認
                 if vehicle.image_filename:
                     print(
-                        f"⚠️  スキップ: {vehicle.make} {vehicle.model} - 既に画像設定済み ({vehicle.image_filename})"
+                        "⚠️  スキップ: "
+                        f"{vehicle.make} {vehicle.model} - 既に画像設定済み "
+                        f"({vehicle.image_filename})"
                     )
                     continue
 
@@ -131,7 +130,9 @@ def update_vehicle_images():
                 vehicle.image_filename = image_filename
 
                 print(
-                    f"✅ 更新完了: {vehicle.year} {vehicle.make} {vehicle.model} → {image_filename}"
+                    "✅ 更新完了: "
+                    f"{vehicle.year} {vehicle.make} {vehicle.model} → "
+                    f"{image_filename}"
                 )
                 updated_count += 1
 
@@ -142,9 +143,9 @@ def update_vehicle_images():
         # データベースに保存
         db.commit()
 
-        print(f"\n🎉 車両画像データ更新完了!")
+        print("\n🎉 車両画像データ更新完了!")
         print(f"📈 更新完了: {updated_count}台")
-        print(f"💾 データベース: 車両画像データが利用可能になりました")
+        print("💾 データベース: 車両画像データが利用可能になりました")
 
     except Exception as e:
         print(f"❌ 予期しないエラー: {str(e)}")

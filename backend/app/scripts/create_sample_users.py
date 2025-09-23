@@ -14,10 +14,10 @@ from sqlalchemy.orm import Session
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from app.db.database import SessionLocal
-from app.models.user import UserRole
-from app.schemas.user import UserCreate
-from app.services.user import UserService
+from app.db.database import SessionLocal  # noqa: E402
+from app.models.user import UserRole  # noqa: E402
+from app.schemas.user import UserCreate  # noqa: E402
+from app.services.user import UserService  # noqa: E402
 
 
 def create_admin_user(db: Session) -> None:
@@ -70,7 +70,7 @@ def create_sample_customers(db: Session) -> None:
         existing_user = user_service.get_user_by_email(customer_info["email"])
         if existing_user:
             print(
-                f"✅ 顧客アカウントは既に存在します: "
+                "✅ 顧客アカウントは既に存在します: "
                 f"{customer_info['email']}"
             )
             continue

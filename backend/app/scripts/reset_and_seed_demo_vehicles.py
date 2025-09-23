@@ -3,7 +3,6 @@
 既存車両データをリセットしてデモデータを投入するスクリプト
 """
 
-import os
 import sys
 from decimal import Decimal
 from pathlib import Path
@@ -12,12 +11,10 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from sqlalchemy.orm import Session
-
-from app.db.database import SessionLocal, engine
-from app.models.vehicle import Vehicle
-from app.schemas.vehicle import VehicleCreate
-from app.services.vehicle import VehicleService
+from app.db.database import SessionLocal  # noqa: E402
+from app.models.vehicle import Vehicle  # noqa: E402
+from app.schemas.vehicle import VehicleCreate  # noqa: E402
+from app.services.vehicle import VehicleService  # noqa: E402
 
 
 def reset_and_seed_demo_vehicles():
@@ -163,7 +160,9 @@ def reset_and_seed_demo_vehicles():
                 # 車両作成
                 vehicle = vehicle_service.create_vehicle(vehicle_data)
                 print(
-                    f"✅ 作成完了: {vehicle.year} {vehicle.make} {vehicle.model} - ¥{vehicle.daily_rate}/日 (画像: {vehicle.image_filename})"
+                    "✅ 作成完了: "
+                    f"{vehicle.year} {vehicle.make} {vehicle.model} - "
+                    f"¥{vehicle.daily_rate}/日 (画像: {vehicle.image_filename})"
                 )
                 created_count += 1
 
@@ -171,10 +170,10 @@ def reset_and_seed_demo_vehicles():
                 print(f"❌ エラー: {vehicle_data.make} {vehicle_data.model} - {str(e)}")
                 continue
 
-        print(f"\n🎉 デモ車両データ作成完了!")
+        print("\n🎉 デモ車両データ作成完了!")
         print(f"📈 新規作成: {created_count}台")
         print(
-            f"💾 データベース: フロントエンドのデモデータと同じ車両データが利用可能になりました"
+            "💾 データベース: フロントエンドのデモデータと同じ車両データが利用可能になりました"
         )
 
     except Exception as e:

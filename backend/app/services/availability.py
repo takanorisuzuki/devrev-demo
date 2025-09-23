@@ -4,7 +4,7 @@ TDD Green Phase - 最小実装
 """
 
 from datetime import date
-from typing import List, Optional
+from typing import List
 from uuid import UUID
 
 from sqlalchemy import and_, or_
@@ -32,7 +32,7 @@ class AvailabilityService:
         """空車検索を実行する"""
         # 基本的な車両クエリ
         query = self.db.query(Vehicle).filter(
-            Vehicle.is_available == True, Vehicle.is_active == True
+            Vehicle.is_available.is_(True), Vehicle.is_active.is_(True)
         )
 
         # 店舗フィルタ（デモ店舗ID対応）
@@ -104,7 +104,11 @@ class AvailabilityService:
                     vehicle.current_store.name if vehicle.current_store else "不明"
                 ),
                 store_address=(
-                    f"{vehicle.current_store.prefecture} {vehicle.current_store.city} {vehicle.current_store.address_line1}"
+                    (
+                        f"{vehicle.current_store.prefecture} "
+                        f"{vehicle.current_store.city} "
+                        f"{vehicle.current_store.address_line1}"
+                    )
                     if vehicle.current_store
                     else "不明"
                 ),

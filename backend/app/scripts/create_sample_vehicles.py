@@ -12,10 +12,10 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from app.db.database import SessionLocal
-from app.models.vehicle import Vehicle
-from app.schemas.vehicle import VehicleCreate
-from app.services.vehicle import VehicleService
+from app.db.database import SessionLocal  # noqa: E402
+from app.models.vehicle import Vehicle  # noqa: E402
+from app.schemas.vehicle import VehicleCreate  # noqa: E402
+from app.services.vehicle import VehicleService  # noqa: E402
 
 
 def get_image_filename_by_vehicle(make: str, model: str) -> str:

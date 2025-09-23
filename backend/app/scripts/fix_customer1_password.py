@@ -2,13 +2,9 @@
 customer1アカウントのパスワード修正スクリプト
 """
 
-import asyncio
-
-from sqlalchemy.orm import Session
-
-from app.core.security import get_password_hash
-from app.db.database import SessionLocal
-from app.models.user import User
+from app.core.security import get_password_hash  # noqa: E402
+from app.db.database import SessionLocal  # noqa: E402
+from app.models.user import User  # noqa: E402
 
 
 def fix_customer1_password():

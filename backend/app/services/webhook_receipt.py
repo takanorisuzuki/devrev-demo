@@ -46,7 +46,7 @@ class WebhookReceiptService:
                 )
 
             logger.info(
-                f"Webhook processed successfully for payment "
+                "Webhook processed successfully for payment "
                 f"{webhook_payload.payment_id}"
             )
 
