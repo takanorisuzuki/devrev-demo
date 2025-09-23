@@ -1,7 +1,15 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { X, AlertCircle, Wifi, Shield, AlertTriangle, Server, HelpCircle } from "lucide-react";
+import {
+  X,
+  AlertCircle,
+  Wifi,
+  Shield,
+  AlertTriangle,
+  Server,
+  HelpCircle,
+} from "lucide-react";
 import { ErrorInfo, ErrorType } from "@/lib/utils/error-handler";
 
 interface ErrorBannerProps {
@@ -22,13 +30,13 @@ export default function ErrorBanner({
   useEffect(() => {
     if (error) {
       setIsVisible(true);
-      
+
       if (autoDismiss && error.type !== ErrorType.AUTHENTICATION) {
         const timer = setTimeout(() => {
           setIsVisible(false);
           setTimeout(onDismiss, 300); // アニメーション完了後にコールバック実行
         }, autoDismissDelay);
-        
+
         return () => clearTimeout(timer);
       }
     } else {
@@ -116,9 +124,7 @@ export default function ErrorBanner({
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between py-3">
             <div className="flex items-center space-x-3">
-              <div className={styles.icon}>
-                {getErrorIcon(error.type)}
-              </div>
+              <div className={styles.icon}>{getErrorIcon(error.type)}</div>
               <div className="flex-1">
                 <p className={`text-sm font-medium ${styles.text}`}>
                   {error.message}
@@ -130,17 +136,17 @@ export default function ErrorBanner({
                 )}
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-2">
               {error.type === ErrorType.AUTHENTICATION && (
                 <button
-                  onClick={() => window.location.href = '/login'}
+                  onClick={() => (window.location.href = "/login")}
                   className={`text-sm font-medium ${styles.button} hover:underline`}
                 >
                   ログイン
                 </button>
               )}
-              
+
               <button
                 onClick={() => {
                   setIsVisible(false);

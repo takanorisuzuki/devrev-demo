@@ -3,15 +3,20 @@
 TDD Green Phase - 管理者が全予約を管理する機能
 """
 
-from typing import List, Optional, Annotated
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from typing import Annotated, List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.db.database import get_db
-from app.core.auth import get_admin_user
 from app.api.v1.auth import get_current_user
+from app.core.auth import get_admin_user
+from app.db.database import get_db
 from app.models.user import User
-from app.schemas.reservation import ReservationListResponse, ReservationResponse, ReservationStatusUpdate
+from app.schemas.reservation import (
+    ReservationListResponse,
+    ReservationResponse,
+    ReservationStatusUpdate,
+)
 from app.services.reservation import ReservationService
 
 # 管理者予約管理ルーター
@@ -19,7 +24,7 @@ router = APIRouter()
 
 
 def get_admin_current_user(
-    current_user: Annotated[User, Depends(get_current_user)]
+    current_user: Annotated[User, Depends(get_current_user)],
 ) -> User:
     """管理者認証を必要とする現在のユーザーを取得"""
     return get_admin_user(current_user)
@@ -35,7 +40,6 @@ async def get_all_reservations_for_admin(
     # 認証・サービス（デフォルトなしの引数を先に）
     current_user: Annotated[User, Depends(get_admin_current_user)],
     service: ReservationService = Depends(get_reservation_service),
-    
     # フィルタリングパラメータ（デフォルトありの引数を後に）
     skip: int = Query(0, ge=0, description="スキップ数"),
     limit: int = Query(100, ge=1, le=200, description="取得上限数"),
@@ -45,13 +49,14 @@ async def get_all_reservations_for_admin(
 ) -> List[ReservationListResponse]:
     """
     管理者向け全予約一覧取得
-    
+
     - **skip**: スキップ数（ページング）
     - **limit**: 取得上限数（最大200）
-    - **status**: 予約ステータスでフィルタ（pending, confirmed, active, completed, cancelled）
+    - **status**: 予約ステータスでフィルタ
+      （pending, confirmed, active, completed, cancelled）
     - **customer_email**: 顧客メールアドレスでフィルタ（部分一致）
     - **vehicle_id**: 車両IDでフィルタ
-    
+
     管理者権限が必要です。
     """
     try:
@@ -73,32 +78,60 @@ async def get_all_reservations_for_admin(
                 status=reservation.status,
                 total_amount=reservation.total_amount,
                 created_at=reservation.created_at,
-                vehicle={
-                    "id": str(reservation.vehicle.id),
-                    "make": reservation.vehicle.make,
-                    "model": reservation.vehicle.model,
-                    "year": reservation.vehicle.year,
-                    "category": reservation.vehicle.category,
-                    "daily_rate": reservation.vehicle.daily_rate,
-                    "image_url": f"/assets/images/cars/{reservation.vehicle.image_filename}" if reservation.vehicle.image_filename else None
-                } if reservation.vehicle else None,
-                pickup_store={
-                    "id": str(reservation.pickup_store.id),
-                    "name": reservation.pickup_store.name,
-                    "address": f"{reservation.pickup_store.prefecture}{reservation.pickup_store.city}{reservation.pickup_store.address_line1}"
-                } if reservation.pickup_store else None,
-                return_store={
-                    "id": str(reservation.return_store.id),
-                    "name": reservation.return_store.name,
-                    "address": f"{reservation.return_store.prefecture}{reservation.return_store.city}{reservation.return_store.address_line1}"
-                } if reservation.return_store else None,
-                customer={
-                    "id": str(reservation.customer.id),
-                    "email": reservation.customer.email,
-                    "full_name": reservation.customer.full_name,
-                    "phone_number": reservation.customer.phone_number,
-                    "role": reservation.customer.role
-                } if reservation.customer else None,
+                vehicle=(
+                    {
+                        "id": str(reservation.vehicle.id),
+                        "make": reservation.vehicle.make,
+                        "model": reservation.vehicle.model,
+                        "year": reservation.vehicle.year,
+                        "category": reservation.vehicle.category,
+                        "daily_rate": reservation.vehicle.daily_rate,
+                        "image_url": (
+                            f"/assets/images/cars/{reservation.vehicle.image_filename}"
+                            if reservation.vehicle.image_filename
+                            else None
+                        ),
+                    }
+                    if reservation.vehicle
+                    else None
+                ),
+                pickup_store=(
+                    {
+                        "id": str(reservation.pickup_store.id),
+                        "name": reservation.pickup_store.name,
+                        "address": (
+                            f"{reservation.pickup_store.prefecture}"
+                            f"{reservation.pickup_store.city}"
+                            f"{reservation.pickup_store.address_line1}"
+                        ),
+                    }
+                    if reservation.pickup_store
+                    else None
+                ),
+                return_store=(
+                    {
+                        "id": str(reservation.return_store.id),
+                        "name": reservation.return_store.name,
+                        "address": (
+                            f"{reservation.return_store.prefecture}"
+                            f"{reservation.return_store.city}"
+                            f"{reservation.return_store.address_line1}"
+                        ),
+                    }
+                    if reservation.return_store
+                    else None
+                ),
+                customer=(
+                    {
+                        "id": str(reservation.customer.id),
+                        "email": reservation.customer.email,
+                        "full_name": reservation.customer.full_name,
+                        "phone_number": reservation.customer.phone_number,
+                        "role": reservation.customer.role,
+                    }
+                    if reservation.customer
+                    else None
+                ),
             )
             for reservation in reservations
         ]
@@ -125,11 +158,11 @@ async def update_reservation_status(
 ) -> ReservationResponse:
     """
     管理者による予約ステータス変更
-    
+
     - **reservation_id**: 予約ID (UUID)
     - **status**: 新しいステータス (pending, confirmed, active, completed, cancelled)
     - **reason**: ステータス変更理由（任意）
-    
+
     管理者権限が必要です。
     """
     try:
@@ -137,7 +170,7 @@ async def update_reservation_status(
         reservation = service.update_reservation_status_for_admin(
             reservation_id=reservation_id,
             new_status=status_data.status,
-            reason=status_data.reason
+            reason=status_data.reason,
         )
 
         return ReservationResponse(

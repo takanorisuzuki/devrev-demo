@@ -15,7 +15,12 @@ interface VehicleDeleteModalProps {
   onVehicleDeleted: () => void;
 }
 
-export function VehicleDeleteModal({ open, onOpenChange, vehicle, onVehicleDeleted }: VehicleDeleteModalProps) {
+export function VehicleDeleteModal({
+  open,
+  onOpenChange,
+  vehicle,
+  onVehicleDeleted,
+}: VehicleDeleteModalProps) {
   const [isLoading, setIsLoading] = useState(false);
 
   const { addToast } = useToast();
@@ -23,19 +28,22 @@ export function VehicleDeleteModal({ open, onOpenChange, vehicle, onVehicleDelet
 
   const handleDelete = async () => {
     if (!vehicle) return;
-    
+
     setIsLoading(true);
     try {
       if (!token) {
         throw new Error("認証トークンが見つかりません");
       }
 
-      const response = await fetch(`http://localhost:8000/api/v1/vehicles/${vehicle.id}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
+      const response = await fetch(
+        `http://localhost:8000/api/v1/vehicles/${vehicle.id}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         },
-      });
+      );
 
       if (!response.ok) {
         let errorMessage = "車両の削除に失敗しました";
@@ -62,7 +70,8 @@ export function VehicleDeleteModal({ open, onOpenChange, vehicle, onVehicleDelet
       addToast({
         type: "error",
         title: "エラー",
-        message: error instanceof Error ? error.message : "車両の削除に失敗しました",
+        message:
+          error instanceof Error ? error.message : "車両の削除に失敗しました",
       });
     } finally {
       setIsLoading(false);
@@ -100,7 +109,8 @@ export function VehicleDeleteModal({ open, onOpenChange, vehicle, onVehicleDelet
                 {vehicle.year}年式 • {vehicle.category}
               </div>
               <div className="text-sm text-gray-600">
-                日額料金: {new Intl.NumberFormat("ja-JP", {
+                日額料金:{" "}
+                {new Intl.NumberFormat("ja-JP", {
                   style: "currency",
                   currency: "JPY",
                   minimumFractionDigits: 0,
@@ -126,12 +136,16 @@ export function VehicleDeleteModal({ open, onOpenChange, vehicle, onVehicleDelet
           </div>
 
           <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+            >
               キャンセル
             </Button>
-            <Button 
-              type="button" 
-              variant="destructive" 
+            <Button
+              type="button"
+              variant="destructive"
               onClick={handleDelete}
               disabled={isLoading}
             >

@@ -3,13 +3,14 @@
 """
 
 from typing import Optional
-from sqlalchemy.orm import Session
-from sqlalchemy.exc import IntegrityError
-from fastapi import HTTPException, status
 
+from fastapi import HTTPException, status
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
+
+from app.core.security import get_password_hash, verify_password
 from app.models.user import User, UserRole
 from app.schemas.user import UserCreate, UserUpdate
-from app.core.security import get_password_hash, verify_password
 
 
 class UserService:
@@ -70,6 +71,7 @@ class UserService:
         try:
             # UUID型として処理を試行
             from uuid import UUID
+
             uuid_id = UUID(user_id) if isinstance(user_id, str) else user_id
             return self.db.query(User).filter(User.id == uuid_id).first()
         except (ValueError, TypeError):
@@ -131,10 +133,7 @@ class UserService:
         """アクティブな管理者ユーザーの数を取得"""
         return (
             self.db.query(User)
-            .filter(
-                User.role == UserRole.admin,
-                User.is_active.is_(True)
-            )
+            .filter(User.role == UserRole.admin, User.is_active.is_(True))
             .count()
         )
 
@@ -143,18 +142,19 @@ class UserService:
         user = self.get_user_by_id(user_id)
         if not user or user.role != UserRole.admin:
             return False
-        
+
         # このユーザー以外のアクティブな管理者ユーザー数をカウント
         try:
             # UUID型として処理を試行
             from uuid import UUID
+
             uuid_id = UUID(user_id) if isinstance(user_id, str) else user_id
             other_admin_count = (
                 self.db.query(User)
                 .filter(
                     User.role == UserRole.admin,
                     User.is_active.is_(True),
-                    User.id != uuid_id
+                    User.id != uuid_id,
                 )
                 .count()
             )
@@ -165,9 +165,9 @@ class UserService:
                 .filter(
                     User.role == UserRole.admin,
                     User.is_active.is_(True),
-                    User.id != user_id
+                    User.id != user_id,
                 )
                 .count()
             )
-        
+
         return other_admin_count == 0

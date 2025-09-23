@@ -3,10 +3,10 @@
 TDD Green Phase - テストを通すための最小実装
 """
 
-from typing import Optional
 from sqlalchemy.orm import Session
+
 from app.models.system_settings import SystemSettings
-from app.schemas.system_settings import SystemSettingsUpdate, BusinessHours
+from app.schemas.system_settings import SystemSettingsUpdate
 
 
 class SystemSettingsService:
@@ -29,7 +29,7 @@ class SystemSettingsService:
     def update_settings(self, update_data: SystemSettingsUpdate) -> SystemSettings:
         """システム設定を更新"""
         settings = self.get_settings()
-        
+
         # 更新データを適用
         if update_data.app_name is not None:
             settings.app_name = update_data.app_name

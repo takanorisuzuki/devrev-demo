@@ -4,20 +4,22 @@
 フロントエンドの店舗選択プルダウン用データ
 """
 
-import os
 import sys
 from decimal import Decimal
 from pathlib import Path
 
-# プロジェクトルートをPythonパスに追加
-project_root = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(project_root))
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
-from sqlalchemy.orm import Session
-from app.db.database import SessionLocal, engine
-from app.models.store import Store
-from app.services.store import StoreService
-from app.schemas.store import StoreCreate
+try:
+    from app.db.database import SessionLocal
+    from app.schemas.store import StoreCreate
+    from app.services.store import StoreService
+except ImportError:  # pragma: no cover
+    if str(PROJECT_ROOT) not in sys.path:
+        sys.path.insert(0, str(PROJECT_ROOT))
+    from app.db.database import SessionLocal
+    from app.schemas.store import StoreCreate
+    from app.services.store import StoreService
 
 
 def create_sample_stores():
@@ -158,7 +160,9 @@ def create_sample_stores():
             # 既存の店舗コードをチェック
             existing_store = store_service.get_store_by_code(store_data.code)
             if existing_store:
-                print(f"⏭️  店舗コード '{store_data.code}' は既に存在します - スキップ")
+                print(
+                    f"⏭️  店舗コード '{store_data.code}' " "は既に存在します - スキップ"
+                )
                 continue
 
             # 店舗を作成
@@ -174,7 +178,7 @@ def create_sample_stores():
         for store in all_stores:
             airport_flag = "✈️" if store.is_airport else ""
             station_flag = "🚃" if store.is_station else ""
-            print(f"  - {store.name} ({store.code}) {airport_flag}{station_flag}")
+            print(f"  - {store.name} ({store.code}) " f"{airport_flag}{station_flag}")
 
     except Exception as e:
         print(f"❌ エラーが発生しました: {e}")

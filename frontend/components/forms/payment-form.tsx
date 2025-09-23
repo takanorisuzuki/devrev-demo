@@ -158,9 +158,11 @@ export default function PaymentForm({
         reservationId,
         {
           ...data,
+          payment_method: data.payment_method || "card",
+          amount: data.amount || 0,
           card_token: data.payment_method === "card" ? cardToken : undefined,
-        },
-        idempotencyKey
+        } as any,
+        idempotencyKey,
       );
 
       console.log("決済成功:", response);

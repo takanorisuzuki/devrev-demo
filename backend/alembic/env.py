@@ -1,19 +1,19 @@
 """
 Alembic環境設定
 """
-from logging.config import fileConfig
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
-from alembic import context
 import os
 import sys
+from logging.config import fileConfig
+
+from alembic import context
+from sqlalchemy import engine_from_config, pool
 
 # このファイルのパスをsys.pathに追加
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 # 設定とモデルのインポート
 from app.core.config import settings
-from app.models import Base, User, Vehicle  # すべてのモデルをインポート
+from app.models import Base  # すべてのモデルをインポート
 
 # Alembic Config object
 config = context.config
@@ -26,6 +26,8 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 # その他の値の設定
+
+
 def get_url():
     """データベースURLを取得"""
     return settings.DATABASE_URL
@@ -51,7 +53,6 @@ def run_migrations_online() -> None:
     """Run migrations in 'online' mode."""
     configuration = config.get_section(config.config_ini_section)
     configuration["sqlalchemy.url"] = get_url()
-    
     connectable = engine_from_config(
         configuration,
         prefix="sqlalchemy.",

@@ -14,14 +14,19 @@ interface StoreDeleteModalProps {
   onStoreDeleted: () => void;
 }
 
-export function StoreDeleteModal({ open, onOpenChange, store, onStoreDeleted }: StoreDeleteModalProps) {
+export function StoreDeleteModal({
+  open,
+  onOpenChange,
+  store,
+  onStoreDeleted,
+}: StoreDeleteModalProps) {
   const [isLoading, setIsLoading] = useState(false);
   const { addToast } = useToast();
   const token = useAuthStore((state) => state.token);
 
   const handleDelete = async () => {
     if (!store) return;
-    
+
     if (!token) {
       addToast({
         type: "error",
@@ -30,17 +35,20 @@ export function StoreDeleteModal({ open, onOpenChange, store, onStoreDeleted }: 
       });
       return;
     }
-    
+
     try {
       setIsLoading(true);
-      
-      const response = await fetch(`http://localhost:8000/api/v1/admin/stores/${store.id}`, {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+
+      const response = await fetch(
+        `http://localhost:8000/api/v1/admin/stores/${store.id}`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
         },
-      });
+      );
 
       if (!response.ok) {
         let errorMessage = "店舗の削除に失敗しました";
@@ -56,21 +64,22 @@ export function StoreDeleteModal({ open, onOpenChange, store, onStoreDeleted }: 
       }
 
       const result = await response.json();
-      
+
       addToast({
         type: "success",
         title: "店舗削除完了",
         message: "店舗が正常に削除されました",
       });
-      
+
       onStoreDeleted();
       onOpenChange(false);
     } catch (error) {
-      console.error('店舗削除エラー:', error);
+      console.error("店舗削除エラー:", error);
       addToast({
         type: "error",
         title: "エラー",
-        message: error instanceof Error ? error.message : "店舗の削除に失敗しました",
+        message:
+          error instanceof Error ? error.message : "店舗の削除に失敗しました",
       });
     } finally {
       setIsLoading(false);
@@ -102,20 +111,30 @@ export function StoreDeleteModal({ open, onOpenChange, store, onStoreDeleted }: 
           <p className="text-gray-700 leading-relaxed mb-4">
             以下の店舗を削除しますか？この操作は取り消せません。
           </p>
-          
+
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
             <h4 className="font-medium text-red-800 mb-2">削除対象店舗</h4>
             <div className="space-y-1 text-sm text-red-700">
-              <p><strong>店舗名:</strong> {store.name}</p>
-              <p><strong>店舗コード:</strong> {store.code}</p>
-              <p><strong>住所:</strong> {store.prefecture} {store.city} {store.address_line1}</p>
-              <p><strong>店舗ID:</strong> {store.id}</p>
+              <p>
+                <strong>店舗名:</strong> {store.name}
+              </p>
+              <p>
+                <strong>店舗コード:</strong> {store.code}
+              </p>
+              <p>
+                <strong>住所:</strong> {store.prefecture} {store.city}{" "}
+                {store.address_line1}
+              </p>
+              <p>
+                <strong>店舗ID:</strong> {store.id}
+              </p>
             </div>
           </div>
-          
+
           <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
             <p className="text-sm text-yellow-800">
-              <strong>注意:</strong> 店舗を削除すると、その店舗の車両や予約履歴も影響を受ける可能性があります。
+              <strong>注意:</strong>{" "}
+              店舗を削除すると、その店舗の車両や予約履歴も影響を受ける可能性があります。
             </p>
           </div>
         </div>

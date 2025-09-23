@@ -1,0 +1,260 @@
+# DriveRev Project Template Configuration
+
+## 🎯 プロジェクトテンプレート
+
+### 基本設定
+```yaml
+name: "DriveRev Development"
+description: "レンタカーサービス DriveRev の開発プロジェクト"
+template: "kanban"
+visibility: "public"
+```
+
+### 初期ビュー設定
+
+#### 1. Kanban Board
+```yaml
+view_type: "board"
+title: "📋 Development Board"
+group_by: "Status"
+sort_by: "Priority"
+filters:
+  - "is:open"
+  - "is:issue"
+```
+
+#### 2. Roadmap View
+```yaml
+view_type: "roadmap"
+title: "🗓️ Release Roadmap"
+group_by: "Milestone"
+timeline_field: "Target Release"
+filters:
+  - "is:open"
+  - "is:issue"
+```
+
+#### 3. Table View
+```yaml
+view_type: "table"
+title: "📊 Detailed View"
+sort_by: "Priority"
+filters:
+  - "is:open"
+```
+
+## 🏷️ カスタムフィールド定義
+
+### Priority Field
+```yaml
+field_type: "single_select"
+name: "Priority"
+options:
+  - name: "High"
+    color: "red"
+    description: "緊急度の高いタスク"
+  - name: "Medium"
+    color: "yellow"
+    description: "通常の優先度"
+  - name: "Low"
+    color: "green"
+    description: "低優先度"
+```
+
+### Component Field
+```yaml
+field_type: "single_select"
+name: "Component"
+options:
+  - name: "Frontend"
+    color: "blue"
+    description: "フロントエンド関連"
+  - name: "Backend"
+    color: "purple"
+    description: "バックエンド関連"
+  - name: "Database"
+    color: "orange"
+    description: "データベース関連"
+  - name: "API"
+    color: "pink"
+    description: "API関連"
+  - name: "UI/UX"
+    color: "cyan"
+    description: "UI/UX関連"
+  - name: "Security"
+    color: "red"
+    description: "セキュリティ関連"
+  - name: "Mobile"
+    color: "green"
+    description: "モバイル関連"
+  - name: "Documentation"
+    color: "gray"
+    description: "ドキュメント関連"
+```
+
+### Effort Field
+```yaml
+field_type: "number"
+name: "Effort"
+description: "作業工数（Story Points）"
+min_value: 1
+max_value: 5
+```
+
+### Target Release Field
+```yaml
+field_type: "date"
+name: "Target Release"
+description: "リリース予定日"
+```
+
+### Business Value Field
+```yaml
+field_type: "single_select"
+name: "Business Value"
+options:
+  - name: "High Value"
+    color: "green"
+    description: "ビジネス価値が高い"
+  - name: "Medium Value"
+    color: "yellow"
+    description: "中程度のビジネス価値"
+  - name: "Low Value"
+    color: "gray"
+    description: "低いビジネス価値"
+```
+
+## 🔄 自動化ワークフロー
+
+### Issue作成時の自動設定
+```yaml
+workflow_name: "Auto-assign new issues"
+trigger: "issue_created"
+actions:
+  - set_field:
+      field: "Status"
+      value: "Backlog"
+  - set_field:
+      field: "Priority"
+      value: "Medium"
+  - add_label: "needs-triage"
+```
+
+### PR作成時の自動設定
+```yaml
+workflow_name: "Auto-assign new PRs"
+trigger: "pull_request_created"
+actions:
+  - set_field:
+      field: "Status"
+      value: "In Review"
+  - link_issue: "auto"
+```
+
+### PR承認時の自動設定
+```yaml
+workflow_name: "Auto-complete merged PRs"
+trigger: "pull_request_merged"
+actions:
+  - set_field:
+      field: "Status"
+      value: "Done"
+  - archive_item: true
+```
+
+## 📊 マイルストーン設定
+
+### Sprint 1: Foundation
+```yaml
+title: "Sprint 1: Foundation"
+description: "基盤機能の実装"
+start_date: "2024-01-01"
+due_date: "2024-01-28"
+goals:
+  - "ユーザー認証システム"
+  - "基本UI実装"
+  - "データベース設計"
+```
+
+### Sprint 2: Core Features
+```yaml
+title: "Sprint 2: Core Features"
+description: "コア機能の実装"
+start_date: "2024-01-29"
+due_date: "2024-02-25"
+goals:
+  - "車両管理機能"
+  - "予約システム"
+  - "決済機能"
+```
+
+### Sprint 3: Enhancement
+```yaml
+title: "Sprint 3: Enhancement"
+description: "機能強化と最適化"
+start_date: "2024-02-26"
+due_date: "2024-03-25"
+goals:
+  - "管理画面"
+  - "レポート機能"
+  - "パフォーマンス最適化"
+```
+
+## 🎯 プロジェクト目標
+
+### 短期目標 (1-3ヶ月)
+- MVP機能の完成
+- 基本的なユーザーフロー実装
+- セキュリティ対策の実装
+
+### 中期目標 (3-6ヶ月)
+- 高度な機能の追加
+- パフォーマンス最適化
+- モバイル対応
+
+### 長期目標 (6-12ヶ月)
+- スケーラビリティの向上
+- 新機能の継続的追加
+- 運用の自動化
+
+## 📈 メトリクス設定
+
+### 進捗指標
+- 完了したIssue数
+- 平均解決時間
+- バグ率
+- スプリント完了率
+
+### 品質指標
+- コードカバレッジ
+- セキュリティスキャン結果
+- パフォーマンス指標
+- レビュー完了率
+
+## 🔧 設定手順
+
+1. **プロジェクト作成**
+   - GitHubリポジトリで「Projects」タブをクリック
+   - 「New project」を選択
+   - 「Table」テンプレートを選択
+
+2. **カスタムフィールド追加**
+   - 上記のカスタムフィールドを順次追加
+   - 各フィールドの設定を適用
+
+3. **ビュー追加**
+   - 「Board」ビューを追加
+   - 「Roadmap」ビューを追加
+   - 各ビューの設定を適用
+
+4. **自動化設定**
+   - ワークフローを順次設定
+   - 動作確認を行う
+
+5. **マイルストーン作成**
+   - 上記のマイルストーンを順次作成
+   - 日付と目標を設定
+
+6. **初期データ投入**
+   - 既存のIssueをプロジェクトに追加
+   - フィールド値を設定

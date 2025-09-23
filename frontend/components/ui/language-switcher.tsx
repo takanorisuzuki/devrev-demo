@@ -15,25 +15,26 @@ export default function LanguageSwitcher({ className }: LanguageSwitcherProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   const getCurrentLocale = () => {
-    if (pathname.startsWith('/en')) return 'en';
-    return 'ja';
+    if (pathname.startsWith("/en")) return "en";
+    return "ja";
   };
 
   const currentLocale = getCurrentLocale();
   const locales = [
-    { code: 'ja', name: '日本語', flag: '🇯🇵' },
-    { code: 'en', name: 'English', flag: '🇺🇸' },
+    { code: "ja", name: "日本語", flag: "🇯🇵" },
+    { code: "en", name: "English", flag: "🇺🇸" },
   ];
 
   const handleLanguageChange = (locale: string) => {
     setIsOpen(false);
-    const newPath = locale === 'ja' 
-      ? pathname.replace(/^\/en/, '') || '/'
-      : `/en${pathname}`;
+    const newPath =
+      locale === "ja" ? pathname.replace(/^\/en/, "") || "/" : `/en${pathname}`;
     router.push(newPath);
   };
 
-  const currentLanguage = locales.find(locale => locale.code === currentLocale);
+  const currentLanguage = locales.find(
+    (locale) => locale.code === currentLocale,
+  );
 
   return (
     <div className={`relative ${className}`}>
@@ -55,7 +56,7 @@ export default function LanguageSwitcher({ className }: LanguageSwitcherProps) {
             className="fixed inset-0 z-10"
             onClick={() => setIsOpen(false)}
           />
-          
+
           {/* Dropdown */}
           <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-20">
             <div className="py-1">
@@ -64,7 +65,9 @@ export default function LanguageSwitcher({ className }: LanguageSwitcherProps) {
                   key={locale.code}
                   onClick={() => handleLanguageChange(locale.code)}
                   className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center justify-between ${
-                    currentLocale === locale.code ? 'bg-blue-50 text-blue-600' : 'text-gray-700'
+                    currentLocale === locale.code
+                      ? "bg-blue-50 text-blue-600"
+                      : "text-gray-700"
                   }`}
                 >
                   <div className="flex items-center space-x-2">

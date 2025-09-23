@@ -3,14 +3,16 @@
 TDD Green Phase - テストを通すための最小実装
 """
 
-from typing import Optional, List, Dict, Any
 from datetime import datetime
 from decimal import Decimal
+from typing import List, Optional
+
 from pydantic import BaseModel, Field
 
 
 class PaymentRequest(BaseModel):
     """決済リクエストスキーマ"""
+
     payment_method: str = Field(..., description="決済方法 (card, cash, bank_transfer)")
     card_token: Optional[str] = Field(None, description="カードトークン (Stripe)")
     amount: Decimal = Field(..., gt=0, description="決済金額")
@@ -19,6 +21,7 @@ class PaymentRequest(BaseModel):
 
 class PaymentResponse(BaseModel):
     """決済レスポンススキーマ"""
+
     payment_id: str = Field(..., description="決済ID")
     payment_status: str = Field(..., description="決済ステータス")
     transaction_id: Optional[str] = Field(None, description="取引ID")
@@ -45,6 +48,7 @@ class PaymentResponse(BaseModel):
 
 class PaymentHistoryResponse(BaseModel):
     """決済履歴レスポンススキーマ"""
+
     payments: List[PaymentResponse] = Field(..., description="決済履歴リスト")
     total_count: int = Field(..., description="総件数")
     total_amount: Decimal = Field(..., description="総決済金額")
@@ -52,12 +56,14 @@ class PaymentHistoryResponse(BaseModel):
 
 class RefundRequest(BaseModel):
     """返金リクエストスキーマ"""
+
     amount: Decimal = Field(..., gt=0, description="返金額")
     reason: str = Field(..., description="返金理由")
 
 
 class RefundResponse(BaseModel):
     """返金レスポンススキーマ"""
+
     refund_id: str = Field(..., description="返金ID")
     refund_status: str = Field(..., description="返金ステータス")
     amount: Decimal = Field(..., description="返金額")
@@ -67,6 +73,7 @@ class RefundResponse(BaseModel):
 
 class AdminPaymentStats(BaseModel):
     """管理者用決済統計スキーマ"""
+
     total_payments: int = Field(..., description="総決済件数")
     total_amount: Decimal = Field(..., description="総決済金額")
     successful_payments: int = Field(..., description="成功決済件数")
@@ -76,6 +83,7 @@ class AdminPaymentStats(BaseModel):
 
 class AdminPaymentHistoryResponse(BaseModel):
     """管理者用決済履歴レスポンススキーマ"""
+
     payments: List[PaymentResponse] = Field(..., description="決済履歴リスト")
     payment_stats: AdminPaymentStats = Field(..., description="決済統計")
     total_count: int = Field(..., description="総件数")

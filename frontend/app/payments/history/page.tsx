@@ -18,7 +18,7 @@ import { formatJSTDate } from "@/lib/utils/time-management";
 export default function PaymentHistoryPage() {
   const router = useRouter();
   const { isAuthenticated, hasHydrated, user } = useAuthStore();
-  
+
   const [payments, setPayments] = useState<PaymentHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -35,26 +35,31 @@ export default function PaymentHistoryPage() {
 
     // 管理者の場合は管理者ダッシュボードにリダイレクト
     if (hasHydrated && isAuthenticated && user?.role === "admin") {
-      console.log('Admin user accessing customer payment history page, redirecting to admin dashboard');
+      console.log(
+        "Admin user accessing customer payment history page, redirecting to admin dashboard",
+      );
       router.push("/admin/dashboard");
       return;
     }
   }, [hasHydrated, isAuthenticated, user, router]);
 
   // 決済履歴取得
-  const fetchPaymentHistory = async (pageNum: number = 1, append: boolean = false) => {
+  const fetchPaymentHistory = async (
+    pageNum: number = 1,
+    append: boolean = false,
+  ) => {
     try {
       setLoading(true);
       setError(null);
-      
+
       const response = await getPaymentHistoryApi(pageNum, 20);
-      
+
       if (append) {
-        setPayments(prev => [...prev, ...response.payments]);
+        setPayments((prev) => [...prev, ...response.payments]);
       } else {
         setPayments(response.payments);
       }
-      
+
       setTotal(response.total);
       setHasMore(response.payments.length === 20);
       setPage(pageNum);
@@ -88,11 +93,14 @@ export default function PaymentHistoryPage() {
       failed: { color: "bg-red-100 text-red-800", text: "失敗" },
       pending: { color: "bg-yellow-100 text-yellow-800", text: "処理中" },
     };
-    
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
-    
+
+    const config =
+      statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
+
     return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}>
+      <span
+        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}
+      >
         {config.text}
       </span>
     );
@@ -129,7 +137,9 @@ export default function PaymentHistoryPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-gray-700 text-lg">ログインページにリダイレクト中...</p>
+          <p className="text-gray-700 text-lg">
+            ログインページにリダイレクト中...
+          </p>
         </div>
       </div>
     );
@@ -153,7 +163,9 @@ export default function PaymentHistoryPage() {
                 </Button>
                 <div>
                   <h1 className="text-2xl font-bold text-gray-900">決済履歴</h1>
-                  <p className="text-sm text-gray-600">過去の決済履歴を確認できます</p>
+                  <p className="text-sm text-gray-600">
+                    過去の決済履歴を確認できます
+                  </p>
                 </div>
               </div>
               <Button
@@ -162,7 +174,9 @@ export default function PaymentHistoryPage() {
                 variant="outline"
                 size="sm"
               >
-                <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                <RefreshCw
+                  className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`}
+                />
                 更新
               </Button>
             </div>
@@ -223,34 +237,40 @@ export default function PaymentHistoryPage() {
                         </h3>
                         {getStatusBadge(payment.payment_status)}
                       </div>
-                      
+
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
                         <div className="flex items-center space-x-2">
                           <CreditCard className="h-4 w-4" />
                           <span>決済ID: {payment.payment_id}</span>
                         </div>
-                        
+
                         <div className="flex items-center space-x-2">
                           <Calendar className="h-4 w-4" />
                           <span>{formatDate(payment.created_at)}</span>
                         </div>
-                        
+
                         {payment.pickup_date && (
                           <div className="flex items-center space-x-2">
                             <Car className="h-4 w-4" />
-                            <span>受取: {formatJSTDate(new Date(payment.pickup_date))}</span>
+                            <span>
+                              受取:{" "}
+                              {formatJSTDate(new Date(payment.pickup_date))}
+                            </span>
                           </div>
                         )}
-                        
+
                         {payment.return_date && (
                           <div className="flex items-center space-x-2">
                             <Car className="h-4 w-4" />
-                            <span>返却: {formatJSTDate(new Date(payment.return_date))}</span>
+                            <span>
+                              返却:{" "}
+                              {formatJSTDate(new Date(payment.return_date))}
+                            </span>
                           </div>
                         )}
                       </div>
                     </div>
-                    
+
                     <div className="text-right">
                       <div className="text-2xl font-bold text-gray-900">
                         {formatCurrency(payment.amount, payment.currency)}
@@ -263,7 +283,7 @@ export default function PaymentHistoryPage() {
                 </CardContent>
               </Card>
             ))}
-            
+
             {hasMore && (
               <div className="text-center pt-4">
                 <Button

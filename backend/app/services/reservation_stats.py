@@ -3,26 +3,27 @@
 TDD Green Phase - テストを通すための最小実装
 """
 
-from typing import List, Optional, Dict
 from datetime import datetime, timedelta
 from decimal import Decimal
+from typing import Optional
+
+from sqlalchemy import func
 from sqlalchemy.orm import Session
-from sqlalchemy import func, and_
 
 from app.models.reservation import Reservation
-from app.models.vehicle import Vehicle
 from app.models.store import Store
+from app.models.vehicle import Vehicle
 from app.schemas.reservation_stats import (
-    ReservationStatsResponse,
-    StatusBreakdown,
     CategoryBreakdown,
-    StoreBreakdown,
-    RevenueSummary,
-    PeriodInfo,
-    VehicleUtilizationResponse,
-    VehicleUtilizationItem,
     CategoryUtilization,
+    PeriodInfo,
     PeriodUtilization,
+    ReservationStatsResponse,
+    RevenueSummary,
+    StatusBreakdown,
+    StoreBreakdown,
+    VehicleUtilizationItem,
+    VehicleUtilizationResponse,
 )
 
 
@@ -60,7 +61,7 @@ class ReservationStatsService:
         if start_date:
             start_dt = datetime.strptime(start_date, "%Y-%m-%d")
             query = query.filter(Reservation.created_at >= start_dt)
-        
+
         if end_date:
             end_dt = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
             query = query.filter(Reservation.created_at < end_dt)
@@ -74,7 +75,7 @@ class ReservationStatsService:
             .group_by(Reservation.status)
             .all()
         )
-        
+
         status_breakdown = StatusBreakdown()
         for status, count in status_counts:
             if status == "pending":
@@ -95,7 +96,7 @@ class ReservationStatsService:
             .group_by(Vehicle.category)
             .all()
         )
-        
+
         category_breakdown = CategoryBreakdown()
         for category, count in category_counts:
             if category == "compact":
@@ -116,47 +117,41 @@ class ReservationStatsService:
                 Store.id,
                 Store.name,
                 func.count(Reservation.id),
-                func.sum(Reservation.total_amount)
+                func.sum(Reservation.total_amount),
             )
             .group_by(Store.id, Store.name)
             .all()
         )
-        
+
         store_breakdown = [
             StoreBreakdown(
                 store_id=str(store_id),
                 store_name=store_name,
                 reservation_count=count,
-                total_revenue=revenue or Decimal('0')
+                total_revenue=revenue or Decimal("0"),
             )
             for store_id, store_name, count, revenue in store_counts
         ]
 
         # 売上サマリー
-        revenue_data = (
-            query.with_entities(
-                func.sum(Reservation.total_amount),
-                func.avg(Reservation.total_amount),
-                func.sum(Reservation.tax_amount)
-            )
-            .first()
-        )
-        
-        total_revenue = revenue_data[0] or Decimal('0')
-        avg_revenue = revenue_data[1] or Decimal('0')
-        tax_collected = revenue_data[2] or Decimal('0')
-        
+        revenue_data = query.with_entities(
+            func.sum(Reservation.total_amount),
+            func.avg(Reservation.total_amount),
+            func.sum(Reservation.tax_amount),
+        ).first()
+
+        total_revenue = revenue_data[0] or Decimal("0")
+        avg_revenue = revenue_data[1] or Decimal("0")
+        tax_collected = revenue_data[2] or Decimal("0")
+
         revenue_summary = RevenueSummary(
             total_revenue=total_revenue,
             average_revenue_per_reservation=avg_revenue,
-            tax_collected=tax_collected
+            tax_collected=tax_collected,
         )
 
         # 期間情報
-        period = PeriodInfo(
-            start_date=start_date,
-            end_date=end_date
-        )
+        period = PeriodInfo(start_date=start_date, end_date=end_date)
 
         return ReservationStatsResponse(
             total_reservations=total_reservations,
@@ -164,7 +159,7 @@ class ReservationStatsService:
             category_breakdown=category_breakdown,
             store_breakdown=store_breakdown,
             revenue_summary=revenue_summary,
-            period=period
+            period=period,
         )
 
     def get_vehicle_utilization(
@@ -194,7 +189,7 @@ class ReservationStatsService:
         # 車両別稼働率
         vehicle_utilization = []
         vehicles = self.db.query(Vehicle).all()
-        
+
         for vehicle in vehicles:
             # 予約時間の合計を計算
             reservations = (
@@ -203,51 +198,62 @@ class ReservationStatsService:
                     Reservation.vehicle_id == vehicle.id,
                     Reservation.status.in_(["confirmed", "active", "completed"]),
                     Reservation.pickup_datetime >= start_dt,
-                    Reservation.return_datetime <= end_dt
+                    Reservation.return_datetime <= end_dt,
                 )
                 .all()
             )
-            
+
             total_hours = sum(
                 (res.return_datetime - res.pickup_datetime).total_seconds() / 3600
                 for res in reservations
             )
-            
+
             # 期間内の総時間
             period_hours = (end_dt - start_dt).total_seconds() / 3600
-            
-            utilization_rate = (total_hours / period_hours * 100) if period_hours > 0 else 0
-            
+
+            utilization_rate = (
+                (total_hours / period_hours * 100) if period_hours > 0 else 0
+            )
+
             vehicle_utilization.append(
                 VehicleUtilizationItem(
                     vehicle_id=str(vehicle.id),
                     vehicle_name=f"{vehicle.make} {vehicle.model}",
                     utilization_rate=round(utilization_rate, 2),
                     total_hours=int(total_hours),
-                    available_hours=int(period_hours)
+                    available_hours=int(period_hours),
                 )
             )
 
         # カテゴリ別稼働率
         category_utilization = []
         categories = ["compact", "suv", "premium", "sports", "electric"]
-        
+
         for category in categories:
             category_vehicles = [v for v in vehicles if v.category == category]
             if category_vehicles:
                 total_vehicles = len(category_vehicles)
                 active_vehicles = len([v for v in category_vehicles if v.is_active])
-                avg_utilization = sum(
-                    item.utilization_rate for item in vehicle_utilization
-                    if any(v.category == category and str(v.id) == item.vehicle_id for v in category_vehicles)
-                ) / total_vehicles if total_vehicles > 0 else 0
-                
+                avg_utilization = (
+                    sum(
+                        item.utilization_rate
+                        for item in vehicle_utilization
+                        if any(
+                            v.category == category and str(v.id) == item.vehicle_id
+                            for v in category_vehicles
+                        )
+                    )
+                    / total_vehicles
+                    if total_vehicles > 0
+                    else 0
+                )
+
                 category_utilization.append(
                     CategoryUtilization(
                         category=category,
                         utilization_rate=round(avg_utilization, 2),
                         total_vehicles=total_vehicles,
-                        active_vehicles=active_vehicles
+                        active_vehicles=active_vehicles,
                     )
                 )
 
@@ -256,38 +262,40 @@ class ReservationStatsService:
         current_date = start_dt
         while current_date < end_dt:
             week_end = min(current_date + timedelta(days=7), end_dt)
-            
+
             week_reservations = (
                 self.db.query(Reservation)
                 .filter(
                     Reservation.status.in_(["confirmed", "active", "completed"]),
                     Reservation.pickup_datetime >= current_date,
-                    Reservation.return_datetime <= week_end
+                    Reservation.return_datetime <= week_end,
                 )
                 .all()
             )
-            
+
             week_hours = sum(
                 (res.return_datetime - res.pickup_datetime).total_seconds() / 3600
                 for res in week_reservations
             )
-            
+
             week_total_hours = (week_end - current_date).total_seconds() / 3600
-            week_utilization = (week_hours / week_total_hours * 100) if week_total_hours > 0 else 0
-            
+            week_utilization = (
+                (week_hours / week_total_hours * 100) if week_total_hours > 0 else 0
+            )
+
             period_utilization.append(
                 PeriodUtilization(
                     period=current_date.strftime("%Y-%m-%d"),
                     utilization_rate=round(week_utilization, 2),
                     total_hours=int(week_total_hours),
-                    utilized_hours=int(week_hours)
+                    utilized_hours=int(week_hours),
                 )
             )
-            
+
             current_date = week_end
 
         return VehicleUtilizationResponse(
             vehicle_utilization=vehicle_utilization,
             category_utilization=category_utilization,
-            period_utilization=period_utilization
+            period_utilization=period_utilization,
         )

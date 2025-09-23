@@ -7,7 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 import { VehicleCreate } from "@/lib/types/vehicle";
-import { VEHICLE_TEMPLATES, TEMPLATES_BY_CATEGORY, TEMPLATES_BY_MAKE, VehicleTemplate } from "@/lib/data/vehicle-templates";
+import {
+  VEHICLE_TEMPLATES,
+  TEMPLATES_BY_CATEGORY,
+  TEMPLATES_BY_MAKE,
+  VehicleTemplate,
+} from "@/lib/data/vehicle-templates";
 import { useAuthStore } from "@/lib/stores/auth";
 
 interface VehicleQuickRegistrationModalProps {
@@ -16,12 +21,17 @@ interface VehicleQuickRegistrationModalProps {
   onVehicleCreated: () => void;
 }
 
-export function VehicleQuickRegistrationModal({ open, onOpenChange, onVehicleCreated }: VehicleQuickRegistrationModalProps) {
+export function VehicleQuickRegistrationModal({
+  open,
+  onOpenChange,
+  onVehicleCreated,
+}: VehicleQuickRegistrationModalProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedMake, setSelectedMake] = useState("");
-  const [selectedTemplate, setSelectedTemplate] = useState<VehicleTemplate | null>(null);
+  const [selectedTemplate, setSelectedTemplate] =
+    useState<VehicleTemplate | null>(null);
   const [customData, setCustomData] = useState({
     license_plate: "",
     daily_rate: 0,
@@ -31,14 +41,16 @@ export function VehicleQuickRegistrationModal({ open, onOpenChange, onVehicleCre
   const token = useAuthStore((state) => state.token);
 
   // フィルタリングされたテンプレート
-  const filteredTemplates = VEHICLE_TEMPLATES.filter(template => {
-    const matchesSearch = !searchTerm || 
+  const filteredTemplates = VEHICLE_TEMPLATES.filter((template) => {
+    const matchesSearch =
+      !searchTerm ||
       template.make.toLowerCase().includes(searchTerm.toLowerCase()) ||
       template.model.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesCategory = !selectedCategory || template.category === selectedCategory;
+
+    const matchesCategory =
+      !selectedCategory || template.category === selectedCategory;
     const matchesMake = !selectedMake || template.make === selectedMake;
-    
+
     return matchesSearch && matchesCategory && matchesMake;
   });
 
@@ -52,7 +64,7 @@ export function VehicleQuickRegistrationModal({ open, onOpenChange, onVehicleCre
 
   const handleQuickRegister = async () => {
     if (!selectedTemplate) return;
-    
+
     setIsLoading(true);
 
     try {
@@ -96,7 +108,7 @@ export function VehicleQuickRegistrationModal({ open, onOpenChange, onVehicleCre
       }
 
       const newVehicle = await response.json();
-      
+
       addToast({
         type: "success",
         title: "クイック登録完了",
@@ -109,7 +121,7 @@ export function VehicleQuickRegistrationModal({ open, onOpenChange, onVehicleCre
       setSelectedCategory("");
       setSelectedMake("");
       setCustomData({ license_plate: "", daily_rate: 0 });
-      
+
       onOpenChange(false);
       onVehicleCreated();
     } catch (error) {
@@ -117,7 +129,8 @@ export function VehicleQuickRegistrationModal({ open, onOpenChange, onVehicleCre
       addToast({
         type: "error",
         title: "エラー",
-        message: error instanceof Error ? error.message : "車両の登録に失敗しました",
+        message:
+          error instanceof Error ? error.message : "車両の登録に失敗しました",
       });
     } finally {
       setIsLoading(false);
@@ -232,7 +245,9 @@ export function VehicleQuickRegistrationModal({ open, onOpenChange, onVehicleCre
                   <div
                     key={template.id}
                     className={`p-3 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
-                      selectedTemplate?.id === template.id ? 'bg-blue-50 border-blue-200' : ''
+                      selectedTemplate?.id === template.id
+                        ? "bg-blue-50 border-blue-200"
+                        : ""
                     }`}
                     onClick={() => handleTemplateSelect(template)}
                   >
@@ -245,7 +260,8 @@ export function VehicleQuickRegistrationModal({ open, onOpenChange, onVehicleCre
                           {template.make} {template.model}
                         </div>
                         <div className="text-xs text-gray-500">
-                          {template.year}年式 • {template.category} • {new Intl.NumberFormat("ja-JP", {
+                          {template.year}年式 • {template.category} •{" "}
+                          {new Intl.NumberFormat("ja-JP", {
                             style: "currency",
                             currency: "JPY",
                             minimumFractionDigits: 0,
@@ -269,7 +285,7 @@ export function VehicleQuickRegistrationModal({ open, onOpenChange, onVehicleCre
               <h4 className="text-md font-medium text-gray-900 mb-3">
                 車両詳細
               </h4>
-              
+
               {selectedTemplate ? (
                 <div className="space-y-4">
                   {/* テンプレート情報表示 */}
@@ -287,12 +303,24 @@ export function VehicleQuickRegistrationModal({ open, onOpenChange, onVehicleCre
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div><span className="font-medium">カテゴリ:</span> {selectedTemplate.category}</div>
-                      <div><span className="font-medium">クラス:</span> {selectedTemplate.class_type}</div>
-                      <div><span className="font-medium">トランスミッション:</span> {selectedTemplate.transmission}</div>
-                      <div><span className="font-medium">燃料:</span> {selectedTemplate.fuel_type}</div>
+                      <div>
+                        <span className="font-medium">カテゴリ:</span>{" "}
+                        {selectedTemplate.category}
+                      </div>
+                      <div>
+                        <span className="font-medium">クラス:</span>{" "}
+                        {selectedTemplate.class_type}
+                      </div>
+                      <div>
+                        <span className="font-medium">トランスミッション:</span>{" "}
+                        {selectedTemplate.transmission}
+                      </div>
+                      <div>
+                        <span className="font-medium">燃料:</span>{" "}
+                        {selectedTemplate.fuel_type}
+                      </div>
                     </div>
                   </div>
 
@@ -304,11 +332,16 @@ export function VehicleQuickRegistrationModal({ open, onOpenChange, onVehicleCre
                       </label>
                       <Input
                         value={customData.license_plate}
-                        onChange={(e) => setCustomData({...customData, license_plate: e.target.value})}
+                        onChange={(e) =>
+                          setCustomData({
+                            ...customData,
+                            license_plate: e.target.value,
+                          })
+                        }
                         placeholder="品川 500 あ 1234"
                       />
                     </div>
-                    
+
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         日額料金（円）
@@ -316,7 +349,12 @@ export function VehicleQuickRegistrationModal({ open, onOpenChange, onVehicleCre
                       <Input
                         type="number"
                         value={customData.daily_rate}
-                        onChange={(e) => setCustomData({...customData, daily_rate: parseFloat(e.target.value) || 0})}
+                        onChange={(e) =>
+                          setCustomData({
+                            ...customData,
+                            daily_rate: parseFloat(e.target.value) || 0,
+                          })
+                        }
                         placeholder="8000"
                       />
                     </div>
@@ -324,9 +362,13 @@ export function VehicleQuickRegistrationModal({ open, onOpenChange, onVehicleCre
 
                   {/* 登録ボタン */}
                   <div className="pt-4">
-                    <Button 
+                    <Button
                       onClick={handleQuickRegister}
-                      disabled={isLoading || !customData.license_plate || customData.daily_rate <= 0}
+                      disabled={
+                        isLoading ||
+                        !customData.license_plate ||
+                        customData.daily_rate <= 0
+                      }
                       className="w-full"
                     >
                       {isLoading ? (
@@ -354,7 +396,11 @@ export function VehicleQuickRegistrationModal({ open, onOpenChange, onVehicleCre
 
           {/* フッター */}
           <div className="flex justify-end gap-2 pt-6 border-t border-gray-200 mt-6">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+            >
               キャンセル
             </Button>
           </div>

@@ -34,7 +34,12 @@ interface UserEditModalProps {
   onUserUpdated: () => void;
 }
 
-export function UserEditModal({ open, onOpenChange, user, onUserUpdated }: UserEditModalProps) {
+export function UserEditModal({
+  open,
+  onOpenChange,
+  user,
+  onUserUpdated,
+}: UserEditModalProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState<UserEditFormData>({
     phone_number: user?.phone_number || "",
@@ -57,8 +62,11 @@ export function UserEditModal({ open, onOpenChange, user, onUserUpdated }: UserE
     }
   }, [user]);
 
-  const handleInputChange = (field: keyof UserEditFormData, value: string | boolean) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+  const handleInputChange = (
+    field: keyof UserEditFormData,
+    value: string | boolean,
+  ) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -71,14 +79,17 @@ export function UserEditModal({ open, onOpenChange, user, onUserUpdated }: UserE
         throw new Error("認証トークンが見つかりません");
       }
 
-      const response = await fetch(`http://localhost:8000/api/v1/admin/users/${user.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+      const response = await fetch(
+        `http://localhost:8000/api/v1/admin/users/${user.id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(formData),
         },
-        body: JSON.stringify(formData),
-      });
+      );
 
       if (!response.ok) {
         let errorMessage = "ユーザーの更新に失敗しました";
@@ -94,7 +105,7 @@ export function UserEditModal({ open, onOpenChange, user, onUserUpdated }: UserE
       }
 
       const updatedUser = await response.json();
-      
+
       addToast({
         type: "success",
         title: "ユーザー更新完了",
@@ -108,7 +119,10 @@ export function UserEditModal({ open, onOpenChange, user, onUserUpdated }: UserE
       addToast({
         type: "error",
         title: "エラー",
-        message: error instanceof Error ? error.message : "ユーザーの更新に失敗しました",
+        message:
+          error instanceof Error
+            ? error.message
+            : "ユーザーの更新に失敗しました",
       });
     } finally {
       setIsLoading(false);
@@ -122,7 +136,9 @@ export function UserEditModal({ open, onOpenChange, user, onUserUpdated }: UserE
       <div className="bg-white rounded-lg max-w-md w-full shadow-xl">
         {/* ヘッダー */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">ユーザー情報編集</h3>
+          <h3 className="text-lg font-semibold text-gray-900">
+            ユーザー情報編集
+          </h3>
           <button
             onClick={() => onOpenChange(false)}
             className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -139,19 +155,21 @@ export function UserEditModal({ open, onOpenChange, user, onUserUpdated }: UserE
               メールアドレス
             </label>
             <Input value={user.email} disabled className="bg-gray-50" />
-            <p className="text-xs text-gray-500 mt-1">メールアドレスは変更できません</p>
+            <p className="text-xs text-gray-500 mt-1">
+              メールアドレスは変更できません
+            </p>
           </div>
 
-                 <div>
-                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                     氏名
-                   </label>
-                   <Input
-                     value={user?.full_name || ""}
-                     disabled
-                     className="bg-gray-50 text-gray-600"
-                   />
-                 </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              氏名
+            </label>
+            <Input
+              value={user?.full_name || ""}
+              disabled
+              className="bg-gray-50 text-gray-600"
+            />
+          </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -160,23 +178,30 @@ export function UserEditModal({ open, onOpenChange, user, onUserUpdated }: UserE
             <Input
               placeholder="090-1234-5678"
               value={formData.phone_number}
-              onChange={(e) => handleInputChange("phone_number", e.target.value)}
+              onChange={(e) =>
+                handleInputChange("phone_number", e.target.value)
+              }
             />
           </div>
 
-                 <div>
-                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                     役割 *
-                   </label>
-                   <select
-                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                     value={formData.role}
-                     onChange={(e) => handleInputChange("role", e.target.value as "admin" | "customer")}
-                   >
-                     <option value="customer">顧客</option>
-                     <option value="admin">管理者</option>
-                   </select>
-                 </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              役割 *
+            </label>
+            <select
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={formData.role}
+              onChange={(e) =>
+                handleInputChange(
+                  "role",
+                  e.target.value as "admin" | "customer",
+                )
+              }
+            >
+              <option value="customer">顧客</option>
+              <option value="admin">管理者</option>
+            </select>
+          </div>
 
           <div className="flex space-x-4">
             <div className="flex items-center">
@@ -184,7 +209,9 @@ export function UserEditModal({ open, onOpenChange, user, onUserUpdated }: UserE
                 type="checkbox"
                 id="is_active"
                 checked={formData.is_active}
-                onChange={(e) => handleInputChange("is_active", e.target.checked)}
+                onChange={(e) =>
+                  handleInputChange("is_active", e.target.checked)
+                }
                 className="mr-2"
               />
               <label htmlFor="is_active" className="text-sm text-gray-700">
@@ -196,7 +223,9 @@ export function UserEditModal({ open, onOpenChange, user, onUserUpdated }: UserE
                 type="checkbox"
                 id="is_verified"
                 checked={formData.is_verified}
-                onChange={(e) => handleInputChange("is_verified", e.target.checked)}
+                onChange={(e) =>
+                  handleInputChange("is_verified", e.target.checked)
+                }
                 className="mr-2"
               />
               <label htmlFor="is_verified" className="text-sm text-gray-700">

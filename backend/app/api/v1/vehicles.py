@@ -4,31 +4,32 @@ Vehicle API エンドポイント
 プロダクション品質のエラーハンドリング実装
 """
 
-from typing import List, Optional, Annotated
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session
-from sqlalchemy.exc import IntegrityError, DataError
+from typing import Annotated, List, Optional
 
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.exc import DataError, IntegrityError
+from sqlalchemy.orm import Session
+
+from app.api.v1.auth import get_current_user
+from app.core.auth import get_admin_user
 from app.db.database import get_db
-from app.schemas.vehicle import (
-    VehicleCreate,
-    VehicleUpdate,
-    VehicleResponse,
-    VehicleListResponse,
-    StoreInfo,
-)
+from app.models.user import User
 from app.schemas.availability import (
     AvailabilitySearchRequest,
     AvailabilitySearchResponse,
     VehicleAvailabilityRequest,
     VehicleAvailabilityResponse,
 )
-from app.core.auth import get_admin_user
-from app.api.v1.auth import get_current_user
-from app.models.user import User
-from app.services.vehicle import VehicleService
+from app.schemas.vehicle import (
+    StoreInfo,
+    VehicleCreate,
+    VehicleListResponse,
+    VehicleResponse,
+    VehicleUpdate,
+)
 from app.services.availability import AvailabilityService
-from app.utils.validators import validate_uuid_format, validate_license_plate_format
+from app.services.vehicle import VehicleService
+from app.utils.validators import validate_license_plate_format, validate_uuid_format
 
 # Vehicle API ルーター
 router = APIRouter()
@@ -45,7 +46,7 @@ def get_availability_service(db: Session = Depends(get_db)) -> AvailabilityServi
 
 
 def get_admin_current_user(
-    current_user: Annotated[User, Depends(get_current_user)]
+    current_user: Annotated[User, Depends(get_current_user)],
 ) -> User:
     """管理者認証を必要とする現在のユーザーを取得"""
     return get_admin_user(current_user)
@@ -126,9 +127,9 @@ async def get_all_vehicles(
 
 @router.post("/", response_model=VehicleResponse, status_code=status.HTTP_201_CREATED)
 async def create_vehicle(
-    vehicle_data: VehicleCreate, 
+    vehicle_data: VehicleCreate,
     current_user: Annotated[User, Depends(get_admin_current_user)],
-    service: VehicleService = Depends(get_vehicle_service)
+    service: VehicleService = Depends(get_vehicle_service),
 ):
     """
     車両を作成する
@@ -411,17 +412,19 @@ async def search_available_vehicles(
     try:
         # 空車検索実行
         available_vehicles = service.search_available_vehicles(search_request)
-        
+
         # 検索期間の日数を計算
-        search_period_days = (search_request.end_date - search_request.start_date).days + 1
-        
+        search_period_days = (
+            search_request.end_date - search_request.start_date
+        ).days + 1
+
         return AvailabilitySearchResponse(
             available_vehicles=available_vehicles,
             total_count=len(available_vehicles),
             search_criteria=search_request,
             search_period_days=search_period_days,
         )
-        
+
     except ValueError as e:
         # バリデーションエラー（日付範囲など）
         raise HTTPException(
@@ -459,9 +462,9 @@ async def check_vehicle_availability(
     try:
         # 空き状況確認実行
         result = service.check_vehicle_availability(request)
-        
+
         return result
-        
+
     except ValueError as e:
         # バリデーションエラー（日付範囲など）
         raise HTTPException(

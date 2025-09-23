@@ -4,8 +4,9 @@ TDD Green Phase - CRUD操作の実装
 """
 
 from typing import List, Optional
-from sqlalchemy.orm import Session
+
 from sqlalchemy import and_
+from sqlalchemy.orm import Session
 
 from app.models.store import Store
 from app.schemas.store import StoreCreate, StoreUpdate

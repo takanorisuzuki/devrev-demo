@@ -2,30 +2,42 @@
 認証関連のAPIエンドポイント
 """
 
+import time
 from datetime import timedelta
 from typing import Annotated
-import time
 
-from fastapi import APIRouter, Depends, HTTPException, status, Header
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.core.security import create_access_token, create_refresh_token, verify_token, verify_password, get_password_hash
+from app.core.security import (
+    create_access_token,
+    create_refresh_token,
+    get_password_hash,
+    verify_password,
+    verify_token,
+)
 from app.db.database import get_db
+from app.models.user import User
 from app.schemas.user import (
-    UserCreate, UserResponse, Token, UserLogin, 
-    UserProfileUpdate, UserPasswordUpdate,
-    PasswordResetRequest, PasswordResetConfirm
+    PasswordResetConfirm,
+    PasswordResetRequest,
+    Token,
+    UserCreate,
+    UserLogin,
+    UserPasswordUpdate,
+    UserProfileUpdate,
+    UserResponse,
 )
 from app.services.user import UserService
-from app.models.user import User
 
 router = APIRouter()
 
 
 def get_current_user(
-    authorization: str = Header(None, alias="Authorization"), db: Session = Depends(get_db)
+    authorization: str = Header(None, alias="Authorization"),
+    db: Session = Depends(get_db),
 ) -> User:
     """現在のユーザーを取得"""
     credentials_exception = HTTPException(
@@ -35,7 +47,7 @@ def get_current_user(
     )
 
     print(f"DEBUG: authorization = {authorization}")
-    
+
     if not authorization or not authorization.startswith("Bearer "):
         print("DEBUG: No authorization header or not Bearer token")
         raise credentials_exception
@@ -43,7 +55,7 @@ def get_current_user(
     parts = authorization.split(" ")
     token = parts[1] if len(parts) > 1 else ""
     print(f"DEBUG: token = {token[:20]}...")
-    
+
     payload = verify_token(token)
     if payload is None:
         print("DEBUG: Token verification failed")
@@ -55,7 +67,7 @@ def get_current_user(
         raise credentials_exception
 
     print(f"DEBUG: email = {email}")
-    
+
     user_service = UserService(db)
     user = user_service.get_user_by_email(email)
     if user is None:
@@ -144,7 +156,7 @@ def login_user(login_data: UserLogin, db: Session = Depends(get_db)) -> Token:
         data={"sub": user.email, "role": user.role.value},
         expires_delta=access_token_expires,
     )
-    
+
     # リフレッシュトークン作成
     refresh_token = create_refresh_token(user.email, user.role.value)
 
@@ -161,13 +173,13 @@ def login_user(login_data: UserLogin, db: Session = Depends(get_db)) -> Token:
 def refresh_access_token(refresh_data: dict, db: Session = Depends(get_db)) -> Token:
     """アクセストークンリフレッシュ"""
     refresh_token = refresh_data.get("refresh_token")
-    
+
     if not refresh_token:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="リフレッシュトークンが必要です",
         )
-    
+
     # リフレッシュトークンを検証
     payload = verify_token(refresh_token)
     if not payload or payload.get("type") != "refresh":
@@ -175,7 +187,7 @@ def refresh_access_token(refresh_data: dict, db: Session = Depends(get_db)) -> T
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="無効なリフレッシュトークンです",
         )
-    
+
     # ユーザーを取得
     user_service = UserService(db)
     user = user_service.get_user_by_email(payload.get("sub"))
@@ -184,17 +196,17 @@ def refresh_access_token(refresh_data: dict, db: Session = Depends(get_db)) -> T
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="ユーザーが見つかりません",
         )
-    
+
     # 新しいアクセストークンを作成
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user.email, "role": user.role.value},
         expires_delta=access_token_expires,
     )
-    
+
     # 新しいリフレッシュトークンを作成
     new_refresh_token = create_refresh_token(user.email, user.role.value)
-    
+
     return Token(
         access_token=access_token,
         token_type="bearer",
@@ -233,28 +245,26 @@ def update_profile(
 ) -> UserResponse:
     """プロフィール情報更新（ログインユーザー本人のみ）"""
     try:
-        user_service = UserService(db)
-        
         # プロフィール更新データをUserUpdateスキーマに変換
         # （管理者用とは異なり、is_active、is_verifiedは更新不可）
         update_data = profile_data.model_dump(exclude_unset=True)
-        
+
         # 空の更新チェック
         if not update_data:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="更新するデータがありません",
             )
-        
+
         # ユーザー情報を直接更新（最小実装）
         for field, value in update_data.items():
             setattr(current_user, field, value)
-        
+
         db.commit()
         db.refresh(current_user)
-        
+
         return UserResponse.model_validate(current_user)
-        
+
     except HTTPException:
         raise
     except Exception:
@@ -273,7 +283,7 @@ def update_profile_me(
 ) -> UserResponse:
     """
     プロフィール情報更新（/me エイリアス - Frontend互換性）
-    
+
     Frontend が期待する PUT /api/v1/auth/me エンドポイントを提供。
     既存の /profile エンドポイントと同じロジックを使用して重複を避ける。
     """
@@ -290,29 +300,31 @@ def update_password(
     """パスワード更新（ログインユーザー本人のみ）"""
     try:
         # 現在のパスワード確認
-        if not verify_password(password_data.current_password, current_user.hashed_password):
+        if not verify_password(
+            password_data.current_password, current_user.hashed_password
+        ):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="現在のパスワードが正しくありません",
             )
-        
+
         # 新しいパスワードが現在のパスワードと同じかチェック
         if verify_password(password_data.new_password, current_user.hashed_password):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="新しいパスワードは現在のパスワードと異なる必要があります",
             )
-        
+
         # パスワード更新
         current_user.hashed_password = get_password_hash(password_data.new_password)
-        
+
         db.commit()
-        
+
         return {
             "message": "パスワードが正常に更新されました",
             "updated_at": current_user.updated_at,
         }
-        
+
     except HTTPException:
         raise
     except Exception:
@@ -330,33 +342,33 @@ def request_password_reset(
 ) -> dict:
     """
     パスワードリセット要求
-    
+
     セキュリティのため、ユーザーが存在しない場合でも成功レスポンスを返します。
     実際のメール送信は現在スタブ実装です。
     """
     try:
         user_service = UserService(db)
         user = user_service.get_user_by_email(reset_data.email)
-        
+
         if not user:
             # セキュリティのため、ユーザーが存在しない場合でも成功レスポンスを返す
             return {
                 "message": "パスワードリセットメールを送信しました",
-                "email": reset_data.email
+                "email": reset_data.email,
             }
-        
+
         # TODO: 実際のメール送信は後で実装（現在はスタブ）
         # リセットトークンを生成（簡易実装）
         reset_token = f"reset_{user.id}_{int(time.time())}"
-        
+
         # ログ出力（開発環境用）
         print(f"Password reset token for {user.email}: {reset_token}")
-        
+
         return {
             "message": "パスワードリセットメールを送信しました",
-            "email": reset_data.email
+            "email": reset_data.email,
         }
-        
+
     except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -371,7 +383,7 @@ def confirm_password_reset(
 ) -> dict:
     """
     パスワードリセット確定
-    
+
     現在は簡易的なトークン検証を実装しています。
     実際の本番環境ではJWTやDBに保存されたトークンを使用することを推奨します。
     """
@@ -382,7 +394,7 @@ def confirm_password_reset(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="無効なリセットトークンです",
             )
-        
+
         # 簡易的なトークン解析（実際の実装ではJWTやDBに保存）
         token_parts = confirm_data.token.split("_")
         if len(token_parts) != 3:
@@ -390,26 +402,23 @@ def confirm_password_reset(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="無効なリセットトークンです",
             )
-        
+
         user_id = int(token_parts[1])
         user_service = UserService(db)
         user = user_service.get_user_by_id(user_id)
-        
+
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="ユーザーが見つかりません",
             )
-        
+
         # パスワード更新
         user.hashed_password = get_password_hash(confirm_data.new_password)
         db.commit()
-        
-        return {
-            "message": "パスワードが正常にリセットされました",
-            "email": user.email
-        }
-        
+
+        return {"message": "パスワードが正常にリセットされました", "email": user.email}
+
     except HTTPException:
         raise
     except Exception:

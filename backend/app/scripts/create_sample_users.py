@@ -1,15 +1,23 @@
+#!/usr/bin/env python3
 """
 サンプルユーザー作成スクリプト
 
 管理者とサンプル顧客を作成
 """
 
-import asyncio
+import sys
+from pathlib import Path
+
 from sqlalchemy.orm import Session
-from app.db.database import SessionLocal
-from app.models.user import UserRole
-from app.schemas.user import UserCreate
-from app.services.user import UserService
+
+# プロジェクトルートをPythonパスに追加
+project_root = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(project_root))
+
+from app.db.database import SessionLocal  # noqa: E402
+from app.models.user import UserRole  # noqa: E402
+from app.schemas.user import UserCreate  # noqa: E402
+from app.services.user import UserService  # noqa: E402
 
 
 def create_admin_user(db: Session) -> None:
@@ -31,7 +39,7 @@ def create_admin_user(db: Session) -> None:
     )
 
     admin_user = user_service.create_user(admin_data)
-    print(f"✅ 管理者アカウント作成完了: {admin_user.email} (ID: {admin_user.id})")
+    print(f"✅ 管理者アカウント作成完了: {admin_user.email} " f"(ID: {admin_user.id})")
 
 
 def create_sample_customers(db: Session) -> None:
@@ -58,7 +66,7 @@ def create_sample_customers(db: Session) -> None:
         # 既存ユーザーチェック
         existing_user = user_service.get_user_by_email(customer_info["email"])
         if existing_user:
-            print(f"✅ 顧客アカウントは既に存在します: {customer_info['email']}")
+            print("✅ 顧客アカウントは既に存在します: " f"{customer_info['email']}")
             continue
 
         # 顧客作成
@@ -72,7 +80,8 @@ def create_sample_customers(db: Session) -> None:
 
         customer_user = user_service.create_user(customer_data)
         print(
-            f"✅ 顧客アカウント作成完了: {customer_user.email} (ID: {customer_user.id})"
+            f"✅ 顧客アカウント作成完了: {customer_user.email} "
+            f"(ID: {customer_user.id})"
         )
 
 
@@ -100,8 +109,10 @@ def main():
 
         print(f"\n📋 登録済みユーザー一覧 ({len(all_users)}人):")
         for user in all_users:
+            verification_status = "認証済み" if user.is_verified else "未認証"
             print(
-                f"  - {user.email} ({user.full_name}) - {user.role.value} - {'認証済み' if user.is_verified else '未認証'}"
+                f"  - {user.email} ({user.full_name}) - "
+                f"{user.role.value} - {verification_status}"
             )
 
     except Exception as e:

@@ -20,7 +20,9 @@ interface ToastContextType {
   removeToast: (id: string) => void;
 }
 
-const ToastContext = React.createContext<ToastContextType | undefined>(undefined);
+const ToastContext = React.createContext<ToastContextType | undefined>(
+  undefined,
+);
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<ToastProps[]>([]);
@@ -65,13 +67,20 @@ function ToastContainer({ toasts }: { toasts: ToastProps[] }) {
   );
 }
 
-function Toast({ id, type, title, message, duration = 5000, onClose }: ToastProps) {
+function Toast({
+  id,
+  type,
+  title,
+  message,
+  duration = 5000,
+  onClose,
+}: ToastProps) {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
     // アニメーション用の遅延
     const showTimer = setTimeout(() => setIsVisible(true), 100);
-    
+
     // 自動削除
     const hideTimer = setTimeout(() => {
       setIsVisible(false);
@@ -129,14 +138,10 @@ function Toast({ id, type, title, message, duration = 5000, onClose }: ToastProp
       `}
     >
       <div className="flex items-start space-x-3">
-        <div className="flex-shrink-0">
-          {styles.icon}
-        </div>
+        <div className="flex-shrink-0">{styles.icon}</div>
         <div className="flex-1 min-w-0">
           <h4 className="text-sm font-medium">{title}</h4>
-          {message && (
-            <p className="text-sm mt-1 opacity-90">{message}</p>
-          )}
+          {message && <p className="text-sm mt-1 opacity-90">{message}</p>}
         </div>
         <button
           onClick={() => onClose(id)}

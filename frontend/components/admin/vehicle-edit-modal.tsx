@@ -7,7 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 import { Vehicle } from "@/lib/types/vehicle";
-import { VEHICLE_CATEGORIES, FUEL_TYPES, TRANSMISSIONS } from "@/lib/types/vehicle";
+import {
+  VEHICLE_CATEGORIES,
+  FUEL_TYPES,
+  TRANSMISSIONS,
+} from "@/lib/types/vehicle";
 import { useAuthStore } from "@/lib/stores/auth";
 
 // シンプルなフォームデータ型
@@ -34,7 +38,12 @@ interface VehicleEditModalProps {
   onVehicleUpdated: () => void;
 }
 
-export function VehicleEditModal({ open, onOpenChange, vehicle, onVehicleUpdated }: VehicleEditModalProps) {
+export function VehicleEditModal({
+  open,
+  onOpenChange,
+  vehicle,
+  onVehicleUpdated,
+}: VehicleEditModalProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState<VehicleEditFormData>({
     make: "",
@@ -76,14 +85,17 @@ export function VehicleEditModal({ open, onOpenChange, vehicle, onVehicleUpdated
     }
   }, [vehicle]);
 
-  const handleInputChange = (field: keyof VehicleEditFormData, value: string | number | boolean) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+  const handleInputChange = (
+    field: keyof VehicleEditFormData,
+    value: string | number | boolean,
+  ) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!vehicle) return;
-    
+
     setIsLoading(true);
 
     try {
@@ -91,14 +103,17 @@ export function VehicleEditModal({ open, onOpenChange, vehicle, onVehicleUpdated
         throw new Error("認証トークンが見つかりません");
       }
 
-      const response = await fetch(`http://localhost:8000/api/v1/vehicles/${vehicle.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+      const response = await fetch(
+        `http://localhost:8000/api/v1/vehicles/${vehicle.id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(formData),
         },
-        body: JSON.stringify(formData),
-      });
+      );
 
       if (!response.ok) {
         let errorMessage = "車両の更新に失敗しました";
@@ -113,7 +128,7 @@ export function VehicleEditModal({ open, onOpenChange, vehicle, onVehicleUpdated
       }
 
       const updatedVehicle = await response.json();
-      
+
       addToast({
         type: "success",
         title: "車両更新完了",
@@ -127,7 +142,8 @@ export function VehicleEditModal({ open, onOpenChange, vehicle, onVehicleUpdated
       addToast({
         type: "error",
         title: "エラー",
-        message: error instanceof Error ? error.message : "車両の更新に失敗しました",
+        message:
+          error instanceof Error ? error.message : "車両の更新に失敗しました",
       });
     } finally {
       setIsLoading(false);
@@ -189,7 +205,9 @@ export function VehicleEditModal({ open, onOpenChange, vehicle, onVehicleUpdated
                 type="number"
                 placeholder="2023"
                 value={formData.year}
-                onChange={(e) => handleInputChange("year", parseInt(e.target.value))}
+                onChange={(e) =>
+                  handleInputChange("year", parseInt(e.target.value))
+                }
               />
             </div>
 
@@ -212,7 +230,9 @@ export function VehicleEditModal({ open, onOpenChange, vehicle, onVehicleUpdated
             <Input
               placeholder="品川 500 あ 1234"
               value={formData.license_plate}
-              onChange={(e) => handleInputChange("license_plate", e.target.value)}
+              onChange={(e) =>
+                handleInputChange("license_plate", e.target.value)
+              }
             />
           </div>
 
@@ -242,7 +262,9 @@ export function VehicleEditModal({ open, onOpenChange, vehicle, onVehicleUpdated
               <Input
                 placeholder="セダン"
                 value={formData.class_type}
-                onChange={(e) => handleInputChange("class_type", e.target.value)}
+                onChange={(e) =>
+                  handleInputChange("class_type", e.target.value)
+                }
               />
             </div>
           </div>
@@ -255,7 +277,9 @@ export function VehicleEditModal({ open, onOpenChange, vehicle, onVehicleUpdated
               <select
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 value={formData.transmission}
-                onChange={(e) => handleInputChange("transmission", e.target.value)}
+                onChange={(e) =>
+                  handleInputChange("transmission", e.target.value)
+                }
               >
                 <option value="">トランスミッションを選択</option>
                 {Object.entries(TRANSMISSIONS).map(([key, value]) => (
@@ -293,7 +317,9 @@ export function VehicleEditModal({ open, onOpenChange, vehicle, onVehicleUpdated
               type="number"
               placeholder="8000"
               value={formData.daily_rate}
-              onChange={(e) => handleInputChange("daily_rate", parseFloat(e.target.value))}
+              onChange={(e) =>
+                handleInputChange("daily_rate", parseFloat(e.target.value))
+              }
             />
           </div>
 
@@ -303,14 +329,18 @@ export function VehicleEditModal({ open, onOpenChange, vehicle, onVehicleUpdated
                 type="checkbox"
                 id="is_available"
                 checked={formData.is_available}
-                onChange={(e) => handleInputChange("is_available", e.target.checked)}
+                onChange={(e) =>
+                  handleInputChange("is_available", e.target.checked)
+                }
                 className="rounded border-gray-300"
               />
-              <label htmlFor="is_available" className="text-sm font-medium text-gray-700">
+              <label
+                htmlFor="is_available"
+                className="text-sm font-medium text-gray-700"
+              >
                 利用可能
               </label>
             </div>
-
           </div>
 
           <div className="flex items-center space-x-2">
@@ -318,10 +348,15 @@ export function VehicleEditModal({ open, onOpenChange, vehicle, onVehicleUpdated
               type="checkbox"
               id="is_smoking_allowed"
               checked={formData.is_smoking_allowed}
-              onChange={(e) => handleInputChange("is_smoking_allowed", e.target.checked)}
+              onChange={(e) =>
+                handleInputChange("is_smoking_allowed", e.target.checked)
+              }
               className="rounded border-gray-300"
             />
-            <label htmlFor="is_smoking_allowed" className="text-sm font-medium text-gray-700">
+            <label
+              htmlFor="is_smoking_allowed"
+              className="text-sm font-medium text-gray-700"
+            >
               喫煙許可
             </label>
           </div>
@@ -333,12 +368,18 @@ export function VehicleEditModal({ open, onOpenChange, vehicle, onVehicleUpdated
             <Input
               placeholder="toyota_camry.jpg"
               value={formData.image_filename}
-              onChange={(e) => handleInputChange("image_filename", e.target.value)}
+              onChange={(e) =>
+                handleInputChange("image_filename", e.target.value)
+              }
             />
           </div>
 
           <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+            >
               キャンセル
             </Button>
             <Button type="submit" disabled={isLoading}>

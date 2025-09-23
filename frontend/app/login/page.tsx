@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Car, LogIn, User, Lock } from "lucide-react";
 import { useAuthStore } from "@/lib/stores/auth";
 
-export default function DemoLoginPage() {
+function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { login } = useAuthStore();
@@ -18,8 +18,8 @@ export default function DemoLoginPage() {
 
   // リダイレクト処理の共通関数
   const handleRedirect = (loginData: any) => {
-    const redirectTo = searchParams.get('redirect');
-    
+    const redirectTo = searchParams.get("redirect");
+
     if (redirectTo) {
       // リダイレクトパラメータがある場合はそのページに移動
       router.push(redirectTo);
@@ -294,5 +294,19 @@ export default function DemoLoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function DemoLoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          Loading...
+        </div>
+      }
+    >
+      <LoginPageContent />
+    </Suspense>
   );
 }

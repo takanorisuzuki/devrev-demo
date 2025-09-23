@@ -11,11 +11,11 @@ import {
   CreditCard,
   CheckCircle,
 } from "lucide-react";
-import { 
-  getDefaultPickupDateTime, 
+import {
+  getDefaultPickupDateTime,
   getDefaultReturnDateTime,
   calculateRentalDurationHours,
-  calculateRentalDurationDays 
+  calculateRentalDurationDays,
 } from "../../../../lib/utils/time-management";
 import { useAuthStore } from "@/lib/stores/auth";
 import { reservationApi } from "@/lib/api/reservations";
@@ -83,10 +83,12 @@ export default function DemoReservePage() {
   // 店舗データが読み込まれたらデフォルト店舗を設定
   useEffect(() => {
     if (stores.length > 0 && !form.pickup_store_id) {
-      const tokyoStationStore = stores.find(store => store.name === "東京駅店");
+      const tokyoStationStore = stores.find(
+        (store) => store.name === "東京駅店",
+      );
       const defaultStoreId = tokyoStationStore?.id || stores[0].id;
-      
-      setForm(prev => ({
+
+      setForm((prev) => ({
         ...prev,
         pickup_store_id: defaultStoreId,
         return_store_id: defaultStoreId,
@@ -100,7 +102,7 @@ export default function DemoReservePage() {
       try {
         console.log("車両ID:", vehicleId);
         const response = await fetch(
-          `http://localhost:8000/api/v1/vehicles/${vehicleId}`
+          `http://localhost:8000/api/v1/vehicles/${vehicleId}`,
         );
         console.log("API Response status:", response.status);
 
@@ -110,7 +112,7 @@ export default function DemoReservePage() {
           setVehicle(data);
         } else {
           console.error(
-            `車両ID "${vehicleId}" が見つかりません (HTTP ${response.status})`
+            `車両ID "${vehicleId}" が見つかりません (HTTP ${response.status})`,
           );
           setVehicle(null);
         }
@@ -218,7 +220,8 @@ export default function DemoReservePage() {
       };
 
       console.log("予約データを送信中:", reservationData);
-      const newReservation = await reservationApi.createReservation(reservationData);
+      const newReservation =
+        await reservationApi.createReservation(reservationData);
       console.log("予約作成成功:", newReservation);
 
       // 予約完了画面に遷移
@@ -276,8 +279,8 @@ export default function DemoReservePage() {
     );
   }
 
-  const pickupStore = stores.find(store => store.id === form.pickup_store_id);
-  const returnStore = stores.find(store => store.id === form.return_store_id);
+  const pickupStore = stores.find((store) => store.id === form.pickup_store_id);
+  const returnStore = stores.find((store) => store.id === form.return_store_id);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -374,7 +377,7 @@ export default function DemoReservePage() {
                               : "10:00";
                             handleInputChange(
                               "pickup_datetime",
-                              `${e.target.value}T${time}`
+                              `${e.target.value}T${time}`,
                             );
                           }}
                           className="w-full border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -397,7 +400,7 @@ export default function DemoReservePage() {
                               : "";
                             handleInputChange(
                               "pickup_datetime",
-                              `${date}T${e.target.value}`
+                              `${date}T${e.target.value}`,
                             );
                           }}
                           className="w-full border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -415,7 +418,9 @@ export default function DemoReservePage() {
                           disabled={storesLoading}
                           className="w-full border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         >
-                          <option value="">{storesLoading ? "読み込み中..." : "店舗を選択"}</option>
+                          <option value="">
+                            {storesLoading ? "読み込み中..." : "店舗を選択"}
+                          </option>
                           {stores.map((store) => (
                             <option key={store.id} value={store.id}>
                               {store.name}
@@ -447,7 +452,7 @@ export default function DemoReservePage() {
                               : "14:00";
                             handleInputChange(
                               "return_datetime",
-                              `${e.target.value}T${time}`
+                              `${e.target.value}T${time}`,
                             );
                           }}
                           className="w-full border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -470,7 +475,7 @@ export default function DemoReservePage() {
                               : "";
                             handleInputChange(
                               "return_datetime",
-                              `${date}T${e.target.value}`
+                              `${date}T${e.target.value}`,
                             );
                           }}
                           className="w-full border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -485,17 +490,19 @@ export default function DemoReservePage() {
                           onChange={(e) => {
                             handleInputChange(
                               "return_store_id",
-                              e.target.value
+                              e.target.value,
                             );
                             handleInputChange(
                               "one_way_fee",
-                              form.pickup_store_id !== e.target.value
+                              form.pickup_store_id !== e.target.value,
                             );
                           }}
                           disabled={storesLoading}
                           className="w-full border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         >
-                          <option value="">{storesLoading ? "読み込み中..." : "店舗を選択"}</option>
+                          <option value="">
+                            {storesLoading ? "読み込み中..." : "店舗を選択"}
+                          </option>
                           {stores.map((store) => (
                             <option key={store.id} value={store.id}>
                               {store.name}
@@ -613,7 +620,7 @@ export default function DemoReservePage() {
                     <span>基本料金</span>
                     <span>
                       {formatPrice(
-                        vehicle.daily_rate * priceQuote.duration_days
+                        vehicle.daily_rate * priceQuote.duration_days,
                       )}
                     </span>
                   </div>
@@ -672,17 +679,31 @@ export default function DemoReservePage() {
             <div className="flex items-center mb-4">
               <div className="flex-shrink-0">
                 <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
-                  <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  <svg
+                    className="w-5 h-5 text-red-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+                    />
                   </svg>
                 </div>
               </div>
               <div className="ml-3">
-                <h3 className="text-lg font-medium text-gray-900">予約エラー</h3>
+                <h3 className="text-lg font-medium text-gray-900">
+                  予約エラー
+                </h3>
               </div>
             </div>
             <div className="mb-6">
-              <p className="text-sm text-gray-600 whitespace-pre-line">{errorMessage}</p>
+              <p className="text-sm text-gray-600 whitespace-pre-line">
+                {errorMessage}
+              </p>
             </div>
             <div className="flex justify-end">
               <button
