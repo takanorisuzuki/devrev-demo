@@ -138,6 +138,9 @@ data/
 postgres-data/
 redis-data/
 
+# Allow frontend data directory
+!/frontend/lib/data/
+
 # --------------------------------
 # Development Tools
 # --------------------------------
