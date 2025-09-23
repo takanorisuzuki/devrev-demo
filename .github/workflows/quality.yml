@@ -45,7 +45,7 @@ jobs:
 
     - name: Prettier format check
       working-directory: ./frontend
-      run: npx prettier --check "**/*.{js,jsx,ts,tsx,json,css,scss,md}"
+      run: npx prettier --check "**/*.{js,jsx,ts,tsx,json,css,scss,md}" --ignore-unknown
 
     - name: Build analysis
       working-directory: ./frontend
@@ -160,6 +160,7 @@ jobs:
       working-directory: ./backend
       run: |
         pip install sphinx sphinx-rtd-theme
+        pip install -r requirements.txt
 
     - name: Check docstring coverage
       working-directory: ./backend
