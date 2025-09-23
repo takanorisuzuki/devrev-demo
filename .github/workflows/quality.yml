@@ -90,7 +90,7 @@ jobs:
 
     - name: isort import sorting check
       working-directory: ./backend
-      run: isort --check-only --diff app/
+      run: isort --check-only --diff --profile=black app/
 
     - name: MyPy type checking
       working-directory: ./backend
