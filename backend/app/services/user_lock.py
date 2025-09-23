@@ -7,6 +7,7 @@ from typing import Optional
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+
 from app.models.user_lock import UserLock
 
 
