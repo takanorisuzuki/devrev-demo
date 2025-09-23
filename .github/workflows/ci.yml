@@ -196,11 +196,12 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         name: docker-images
+        path: ./artifacts
 
     - name: Load docker images
       run: |
-        docker load -i backend.tar
-        docker load -i frontend.tar
+        docker load -i ./artifacts/backend.tar
+        docker load -i ./artifacts/frontend.tar
 
     - name: Start services with Docker Compose
       run: |
