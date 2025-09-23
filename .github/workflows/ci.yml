@@ -49,9 +49,9 @@ jobs:
       working-directory: ./frontend
       run: npm run lint
 
-    - name: Run tests
+    - name: Run tests with coverage
       working-directory: ./frontend
-      run: npm run test
+      run: npm run test:coverage
 
     - name: Build application
       working-directory: ./frontend
@@ -59,6 +59,8 @@ jobs:
 
     - name: Upload coverage reports
       uses: codecov/codecov-action@v4
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       with:
         directory: ./frontend/coverage
         flags: frontend
@@ -113,7 +115,7 @@ jobs:
     - name: Run linting
       working-directory: ./backend
       run: |
-        flake8 app/
+        flake8 app/ --max-line-length=88 --extend-ignore=E203,W503
         black --check app/
         isort --check-only app/
         mypy app/
@@ -130,6 +132,8 @@ jobs:
 
     - name: Upload coverage reports
       uses: codecov/codecov-action@v4
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       with:
         directory: ./backend
         flags: backend
