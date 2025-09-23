@@ -8,7 +8,7 @@ updates:
       day: "monday"
       time: "09:00"
       timezone: "Asia/Tokyo"
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 5
     reviewers:
       - "takanorisuzuki"
     assignees:
@@ -20,6 +20,7 @@ updates:
       - "dependencies"
       - "python"
       - "backend"
+      - "auto-merge-candidate"
 
   # Node.js dependencies (Frontend)
   - package-ecosystem: "npm"
@@ -29,7 +30,7 @@ updates:
       day: "monday"
       time: "09:00"
       timezone: "Asia/Tokyo"
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 5
     reviewers:
       - "takanorisuzuki"
     assignees:
@@ -41,6 +42,7 @@ updates:
       - "dependencies"
       - "javascript"
       - "frontend"
+      - "auto-merge-candidate"
 
   # GitHub Actions dependencies
   - package-ecosystem: "github-actions"
@@ -50,7 +52,7 @@ updates:
       day: "monday"
       time: "09:00"
       timezone: "Asia/Tokyo"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 3
     reviewers:
       - "takanorisuzuki"
     assignees:
@@ -62,6 +64,7 @@ updates:
       - "dependencies"
       - "github-actions"
       - "ci/cd"
+      - "auto-merge-candidate"
 
   # Docker dependencies
   - package-ecosystem: "docker"
@@ -71,7 +74,7 @@ updates:
       day: "monday"
       time: "09:00"
       timezone: "Asia/Tokyo"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 3
     reviewers:
       - "takanorisuzuki"
     assignees:
@@ -83,6 +86,7 @@ updates:
       - "dependencies"
       - "docker"
       - "backend"
+      - "auto-merge-candidate"
 
   - package-ecosystem: "docker"
     directory: "/frontend"
@@ -91,7 +95,7 @@ updates:
       day: "monday"
       time: "09:00"
       timezone: "Asia/Tokyo"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 3
     reviewers:
       - "takanorisuzuki"
     assignees:
@@ -103,3 +107,4 @@ updates:
       - "dependencies"
       - "docker"
       - "frontend"
+      - "auto-merge-candidate"
