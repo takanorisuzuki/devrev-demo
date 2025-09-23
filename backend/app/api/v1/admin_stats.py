@@ -44,7 +44,7 @@ async def get_admin_stats(
         )
 
         # 利用可能車両数
-        total_vehicles = db.query(Vehicle).filter(Vehicle.is_available == True).count()
+        total_vehicles = db.query(Vehicle).filter(Vehicle.is_available is True).count()
 
         # 今月の予約数
         now = datetime.now(timezone.utc)
@@ -81,7 +81,10 @@ async def get_admin_stats(
             recent_activities.append(
                 {
                     "type": "reservation",
-                    "message": f"{latest_reservation.vehicle.make} {latest_reservation.vehicle.model}が予約されました",
+                    "message": (
+                        f"{latest_reservation.vehicle.make} "
+                        f"{latest_reservation.vehicle.model}が予約されました"
+                    ),
                     "timestamp": latest_reservation.created_at.isoformat(),
                     "time_ago": _get_time_ago(latest_reservation.created_at),
                 }

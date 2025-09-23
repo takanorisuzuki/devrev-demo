@@ -96,7 +96,11 @@ async def get_all_reservations_for_admin(
                     {
                         "id": str(reservation.pickup_store.id),
                         "name": reservation.pickup_store.name,
-                        "address": f"{reservation.pickup_store.prefecture}{reservation.pickup_store.city}{reservation.pickup_store.address_line1}",
+                        "address": (
+                            f"{reservation.pickup_store.prefecture}"
+                            f"{reservation.pickup_store.city}"
+                            f"{reservation.pickup_store.address_line1}"
+                        ),
                     }
                     if reservation.pickup_store
                     else None
@@ -105,7 +109,11 @@ async def get_all_reservations_for_admin(
                     {
                         "id": str(reservation.return_store.id),
                         "name": reservation.return_store.name,
-                        "address": f"{reservation.return_store.prefecture}{reservation.return_store.city}{reservation.return_store.address_line1}",
+                        "address": (
+                            f"{reservation.return_store.prefecture}"
+                            f"{reservation.return_store.city}"
+                            f"{reservation.return_store.address_line1}"
+                        ),
                     }
                     if reservation.return_store
                     else None

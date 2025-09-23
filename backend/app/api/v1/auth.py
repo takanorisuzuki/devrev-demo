@@ -234,8 +234,6 @@ def update_profile(
 ) -> UserResponse:
     """プロフィール情報更新（ログインユーザー本人のみ）"""
     try:
-        user_service = UserService(db)
-
         # プロフィール更新データをUserUpdateスキーマに変換
         # （管理者用とは異なり、is_active、is_verifiedは更新不可）
         update_data = profile_data.model_dump(exclude_unset=True)

@@ -145,15 +145,10 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Install Podman
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y podman
-
-    - name: Configure Podman for rootless
-      run: |
-        echo 'unqualified-search-registries = ["docker.io"]' | sudo tee -a /etc/containers/registries.conf
-        sudo chmod 644 /etc/containers/registries.conf
+    - name: Setup Podman 5.5.0
+      uses: redhat-actions/setup-podman@v1
+      with:
+        version: '5.5.0'
 
     - name: Build backend image with Podman
       run: |
@@ -169,6 +164,19 @@ jobs:
         podman inspect driverev-backend:test
         podman inspect driverev-frontend:test
 
+    - name: Export images as artifacts
+      run: |
+        podman save -o backend.tar driverev-backend:test
+        podman save -o frontend.tar driverev-frontend:test
+
+    - name: Upload podman images
+      uses: actions/upload-artifact@v4
+      with:
+        name: podman-images
+        path: |
+          backend.tar
+          frontend.tar
+
   # 統合テスト（Podman Compose）
   integration-test:
     name: Integration Tests
@@ -179,36 +187,38 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Install Podman
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y podman
+    - name: Setup Podman 5.5.0
+      uses: redhat-actions/setup-podman@v1
+      with:
+        version: '5.5.0'
 
-    - name: Configure Podman for rootless
+    - name: Download podman images
+      uses: actions/download-artifact@v4
+      with:
+        name: podman-images
+
+    - name: Load podman images
       run: |
-        echo 'unqualified-search-registries = ["docker.io"]' | sudo tee -a /etc/containers/registries.conf
-        sudo chmod 644 /etc/containers/registries.conf
+        podman load -i backend.tar
+        podman load -i frontend.tar
 
     - name: Start services with Podman Compose
       run: |
-        podman compose -f compose.yml up -d postgres redis
-        sleep 15
+        PROJECT=devrev-${{ github.run_id }}
+        podman compose -f .github/compose.ci.yml -p "$PROJECT" up -d --wait --wait-timeout 180 backend
 
     - name: Run integration tests
       run: |
-        # バックエンドのヘルスチェック
-        podman compose -f compose.yml run --rm backend python -c "
-        import requests
-        import time
-        time.sleep(5)
-        response = requests.get('http://backend:8000/health')
-        assert response.status_code == 200
-        print('Backend health check passed')
-        "
+        PROJECT=devrev-${{ github.run_id }}
+        # backend のヘルスチェック（コンテナ内のcurlで確認）
+        podman compose -f .github/compose.ci.yml -p "$PROJECT" exec backend curl -fsS http://localhost:8000/health
+        echo "Backend health check passed"
 
     - name: Cleanup
       if: always()
-      run: podman compose -f compose.yml down
+      run: |
+        PROJECT=devrev-${{ github.run_id }}
+        podman compose -f .github/compose.ci.yml -p "$PROJECT" down
 
   # デプロイ（mainブランチのみ）
   deploy:
@@ -227,4 +237,3 @@ jobs:
         # ここに実際のデプロイスクリプトを追加
         # 例: AWS ECS、Google Cloud Run、Heroku等へのデプロイ
         echo "✅ Deployment completed successfully"
-

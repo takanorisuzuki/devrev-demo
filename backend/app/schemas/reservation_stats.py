@@ -3,7 +3,6 @@
 TDD Green Phase - テストを通すための最小実装
 """
 
-from datetime import datetime
 from decimal import Decimal
 from typing import Dict, List, Optional
 

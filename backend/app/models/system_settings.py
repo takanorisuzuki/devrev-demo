@@ -39,4 +39,7 @@ class SystemSettings(Base):
     )
 
     def __repr__(self):
-        return f"<SystemSettings(id={self.id}, app_name='{self.app_name}', maintenance_mode={self.maintenance_mode})>"
+        return (
+            f"<SystemSettings(id={self.id}, app_name='{self.app_name}', "
+            f"maintenance_mode={self.maintenance_mode})>"
+        )

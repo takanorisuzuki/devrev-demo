@@ -4,7 +4,6 @@
 車両-店舗関係の基盤実装
 """
 
-import os
 import random
 import sys
 from pathlib import Path
@@ -12,8 +11,6 @@ from pathlib import Path
 # プロジェクトルートをPythonパスに追加
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
-
-from sqlalchemy.orm import Session
 
 from app.db.database import SessionLocal
 from app.models.store import Store
@@ -26,8 +23,8 @@ def assign_stores_to_vehicles():
     db = SessionLocal()
     try:
         # 全店舗と車両を取得
-        stores = db.query(Store).filter(Store.is_active == True).all()
-        vehicles = db.query(Vehicle).filter(Vehicle.store_id == None).all()
+        stores = db.query(Store).filter(Store.is_active is True).all()
+        vehicles = db.query(Vehicle).filter(Vehicle.store_id is None).all()
 
         if not stores:
             print("❌ エラー: アクティブな店舗がありません")
@@ -117,7 +114,7 @@ def assign_stores_to_vehicles():
             for category, count in sorted(category_counts.items()):
                 print(f"   - {category}: {count}台")
 
-        print(f"\n🎉 車両-店舗関係の設定が完了しました!")
+        print("\n🎉 車両-店舗関係の設定が完了しました!")
 
     except Exception as e:
         print(f"❌ エラーが発生しました: {e}")

@@ -4,7 +4,6 @@ TDD Green Phase - 最小実装
 """
 
 from datetime import time
-from typing import Any, Dict, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
