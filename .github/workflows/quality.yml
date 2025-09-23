@@ -47,11 +47,12 @@ jobs:
       working-directory: ./frontend
       run: |
         echo "Running Prettier format check..."
-        npx prettier --check "**/*.{js,jsx,ts,tsx,json,css,scss,md}" --ignore-unknown --debug-check || true
         echo "Prettierignore file contents:"
         cat .prettierignore
-        echo "Files being checked by prettier:"
-        npx prettier --list-different "**/*.{js,jsx,ts,tsx,json,css,scss,md}" --ignore-unknown || echo "No files need formatting"
+        echo "Current directory contents:"
+        find . -name ".next" -type d | head -5 || echo "No .next directory found"
+        echo "Running prettier check..."
+        npx prettier --check "**/*.{js,jsx,ts,tsx,json,css,scss,md}" --ignore-unknown
 
     - name: Build analysis
       working-directory: ./frontend
@@ -179,15 +180,19 @@ jobs:
     - name: Generate API documentation
       working-directory: ./backend
       continue-on-error: true
+      env:
+        DATABASE_URL: sqlite:///./test_docs.db
+        SECRET_KEY: test-secret-key-for-docs
+        ENVIRONMENT: test
       run: |
         # FastAPIの自動ドキュメント生成
         pip install -r requirements.txt || echo "Failed to install requirements"
         python -c "
         import sys
+        import json
         sys.path.insert(0, '.')
         try:
             from app.main import app
-            import json
             openapi_schema = app.openapi()
             with open('openapi.json', 'w') as f:
                 json.dump(openapi_schema, f, indent=2)
