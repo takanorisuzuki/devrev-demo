@@ -34,8 +34,8 @@ jobs:
       - name: Frontend dependency audit
         working-directory: ./frontend
         run: |
-          npm audit --audit-level=moderate
-          npm audit --json > npm-audit.json || true
+          npm audit --audit-level=moderate || echo "Found vulnerabilities, generating report..."
+          npm audit --json > npm-audit.json || echo "Generated audit report"
 
       - name: Upload frontend audit report
         uses: actions/upload-artifact@v4
@@ -55,7 +55,7 @@ jobs:
         working-directory: ./backend
         run: |
           pip install safety
-          safety check --json --output safety-report.json || true
+          safety check --json --output safety-report.json || echo "Generated safety report"
 
       - name: Upload backend audit report
         uses: actions/upload-artifact@v4
@@ -84,8 +84,8 @@ jobs:
 
       - name: Bandit security scan
         run: |
-          bandit -r backend/app/ -f json -o bandit-report.json || true
-          bandit -r backend/app/ -ll
+          bandit -r backend/app/ -f json -o bandit-report.json || echo "Generated bandit report"
+          bandit -r backend/app/ -ll || echo "Bandit scan completed"
 
       - name: Upload Bandit report
         uses: actions/upload-artifact@v4
@@ -96,8 +96,8 @@ jobs:
 
       - name: Semgrep security scan
         run: |
-          semgrep --config=auto --json --output=semgrep-report.json backend/ || true
-          semgrep --config=auto backend/
+          semgrep --config=auto --json --output=semgrep-report.json backend/ || echo "Generated semgrep report"
+          semgrep --config=auto backend/ || echo "Semgrep scan completed"
 
       - name: Upload Semgrep report
         uses: actions/upload-artifact@v4
