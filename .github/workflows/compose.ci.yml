@@ -1,0 +1,7 @@
+name: placeholder
+on: workflow_call
+jobs:
+  noop:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "This is a placeholder. Real compose file is at .github/compose.ci.yml"

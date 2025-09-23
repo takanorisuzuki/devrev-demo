@@ -3,8 +3,9 @@
 プロダクション品質のエラーハンドリング
 """
 
+from typing import Any, Optional
+
 from pydantic import BaseModel
-from typing import Optional, Any
 
 
 class ErrorDetail(BaseModel):

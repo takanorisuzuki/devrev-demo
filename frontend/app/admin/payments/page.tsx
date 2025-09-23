@@ -2,10 +2,27 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { CreditCard, RefreshCw, ArrowLeft, Filter, Search, DollarSign, Calendar, Car, User, MapPin, AlertCircle } from "lucide-react";
+import {
+  CreditCard,
+  RefreshCw,
+  ArrowLeft,
+  Filter,
+  Search,
+  DollarSign,
+  Calendar,
+  Car,
+  User,
+  MapPin,
+  AlertCircle,
+} from "lucide-react";
 import { useAuthStore, useIsAdmin } from "@/lib/stores/auth";
 import { formatJSTDate } from "@/lib/utils/time-management";
-import { getAdminPaymentHistoryApi, processRefundApi, PaymentHistoryItem, RefundRequest } from "@/lib/api/payments";
+import {
+  getAdminPaymentHistoryApi,
+  processRefundApi,
+  PaymentHistoryItem,
+  RefundRequest,
+} from "@/lib/api/payments";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -31,7 +48,7 @@ export default function AdminPaymentsPage() {
   const router = useRouter();
   const { isAuthenticated, hasHydrated } = useAuthStore();
   const isAdmin = useIsAdmin();
-  
+
   const [payments, setPayments] = useState<PaymentHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -52,20 +69,23 @@ export default function AdminPaymentsPage() {
   }, [hasHydrated, isAuthenticated, isAdmin, router]);
 
   // 決済履歴取得
-  const fetchPaymentHistory = async (pageNum: number = 1, append: boolean = false) => {
+  const fetchPaymentHistory = async (
+    pageNum: number = 1,
+    append: boolean = false,
+  ) => {
     try {
       setLoading(true);
       setError(null);
-      
+
       const skip = (pageNum - 1) * 20;
       const response = await getAdminPaymentHistoryApi(skip, 20);
-      
+
       if (append) {
-        setPayments(prev => [...prev, ...response.payments]);
+        setPayments((prev) => [...prev, ...response.payments]);
       } else {
         setPayments(response.payments);
       }
-      
+
       setTotal(response.total_count);
       setHasMore(response.payments.length === 20);
       setPage(pageNum);
@@ -93,10 +113,16 @@ export default function AdminPaymentsPage() {
     fetchPaymentHistory(1, false);
   };
 
-  const handleRefund = async (paymentId: string, refundData: RefundFormData) => {
+  const handleRefund = async (
+    paymentId: string,
+    refundData: RefundFormData,
+  ) => {
     setRefundLoading(paymentId);
     try {
-      await processRefundApi(paymentId, refundData);
+      await processRefundApi(paymentId, {
+        ...refundData,
+        reason: refundData.reason || "Admin refund",
+      } as any);
       setShowRefundForm(null);
       // 決済履歴を再取得
       fetchPaymentHistory(1, false);
@@ -114,11 +140,14 @@ export default function AdminPaymentsPage() {
       failed: { color: "bg-red-100 text-red-800", text: "失敗" },
       pending: { color: "bg-yellow-100 text-yellow-800", text: "処理中" },
     };
-    
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
-    
+
+    const config =
+      statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
+
     return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}>
+      <span
+        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}
+      >
         {config.text}
       </span>
     );
@@ -155,7 +184,9 @@ export default function AdminPaymentsPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-gray-700 text-lg">適切なページにリダイレクト中...</p>
+          <p className="text-gray-700 text-lg">
+            適切なページにリダイレクト中...
+          </p>
         </div>
       </div>
     );
@@ -178,8 +209,12 @@ export default function AdminPaymentsPage() {
                   <ArrowLeft className="h-4 w-4" />
                 </Button>
                 <div>
-                  <h1 className="text-2xl font-bold text-gray-900">管理者決済管理</h1>
-                  <p className="text-sm text-gray-600">全決済履歴の確認と返金処理</p>
+                  <h1 className="text-2xl font-bold text-gray-900">
+                    管理者決済管理
+                  </h1>
+                  <p className="text-sm text-gray-600">
+                    全決済履歴の確認と返金処理
+                  </p>
                 </div>
               </div>
               <div className="flex items-center space-x-2">
@@ -198,7 +233,9 @@ export default function AdminPaymentsPage() {
                   variant="outline"
                   size="sm"
                 >
-                  <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                  <RefreshCw
+                    className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`}
+                  />
                   更新
                 </Button>
               </div>
@@ -260,57 +297,67 @@ export default function AdminPaymentsPage() {
                         </h3>
                         {getStatusBadge(payment.payment_status)}
                       </div>
-                      
+
                       {/* 顧客情報 */}
                       {payment.customer_name && (
                         <div className="mb-3 p-3 bg-blue-50 rounded-lg">
                           <div className="flex items-center space-x-2 mb-1">
                             <User className="h-4 w-4 text-blue-600" />
-                            <span className="font-medium text-blue-900">{payment.customer_name}</span>
+                            <span className="font-medium text-blue-900">
+                              {payment.customer_name}
+                            </span>
                           </div>
                           <div className="text-sm text-blue-700">
                             {payment.customer_email} (ID: {payment.customer_id})
                           </div>
                         </div>
                       )}
-                      
+
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
                         <div className="flex items-center space-x-2">
                           <CreditCard className="h-4 w-4" />
                           <span>決済ID: {payment.payment_id}</span>
                         </div>
-                        
+
                         <div className="flex items-center space-x-2">
                           <Calendar className="h-4 w-4" />
                           <span>{formatDate(payment.created_at)}</span>
                         </div>
-                        
+
                         {payment.store_name && (
                           <div className="flex items-center space-x-2">
                             <MapPin className="h-4 w-4" />
                             <span>店舗: {payment.store_name}</span>
                           </div>
                         )}
-                        
+
                         {payment.pickup_datetime && (
                           <div className="flex items-center space-x-2">
                             <Car className="h-4 w-4" />
-                            <span>受取: {formatJSTDate(new Date(payment.pickup_datetime))}</span>
+                            <span>
+                              受取:{" "}
+                              {formatJSTDate(new Date(payment.pickup_datetime))}
+                            </span>
                           </div>
                         )}
-                        
+
                         {payment.return_datetime && (
                           <div className="flex items-center space-x-2">
                             <Car className="h-4 w-4" />
-                            <span>返却: {formatJSTDate(new Date(payment.return_datetime))}</span>
+                            <span>
+                              返却:{" "}
+                              {formatJSTDate(new Date(payment.return_datetime))}
+                            </span>
                           </div>
                         )}
-                        
+
                         {payment.failure_reason && (
                           <div className="col-span-2 space-y-2">
                             <div className="flex items-center space-x-2">
                               <AlertCircle className="h-4 w-4 text-red-500" />
-                              <span className="text-red-600 font-medium">失敗理由: {payment.failure_reason}</span>
+                              <span className="text-red-600 font-medium">
+                                失敗理由: {payment.failure_reason}
+                              </span>
                             </div>
                             {payment.failure_code && (
                               <div className="ml-6 text-sm text-red-500">
@@ -326,7 +373,7 @@ export default function AdminPaymentsPage() {
                         )}
                       </div>
                     </div>
-                    
+
                     <div className="text-right space-y-2">
                       <div className="text-2xl font-bold text-gray-900">
                         {formatCurrency(payment.amount, payment.currency)}
@@ -341,19 +388,23 @@ export default function AdminPaymentsPage() {
                           size="sm"
                           disabled={refundLoading === payment.payment_id}
                         >
-                          {refundLoading === payment.payment_id ? "処理中..." : "返金"}
+                          {refundLoading === payment.payment_id
+                            ? "処理中..."
+                            : "返金"}
                         </Button>
                       )}
                     </div>
                   </div>
-                  
+
                   {/* 返金フォーム */}
                   {showRefundForm === payment.payment_id && (
                     <div className="mt-4 pt-4 border-t border-gray-200">
                       <RefundForm
                         paymentId={payment.payment_id}
                         amount={payment.amount}
-                        onSubmit={(refundData) => handleRefund(payment.payment_id, refundData)}
+                        onSubmit={(refundData) =>
+                          handleRefund(payment.payment_id, refundData)
+                        }
                         onCancel={() => setShowRefundForm(null)}
                         loading={refundLoading === payment.payment_id}
                       />
@@ -362,7 +413,7 @@ export default function AdminPaymentsPage() {
                 </CardContent>
               </Card>
             ))}
-            
+
             {hasMore && (
               <div className="text-center pt-4">
                 <Button
@@ -390,7 +441,13 @@ interface RefundFormProps {
   loading: boolean;
 }
 
-function RefundForm({ paymentId, amount, onSubmit, onCancel, loading }: RefundFormProps) {
+function RefundForm({
+  paymentId,
+  amount,
+  onSubmit,
+  onCancel,
+  loading,
+}: RefundFormProps) {
   const form = useForm<RefundFormData>({
     resolver: zodResolver(refundSchema),
     defaultValues: {
@@ -459,11 +516,7 @@ function RefundForm({ paymentId, amount, onSubmit, onCancel, loading }: RefundFo
           />
 
           <div className="flex space-x-2">
-            <Button
-              type="submit"
-              disabled={loading}
-              className="flex-1"
-            >
+            <Button type="submit" disabled={loading} className="flex-1">
               {loading ? "返金処理中..." : "返金を実行"}
             </Button>
             <Button

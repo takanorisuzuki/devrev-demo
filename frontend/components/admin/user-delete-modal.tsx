@@ -25,7 +25,12 @@ interface UserDeleteModalProps {
   onUserDeleted: () => void;
 }
 
-export function UserDeleteModal({ open, onOpenChange, user, onUserDeleted }: UserDeleteModalProps) {
+export function UserDeleteModal({
+  open,
+  onOpenChange,
+  user,
+  onUserDeleted,
+}: UserDeleteModalProps) {
   const [isLoading, setIsLoading] = useState(false);
   const { addToast } = useToast();
   const token = useAuthStore((state) => state.token);
@@ -39,12 +44,15 @@ export function UserDeleteModal({ open, onOpenChange, user, onUserDeleted }: Use
         throw new Error("認証トークンが見つかりません");
       }
 
-      const response = await fetch(`http://localhost:8000/api/v1/admin/users/${user.id}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
+      const response = await fetch(
+        `http://localhost:8000/api/v1/admin/users/${user.id}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         },
-      });
+      );
 
       if (!response.ok) {
         let errorMessage = "ユーザーの削除に失敗しました";
@@ -72,7 +80,10 @@ export function UserDeleteModal({ open, onOpenChange, user, onUserDeleted }: Use
       addToast({
         type: "error",
         title: "エラー",
-        message: error instanceof Error ? error.message : "ユーザーの削除に失敗しました",
+        message:
+          error instanceof Error
+            ? error.message
+            : "ユーザーの削除に失敗しました",
       });
     } finally {
       setIsLoading(false);
@@ -90,7 +101,9 @@ export function UserDeleteModal({ open, onOpenChange, user, onUserDeleted }: Use
             <div className="p-2 rounded-full bg-red-50">
               <AlertTriangle className="h-6 w-6 text-red-500" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900">ユーザー削除確認</h3>
+            <h3 className="text-lg font-semibold text-gray-900">
+              ユーザー削除確認
+            </h3>
           </div>
           <button
             onClick={() => onOpenChange(false)}
@@ -106,21 +119,27 @@ export function UserDeleteModal({ open, onOpenChange, user, onUserDeleted }: Use
           <p className="text-gray-700 leading-relaxed mb-4">
             この操作は取り消すことができません。本当に削除しますか？
           </p>
-          
+
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
             <h4 className="font-medium text-red-800 mb-2">削除対象ユーザー</h4>
             <div className="space-y-1 text-sm text-red-700">
-              <p><strong>名前:</strong> {user.full_name}</p>
-              <p><strong>メール:</strong> {user.email}</p>
-              <p><strong>役割:</strong> {
-                user.role === "admin" ? "管理者" : "顧客"
-              }</p>
+              <p>
+                <strong>名前:</strong> {user.full_name}
+              </p>
+              <p>
+                <strong>メール:</strong> {user.email}
+              </p>
+              <p>
+                <strong>役割:</strong>{" "}
+                {user.role === "admin" ? "管理者" : "顧客"}
+              </p>
             </div>
           </div>
-          
+
           <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
             <p className="text-sm text-yellow-800">
-              <strong>注意:</strong> ユーザーを削除すると、そのユーザーの予約履歴や関連データも影響を受ける可能性があります。
+              <strong>注意:</strong>{" "}
+              ユーザーを削除すると、そのユーザーの予約履歴や関連データも影響を受ける可能性があります。
             </p>
           </div>
         </div>

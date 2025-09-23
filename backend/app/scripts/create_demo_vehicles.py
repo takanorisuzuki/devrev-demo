@@ -4,20 +4,24 @@
 フロントエンドのデモデータと同じ車両データをバックエンドに投入
 """
 
-import os
 import sys
 from decimal import Decimal
 from pathlib import Path
 
-# プロジェクトルートをPythonパスに追加
-project_root = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(project_root))
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
-from sqlalchemy.orm import Session
-from app.db.database import SessionLocal, engine
-from app.models.vehicle import Vehicle
-from app.services.vehicle import VehicleService
-from app.schemas.vehicle import VehicleCreate
+try:
+    from app.db.database import SessionLocal
+    from app.models.vehicle import Vehicle
+    from app.schemas.vehicle import VehicleCreate
+    from app.services.vehicle import VehicleService
+except ImportError:  # pragma: no cover
+    if str(PROJECT_ROOT) not in sys.path:
+        sys.path.insert(0, str(PROJECT_ROOT))
+    from app.db.database import SessionLocal
+    from app.models.vehicle import Vehicle
+    from app.schemas.vehicle import VehicleCreate
+    from app.services.vehicle import VehicleService
 
 
 def create_demo_vehicles():
@@ -151,24 +155,33 @@ def create_demo_vehicles():
 
                 if existing:
                     print(
-                        f"⚠️  スキップ: {vehicle_data.make} {vehicle_data.model} ({vehicle_data.license_plate}) - 既に存在"
+                        f"⚠️  スキップ: {vehicle_data.make} {vehicle_data.model} "
+                        f"({vehicle_data.license_plate}) - 既に存在"
                     )
                     continue
 
                 # 車両作成
                 vehicle = vehicle_service.create_vehicle(vehicle_data)
                 print(
-                    f"✅ 作成完了: {vehicle.year} {vehicle.make} {vehicle.model} - ¥{vehicle.daily_rate}/日 (画像: {vehicle.image_filename})"
+                    f"✅ 作成完了: {vehicle.year} {vehicle.make} "
+                    f"{vehicle.model} - ¥{vehicle.daily_rate}/日 "
+                    f"(画像: {vehicle.image_filename})"
                 )
                 created_count += 1
 
             except Exception as e:
-                print(f"❌ エラー: {vehicle_data.make} {vehicle_data.model} - {str(e)}")
+                print(
+                    f"❌ エラー: {vehicle_data.make} "
+                    f"{vehicle_data.model} - {str(e)}"
+                )
                 continue
 
-        print(f"\n🎉 デモ車両データ作成完了!")
+        print("\n🎉 デモ車両データ作成完了!")
         print(f"📈 新規作成: {created_count}台")
-        print(f"💾 データベース: フロントエンドのデモデータと同じ車両データが利用可能になりました")
+        print(
+            "💾 データベース: フロントエンドのデモデータと同じ"
+            "車両データが利用可能になりました"
+        )
 
     except Exception as e:
         print(f"❌ 予期しないエラー: {str(e)}")

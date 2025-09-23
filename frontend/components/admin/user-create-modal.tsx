@@ -24,7 +24,11 @@ interface UserCreateModalProps {
   onUserCreated: () => void;
 }
 
-export function UserCreateModal({ open, onOpenChange, onUserCreated }: UserCreateModalProps) {
+export function UserCreateModal({
+  open,
+  onOpenChange,
+  onUserCreated,
+}: UserCreateModalProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState<UserCreateFormData>({
     email: "",
@@ -40,8 +44,11 @@ export function UserCreateModal({ open, onOpenChange, onUserCreated }: UserCreat
 
   if (!open) return null;
 
-  const handleInputChange = (field: keyof UserCreateFormData, value: string | boolean) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+  const handleInputChange = (
+    field: keyof UserCreateFormData,
+    value: string | boolean,
+  ) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -75,7 +82,7 @@ export function UserCreateModal({ open, onOpenChange, onUserCreated }: UserCreat
       }
 
       const newUser = await response.json();
-      
+
       addToast({
         type: "success",
         title: "ユーザー作成完了",
@@ -98,7 +105,10 @@ export function UserCreateModal({ open, onOpenChange, onUserCreated }: UserCreat
       addToast({
         type: "error",
         title: "エラー",
-        message: error instanceof Error ? error.message : "ユーザーの作成に失敗しました",
+        message:
+          error instanceof Error
+            ? error.message
+            : "ユーザーの作成に失敗しました",
       });
     } finally {
       setIsLoading(false);
@@ -110,7 +120,9 @@ export function UserCreateModal({ open, onOpenChange, onUserCreated }: UserCreat
       <div className="bg-white rounded-lg max-w-md w-full shadow-xl">
         {/* ヘッダー */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">新規ユーザー作成</h3>
+          <h3 className="text-lg font-semibold text-gray-900">
+            新規ユーザー作成
+          </h3>
           <button
             onClick={() => onOpenChange(false)}
             className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -154,7 +166,9 @@ export function UserCreateModal({ open, onOpenChange, onUserCreated }: UserCreat
             <Input
               placeholder="090-1234-5678"
               value={formData.phone_number}
-              onChange={(e) => handleInputChange("phone_number", e.target.value)}
+              onChange={(e) =>
+                handleInputChange("phone_number", e.target.value)
+              }
             />
           </div>
 
@@ -171,19 +185,24 @@ export function UserCreateModal({ open, onOpenChange, onUserCreated }: UserCreat
             />
           </div>
 
-                 <div>
-                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                     役割 *
-                   </label>
-                   <select
-                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                     value={formData.role}
-                     onChange={(e) => handleInputChange("role", e.target.value as "admin" | "customer")}
-                   >
-                     <option value="customer">顧客</option>
-                     <option value="admin">管理者</option>
-                   </select>
-                 </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              役割 *
+            </label>
+            <select
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={formData.role}
+              onChange={(e) =>
+                handleInputChange(
+                  "role",
+                  e.target.value as "admin" | "customer",
+                )
+              }
+            >
+              <option value="customer">顧客</option>
+              <option value="admin">管理者</option>
+            </select>
+          </div>
 
           <div className="flex space-x-4">
             <div className="flex items-center">
@@ -191,7 +210,9 @@ export function UserCreateModal({ open, onOpenChange, onUserCreated }: UserCreat
                 type="checkbox"
                 id="is_active"
                 checked={formData.is_active}
-                onChange={(e) => handleInputChange("is_active", e.target.checked)}
+                onChange={(e) =>
+                  handleInputChange("is_active", e.target.checked)
+                }
                 className="mr-2"
               />
               <label htmlFor="is_active" className="text-sm text-gray-700">
@@ -203,7 +224,9 @@ export function UserCreateModal({ open, onOpenChange, onUserCreated }: UserCreat
                 type="checkbox"
                 id="is_verified"
                 checked={formData.is_verified}
-                onChange={(e) => handleInputChange("is_verified", e.target.checked)}
+                onChange={(e) =>
+                  handleInputChange("is_verified", e.target.checked)
+                }
                 className="mr-2"
               />
               <label htmlFor="is_verified" className="text-sm text-gray-700">

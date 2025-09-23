@@ -4,20 +4,21 @@ import React, { useState } from "react";
 import { Search, Car, MapPin, Calendar, Clock } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useStores } from "../lib/hooks/useStores";
-import { 
-  getDefaultSearchConditions, 
+import {
+  getDefaultSearchConditions,
   calculateReturnDateTimeFromPickup,
-  validateSearchConditions 
+  validateSearchConditions,
 } from "../lib/utils/time-management";
 import ErrorBanner from "@/components/ui/error-banner";
+import { ErrorType } from "@/lib/utils/error-handler";
 
 export default function HomePage() {
   const router = useRouter();
   const { stores, loading: storesLoading } = useStores();
-  
+
   // デフォルト値の計算（統一された時間管理ユーティリティを使用）
   const defaultValues = getDefaultSearchConditions();
-  
+
   const [searchForm, setSearchForm] = useState({
     pickupLocation: "", // デフォルトは空（店舗データ読み込み後に設定）
     returnLocation: "", // デフォルトは空（店舗データ読み込み後に設定）
@@ -31,10 +32,12 @@ export default function HomePage() {
   // 店舗データが読み込まれたらデフォルト店舗を設定
   React.useEffect(() => {
     if (stores.length > 0 && !searchForm.pickupLocation) {
-      const tokyoStationStore = stores.find(store => store.name === "東京駅店");
+      const tokyoStationStore = stores.find(
+        (store) => store.name === "東京駅店",
+      );
       const defaultStoreId = tokyoStationStore?.id || stores[0].id;
-      
-      setSearchForm(prev => ({
+
+      setSearchForm((prev) => ({
         ...prev,
         pickupLocation: defaultStoreId,
         returnLocation: defaultStoreId,
@@ -45,28 +48,28 @@ export default function HomePage() {
   const handleInputChange = (field: string, value: string) => {
     setSearchForm((prev) => {
       const newForm = { ...prev, [field]: value };
-      
+
       // 受取店舗を変更した場合、返却店舗も同じ店舗にする
       if (field === "pickupLocation" && value) {
         newForm.returnLocation = value;
       }
-      
+
       // 受付日時を変更した場合、返却日時を自動計算（統一された時間管理ユーティリティを使用）
       if (field === "pickupDate" || field === "pickupTime") {
         const pickupDate = field === "pickupDate" ? value : prev.pickupDate;
         const pickupTime = field === "pickupTime" ? value : prev.pickupTime;
-        
+
         if (pickupDate && pickupTime) {
           const { returnDate, returnTime } = calculateReturnDateTimeFromPickup(
-            pickupDate, 
-            pickupTime
+            pickupDate,
+            pickupTime,
           );
-          
+
           newForm.returnDate = returnDate;
           newForm.returnTime = returnTime;
         }
       }
-      
+
       return newForm;
     });
   };
@@ -74,17 +77,17 @@ export default function HomePage() {
   const handleSearch = () => {
     // エラーをクリア
     setValidationError(null);
-    
+
     // 統一された時間管理ユーティリティでバリデーション
     const validation = validateSearchConditions(
       searchForm.pickupDate,
       searchForm.pickupTime,
       searchForm.returnDate,
-      searchForm.returnTime
+      searchForm.returnTime,
     );
-    
+
     if (!validation.isValid) {
-      setValidationError(validation.errorMessage);
+      setValidationError(validation.errorMessage || "Validation error");
       return;
     }
 
@@ -108,10 +111,8 @@ export default function HomePage() {
     router.push(url);
   };
 
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-
       {/* メインコンテンツ */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* ヒーローセクション */}
@@ -135,7 +136,11 @@ export default function HomePage() {
           {/* バリデーションエラー表示 */}
           {validationError && (
             <ErrorBanner
-              error={validationError}
+              error={{
+                type: ErrorType.VALIDATION,
+                message: validationError,
+                timestamp: new Date().toISOString(),
+              }}
               onDismiss={() => setValidationError(null)}
             />
           )}
@@ -155,7 +160,9 @@ export default function HomePage() {
                 }
                 disabled={storesLoading}
               >
-                <option value="">{storesLoading ? "読み込み中..." : "店舗を選択"}</option>
+                <option value="">
+                  {storesLoading ? "読み込み中..." : "店舗を選択"}
+                </option>
                 {stores.map((store) => (
                   <option key={store.id} value={store.id}>
                     {store.name}
@@ -169,11 +176,13 @@ export default function HomePage() {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 <MapPin className="inline h-4 w-4 mr-1" />
                 返却店舗
-                {searchForm.pickupLocation && searchForm.returnLocation && searchForm.pickupLocation !== searchForm.returnLocation && (
-                  <span className="ml-2 text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full">
-                    乗り捨て +5,000円
-                  </span>
-                )}
+                {searchForm.pickupLocation &&
+                  searchForm.returnLocation &&
+                  searchForm.pickupLocation !== searchForm.returnLocation && (
+                    <span className="ml-2 text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full">
+                      乗り捨て +5,000円
+                    </span>
+                  )}
               </label>
               <select
                 className="w-full p-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -183,7 +192,9 @@ export default function HomePage() {
                 }
                 disabled={storesLoading}
               >
-                <option value="">{storesLoading ? "読み込み中..." : "店舗を選択"}</option>
+                <option value="">
+                  {storesLoading ? "読み込み中..." : "店舗を選択"}
+                </option>
                 {stores.map((store) => (
                   <option key={store.id} value={store.id}>
                     {store.name}

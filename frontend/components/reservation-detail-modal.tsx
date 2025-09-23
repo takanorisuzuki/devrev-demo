@@ -11,10 +11,10 @@ import {
   User,
   FileText,
 } from "lucide-react";
-import { 
-  formatJSTTime, 
-  formatJSTDate, 
-  calculateRentalDurationDays 
+import {
+  formatJSTTime,
+  formatJSTDate,
+  calculateRentalDurationDays,
 } from "@/lib/utils/time-management";
 import { Reservation } from "@/lib/api/reservations";
 import PaymentForm from "./forms/payment-form";
@@ -252,7 +252,7 @@ export default function ReservationDetailModal({
                     <span className="text-gray-600">基本料金</span>
                     <span className="text-gray-900">
                       {formatPrice(
-                        reservation.total_amount - reservation.tax_amount
+                        reservation.total_amount - reservation.tax_amount,
                       )}
                     </span>
                   </div>
@@ -285,25 +285,32 @@ export default function ReservationDetailModal({
                   </h3>
                   <div className="bg-gray-50 rounded-lg p-4">
                     <div className="space-y-2">
-                      {Object.entries(reservation.options).map(([key, value]) => {
-                        const optionLabels: Record<string, string> = {
-                          gps: "カーナビ",
-                          insurance: "任意保険",
-                          child_seat: "チャイルドシート"
-                        };
-                        const label = optionLabels[key] || key;
-                        const status = value ? "あり" : "なし";
-                        const statusColor = value ? "text-green-600" : "text-gray-500";
-                        
-                        return (
-                          <div key={key} className="flex justify-between items-center">
-                            <span className="text-gray-700">{label}</span>
-                            <span className={`font-medium ${statusColor}`}>
-                              {status}
-                            </span>
-                          </div>
-                        );
-                      })}
+                      {Object.entries(reservation.options).map(
+                        ([key, value]) => {
+                          const optionLabels: Record<string, string> = {
+                            gps: "カーナビ",
+                            insurance: "任意保険",
+                            child_seat: "チャイルドシート",
+                          };
+                          const label = optionLabels[key] || key;
+                          const status = value ? "あり" : "なし";
+                          const statusColor = value
+                            ? "text-green-600"
+                            : "text-gray-500";
+
+                          return (
+                            <div
+                              key={key}
+                              className="flex justify-between items-center"
+                            >
+                              <span className="text-gray-700">{label}</span>
+                              <span className={`font-medium ${statusColor}`}>
+                                {status}
+                              </span>
+                            </div>
+                          );
+                        },
+                      )}
                     </div>
                   </div>
                 </div>

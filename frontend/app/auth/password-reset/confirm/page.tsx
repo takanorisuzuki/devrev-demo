@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -24,10 +24,13 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { passwordResetConfirmSchema, PasswordResetConfirmFormData } from "@/lib/validations/auth";
+import {
+  passwordResetConfirmSchema,
+  PasswordResetConfirmFormData,
+} from "@/lib/validations/auth";
 import { confirmPasswordResetApi } from "@/lib/api/auth";
 
-export default function PasswordResetConfirmPage() {
+function PasswordResetConfirmPageContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -87,10 +90,7 @@ export default function PasswordResetConfirmPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button
-                onClick={() => router.push("/login")}
-                className="w-full"
-              >
+              <Button onClick={() => router.push("/login")} className="w-full">
                 ログインページに移動
               </Button>
             </CardContent>
@@ -166,7 +166,10 @@ export default function PasswordResetConfirmPage() {
           </CardHeader>
           <CardContent>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <form
+                onSubmit={form.handleSubmit(onSubmit)}
+                className="space-y-6"
+              >
                 <FormField
                   control={form.control}
                   name="new_password"
@@ -220,7 +223,9 @@ export default function PasswordResetConfirmPage() {
                             variant="ghost"
                             size="sm"
                             className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                            onClick={() =>
+                              setShowConfirmPassword(!showConfirmPassword)
+                            }
                           >
                             {showConfirmPassword ? (
                               <EyeOff className="h-4 w-4" />
@@ -241,11 +246,7 @@ export default function PasswordResetConfirmPage() {
                   </div>
                 )}
 
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={isLoading}
-                >
+                <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading ? "設定中..." : "パスワードを設定"}
                 </Button>
               </form>
@@ -267,5 +268,19 @@ export default function PasswordResetConfirmPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function PasswordResetConfirmPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          Loading...
+        </div>
+      }
+    >
+      <PasswordResetConfirmPageContent />
+    </Suspense>
   );
 }

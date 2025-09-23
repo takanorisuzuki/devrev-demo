@@ -1,0 +1,158 @@
+# GitHub Labels Configuration for DriveRev Demo Project
+
+# 🐛 Bug Labels
+- name: "bug"
+  color: "d73a4a"
+  description: "バグや問題を表す"
+
+- name: "critical"
+  color: "b60205"
+  description: "緊急度の高いバグ"
+
+- name: "regression"
+  color: "f9d0c4"
+  description: "回帰バグ（以前は動作していた機能が壊れた）"
+
+# ✨ Feature Labels
+- name: "enhancement"
+  color: "a2eeef"
+  description: "新機能や改善"
+
+- name: "feature"
+  color: "7057ff"
+  description: "新機能の追加"
+
+- name: "improvement"
+  color: "c5def5"
+  description: "既存機能の改善"
+
+# 🎯 Priority Labels
+- name: "priority:high"
+  color: "ff6b6b"
+  description: "高優先度"
+
+- name: "priority:medium"
+  color: "ffd93d"
+  description: "中優先度"
+
+- name: "priority:low"
+  color: "6bcf7f"
+  description: "低優先度"
+
+# 🏷️ Type Labels
+- name: "documentation"
+  color: "0075ca"
+  description: "ドキュメント関連"
+
+- name: "question"
+  color: "d876e3"
+  description: "質問やサポート"
+
+- name: "help-wanted"
+  color: "008672"
+  description: "コミュニティからのヘルプが必要"
+
+- name: "good-first-issue"
+  color: "7057ff"
+  description: "初心者におすすめのIssue"
+
+# 🔧 Technical Labels
+- name: "frontend"
+  color: "e99695"
+  description: "フロントエンド関連"
+
+- name: "backend"
+  color: "f9d0c4"
+  description: "バックエンド関連"
+
+- name: "database"
+  color: "c2e0c6"
+  description: "データベース関連"
+
+- name: "api"
+  color: "d4c5f9"
+  description: "API関連"
+
+- name: "ui/ux"
+  color: "bfd4f2"
+  description: "UI/UX関連"
+
+- name: "security"
+  color: "ff6b6b"
+  description: "セキュリティ関連"
+
+- name: "performance"
+  color: "ffd93d"
+  description: "パフォーマンス関連"
+
+# 🚀 Status Labels
+- name: "needs-triage"
+  color: "fbca04"
+  description: "トリアージが必要"
+
+- name: "needs-discussion"
+  color: "d876e3"
+  description: "議論が必要"
+
+- name: "in-progress"
+  color: "0e8a16"
+  description: "作業中"
+
+- name: "blocked"
+  color: "b60205"
+  description: "ブロックされている"
+
+- name: "duplicate"
+  color: "cfd3d7"
+  description: "重複"
+
+- name: "invalid"
+  color: "e4e669"
+  description: "無効"
+
+- name: "wontfix"
+  color: "ffffff"
+  description: "修正しない"
+
+# 🏃‍♂️ Sprint Labels
+- name: "sprint:current"
+  color: "0e8a16"
+  description: "現在のスプリント"
+
+- name: "sprint:next"
+  color: "fbca04"
+  description: "次のスプリント"
+
+- name: "sprint:backlog"
+  color: "c2e0c6"
+  description: "バックログ"
+
+# 🎨 Design Labels
+- name: "design"
+  color: "bfd4f2"
+  description: "デザイン関連"
+
+- name: "accessibility"
+  color: "c2e0c6"
+  description: "アクセシビリティ"
+
+- name: "mobile"
+  color: "d4c5f9"
+  description: "モバイル対応"
+
+# 🔄 Process Labels
+- name: "breaking-change"
+  color: "b60205"
+  description: "破壊的変更"
+
+- name: "dependencies"
+  color: "0366d6"
+  description: "依存関係の更新"
+
+- name: "ci/cd"
+  color: "f9d0c4"
+  description: "CI/CD関連"
+
+- name: "testing"
+  color: "c2e0c6"
+  description: "テスト関連"

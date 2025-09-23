@@ -24,7 +24,10 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { passwordResetSchema, PasswordResetFormData } from "@/lib/validations/auth";
+import {
+  passwordResetSchema,
+  PasswordResetFormData,
+} from "@/lib/validations/auth";
 import { requestPasswordResetApi } from "@/lib/api/auth";
 
 export default function PasswordResetPage() {
@@ -135,7 +138,10 @@ export default function PasswordResetPage() {
           </CardHeader>
           <CardContent>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <form
+                onSubmit={form.handleSubmit(onSubmit)}
+                className="space-y-6"
+              >
                 <FormField
                   control={form.control}
                   name="email"
@@ -161,11 +167,7 @@ export default function PasswordResetPage() {
                   </div>
                 )}
 
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={isLoading}
-                >
+                <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading ? "送信中..." : "リセット用メールを送信"}
                 </Button>
               </form>

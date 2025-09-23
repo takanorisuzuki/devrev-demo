@@ -3,16 +3,22 @@
 TDD Green Phase - 最小実装
 """
 
-from typing import List, Optional
 from datetime import date
+from typing import List
 from uuid import UUID
-from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_
 
-from app.models.vehicle import Vehicle
+from sqlalchemy import and_, or_
+from sqlalchemy.orm import Session
+
 from app.models.reservation import Reservation
 from app.models.store import Store
-from app.schemas.availability import AvailabilitySearchRequest, AvailableVehicle, VehicleAvailabilityRequest, VehicleAvailabilityResponse
+from app.models.vehicle import Vehicle
+from app.schemas.availability import (
+    AvailabilitySearchRequest,
+    AvailableVehicle,
+    VehicleAvailabilityRequest,
+    VehicleAvailabilityResponse,
+)
 from app.utils.store_mapping import StoreMapping
 
 
@@ -22,18 +28,21 @@ class AvailabilityService:
     def __init__(self, db: Session):
         self.db = db
 
-    def search_available_vehicles(self, search_request: AvailabilitySearchRequest) -> List[AvailableVehicle]:
+    def search_available_vehicles(
+        self, search_request: AvailabilitySearchRequest
+    ) -> List[AvailableVehicle]:
         """空車検索を実行する"""
         # 基本的な車両クエリ
         query = self.db.query(Vehicle).filter(
-            Vehicle.is_available == True,
-            Vehicle.is_active == True
+            Vehicle.is_available.is_(True), Vehicle.is_active.is_(True)
         )
 
         # 店舗フィルタ（デモ店舗ID対応）
         if search_request.store_id:
             # デモ店舗ID（store-1等）の場合はバックエンドUUIDに変換
-            backend_store_id = StoreMapping.get_backend_store_id(search_request.store_id)
+            backend_store_id = StoreMapping.get_backend_store_id(
+                search_request.store_id
+            )
             if backend_store_id:
                 try:
                     store_uuid = UUID(backend_store_id)
@@ -70,8 +79,7 @@ class AvailabilityService:
 
         # 予約済み車両を除外
         reserved_vehicle_ids = self._get_reserved_vehicle_ids(
-            search_request.start_date,
-            search_request.end_date
+            search_request.start_date, search_request.end_date
         )
         if reserved_vehicle_ids:
             # UUID文字列をUUIDオブジェクトに変換
@@ -94,21 +102,33 @@ class AvailabilityService:
                 transmission=vehicle.transmission,
                 is_smoking_allowed=vehicle.is_smoking_allowed,
                 store_id=str(vehicle.store_id),
-                store_name=vehicle.current_store.name if vehicle.current_store else "不明",
-                store_address=f"{vehicle.current_store.prefecture} {vehicle.current_store.city} {vehicle.current_store.address_line1}" if vehicle.current_store else "不明"
+                store_name=(
+                    vehicle.current_store.name if vehicle.current_store else "不明"
+                ),
+                store_address=(
+                    (
+                        f"{vehicle.current_store.prefecture} "
+                        f"{vehicle.current_store.city} "
+                        f"{vehicle.current_store.address_line1}"
+                    )
+                    if vehicle.current_store
+                    else "不明"
+                ),
             )
             for vehicle in vehicles
         ]
 
-    def check_vehicle_availability(self, request: VehicleAvailabilityRequest) -> VehicleAvailabilityResponse:
+    def check_vehicle_availability(
+        self, request: VehicleAvailabilityRequest
+    ) -> VehicleAvailabilityResponse:
         """特定車両の空き状況を確認する"""
         try:
             # UUID形式を検証
             vehicle_uuid = UUID(request.vehicle_id)
-            
+
             # 車両情報を取得
             vehicle = self.db.query(Vehicle).filter(Vehicle.id == vehicle_uuid).first()
-            
+
             if not vehicle:
                 return VehicleAvailabilityResponse(
                     vehicle_id=request.vehicle_id,
@@ -116,9 +136,9 @@ class AvailabilityService:
                     start_date=request.start_date,
                     end_date=request.end_date,
                     conflicting_reservations=[],
-                    message=f"車両ID {request.vehicle_id} が見つかりません"
+                    message=f"車両ID {request.vehicle_id} が見つかりません",
                 )
-            
+
             # 車両が利用不可能な場合
             if not vehicle.is_available or not vehicle.is_active:
                 return VehicleAvailabilityResponse(
@@ -127,14 +147,14 @@ class AvailabilityService:
                     start_date=request.start_date,
                     end_date=request.end_date,
                     conflicting_reservations=[],
-                    message="この車両は現在利用不可能です"
+                    message="この車両は現在利用不可能です",
                 )
-            
+
             # 競合予約を確認
             conflicting_reservations = self._get_conflicting_reservations(
                 vehicle_uuid, request.start_date, request.end_date
             )
-            
+
             if conflicting_reservations:
                 return VehicleAvailabilityResponse(
                     vehicle_id=request.vehicle_id,
@@ -142,9 +162,9 @@ class AvailabilityService:
                     start_date=request.start_date,
                     end_date=request.end_date,
                     conflicting_reservations=conflicting_reservations,
-                    message=f"指定期間に競合予約があります（{len(conflicting_reservations)}件）"
+                    message=f"指定期間に競合予約があります（{len(conflicting_reservations)}件）",
                 )
-            
+
             # 利用可能
             return VehicleAvailabilityResponse(
                 vehicle_id=request.vehicle_id,
@@ -152,9 +172,9 @@ class AvailabilityService:
                 start_date=request.start_date,
                 end_date=request.end_date,
                 conflicting_reservations=[],
-                message="指定期間で利用可能です"
+                message="指定期間で利用可能です",
             )
-            
+
         except ValueError:
             # 無効なUUID
             return VehicleAvailabilityResponse(
@@ -163,7 +183,7 @@ class AvailabilityService:
                 start_date=request.start_date,
                 end_date=request.end_date,
                 conflicting_reservations=[],
-                message="無効な車両IDです"
+                message="無効な車両IDです",
             )
         except Exception:
             # 予期しないエラー
@@ -173,33 +193,48 @@ class AvailabilityService:
                 start_date=request.start_date,
                 end_date=request.end_date,
                 conflicting_reservations=[],
-                message="空き状況の確認中にエラーが発生しました"
+                message="空き状況の確認中にエラーが発生しました",
             )
 
-    def _get_conflicting_reservations(self, vehicle_id: UUID, start_date: date, end_date: date) -> List[dict]:
+    def _get_conflicting_reservations(
+        self, vehicle_id: UUID, start_date: date, end_date: date
+    ) -> List[dict]:
         """指定車両の競合予約を取得する"""
         try:
-            conflicting_reservations = self.db.query(Reservation).filter(
-                and_(
-                    Reservation.vehicle_id == vehicle_id,
-                    Reservation.status.in_(['confirmed', 'active']),
-                    or_(
-                        # 開始日が期間内
-                        and_(Reservation.start_date <= end_date, Reservation.start_date >= start_date),
-                        # 終了日が期間内
-                        and_(Reservation.end_date <= end_date, Reservation.end_date >= start_date),
-                        # 期間を包含
-                        and_(Reservation.start_date <= start_date, Reservation.end_date >= end_date)
+            conflicting_reservations = (
+                self.db.query(Reservation)
+                .filter(
+                    and_(
+                        Reservation.vehicle_id == vehicle_id,
+                        Reservation.status.in_(["confirmed", "active"]),
+                        or_(
+                            # 開始日が期間内
+                            and_(
+                                Reservation.start_date <= end_date,
+                                Reservation.start_date >= start_date,
+                            ),
+                            # 終了日が期間内
+                            and_(
+                                Reservation.end_date <= end_date,
+                                Reservation.end_date >= start_date,
+                            ),
+                            # 期間を包含
+                            and_(
+                                Reservation.start_date <= start_date,
+                                Reservation.end_date >= end_date,
+                            ),
+                        ),
                     )
                 )
-            ).all()
+                .all()
+            )
 
             return [
                 {
                     "id": str(reservation.id),
                     "start_date": reservation.start_date.isoformat(),
                     "end_date": reservation.end_date.isoformat(),
-                    "status": reservation.status
+                    "status": reservation.status,
                 }
                 for reservation in conflicting_reservations
             ]
@@ -209,19 +244,32 @@ class AvailabilityService:
     def _get_reserved_vehicle_ids(self, start_date: date, end_date: date) -> List[str]:
         """指定期間に予約済みの車両IDを取得する"""
         try:
-            reserved_vehicles = self.db.query(Reservation.vehicle_id).filter(
-                and_(
-                    Reservation.status.in_(['confirmed', 'active']),
-                    or_(
-                        # 開始日が期間内
-                        and_(Reservation.start_date <= end_date, Reservation.start_date >= start_date),
-                        # 終了日が期間内
-                        and_(Reservation.end_date <= end_date, Reservation.end_date >= start_date),
-                        # 期間を包含
-                        and_(Reservation.start_date <= start_date, Reservation.end_date >= end_date)
+            reserved_vehicles = (
+                self.db.query(Reservation.vehicle_id)
+                .filter(
+                    and_(
+                        Reservation.status.in_(["confirmed", "active"]),
+                        or_(
+                            # 開始日が期間内
+                            and_(
+                                Reservation.start_date <= end_date,
+                                Reservation.start_date >= start_date,
+                            ),
+                            # 終了日が期間内
+                            and_(
+                                Reservation.end_date <= end_date,
+                                Reservation.end_date >= start_date,
+                            ),
+                            # 期間を包含
+                            and_(
+                                Reservation.start_date <= start_date,
+                                Reservation.end_date >= end_date,
+                            ),
+                        ),
                     )
                 )
-            ).all()
+                .all()
+            )
 
             return [str(vehicle_id[0]) for vehicle_id in reserved_vehicles]
         except Exception:

@@ -3,19 +3,19 @@
 TDD Green Phase - テストを通すための最小実装
 """
 
-from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session
-from sqlalchemy.exc import IntegrityError
+from typing import Optional
 
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
+
+from app.api.v1.auth import get_current_user
+from app.core.auth import get_admin_user
 from app.db.database import get_db
-from app.schemas.store import StoreCreate, StoreResponse, StoreListResponse, StoreUpdate
+from app.models.user import User
+from app.schemas.store import StoreCreate, StoreListResponse, StoreResponse, StoreUpdate
 from app.services.store import StoreService
 from app.utils.validators import validate_uuid_format
-from app.core.auth import get_admin_user
-from app.api.v1.auth import get_current_user
-from app.models.user import User
-
 
 # 管理者用店舗管理API ルーター
 router = APIRouter()
@@ -26,9 +26,7 @@ def get_store_service(db: Session = Depends(get_db)) -> StoreService:
     return StoreService(db)
 
 
-def get_admin_current_user(
-    current_user: User = Depends(get_current_user)
-) -> User:
+def get_admin_current_user(current_user: User = Depends(get_current_user)) -> User:
     """管理者認証を必要とする現在のユーザーを取得"""
     return get_admin_user(current_user)
 
@@ -47,7 +45,7 @@ async def get_all_stores(
 ):
     """
     管理者用店舗一覧取得
-    
+
     管理者権限が必要です。
     """
     try:
@@ -81,8 +79,8 @@ async def get_all_stores(
             "pagination": {
                 "skip": skip,
                 "limit": limit,
-                "has_more": len(store_list) == limit
-            }
+                "has_more": len(store_list) == limit,
+            },
         }
     except Exception:
         raise HTTPException(
@@ -103,7 +101,7 @@ async def get_store_detail(
 ):
     """
     管理者用店舗詳細取得
-    
+
     管理者権限が必要です。
     """
     try:
@@ -162,7 +160,7 @@ async def create_store(
 ):
     """
     管理者用店舗作成
-    
+
     管理者権限が必要です。
     """
     try:
@@ -227,7 +225,7 @@ async def update_store(
 ):
     """
     管理者用店舗更新
-    
+
     管理者権限が必要です。
     """
     try:
@@ -286,7 +284,7 @@ async def delete_store(
 ):
     """
     管理者用店舗削除
-    
+
     管理者権限が必要です。
     """
     try:
@@ -305,10 +303,7 @@ async def delete_store(
                 },
             )
 
-        return {
-            "message": "店舗が正常に削除されました",
-            "store_id": store_id
-        }
+        return {"message": "店舗が正常に削除されました", "store_id": store_id}
     except HTTPException:
         raise
     except Exception:

@@ -61,7 +61,7 @@ export default function StoreSelector({
       groups[prefecture].push(store);
       return groups;
     },
-    {} as Record<string, Store[]>
+    {} as Record<string, Store[]>,
   );
 
   if (error) {

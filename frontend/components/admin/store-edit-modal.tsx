@@ -17,7 +17,12 @@ interface StoreEditModalProps {
   onStoreUpdated: () => void;
 }
 
-export function StoreEditModal({ open, onOpenChange, store, onStoreUpdated }: StoreEditModalProps) {
+export function StoreEditModal({
+  open,
+  onOpenChange,
+  store,
+  onStoreUpdated,
+}: StoreEditModalProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState<AdminStoreUpdateRequest>({});
   const { addToast } = useToast();
@@ -36,8 +41,12 @@ export function StoreEditModal({ open, onOpenChange, store, onStoreUpdated }: St
         postal_code: store.postal_code || "",
         phone: store.phone || "",
         email: store.email || "",
-        latitude: store.latitude ? parseFloat(store.latitude.toString()) : undefined,
-        longitude: store.longitude ? parseFloat(store.longitude.toString()) : undefined,
+        latitude: store.latitude
+          ? parseFloat(store.latitude.toString())
+          : undefined,
+        longitude: store.longitude
+          ? parseFloat(store.longitude.toString())
+          : undefined,
         is_airport: store.is_airport,
         is_station: store.is_station,
         is_active: store.is_active,
@@ -47,9 +56,9 @@ export function StoreEditModal({ open, onOpenChange, store, onStoreUpdated }: St
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!store) return;
-    
+
     if (!token) {
       addToast({
         type: "error",
@@ -58,12 +67,18 @@ export function StoreEditModal({ open, onOpenChange, store, onStoreUpdated }: St
       });
       return;
     }
-    
+
     try {
       setIsLoading(true);
-      
+
       // 必須フィールドのバリデーション
-      if (!formData.name || !formData.code || !formData.prefecture || !formData.city || !formData.address_line1) {
+      if (
+        !formData.name ||
+        !formData.code ||
+        !formData.prefecture ||
+        !formData.city ||
+        !formData.address_line1
+      ) {
         addToast({
           type: "error",
           title: "入力エラー",
@@ -72,14 +87,17 @@ export function StoreEditModal({ open, onOpenChange, store, onStoreUpdated }: St
         return;
       }
 
-      const response = await fetch(`http://localhost:8000/api/v1/admin/stores/${store.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+      const response = await fetch(
+        `http://localhost:8000/api/v1/admin/stores/${store.id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(formData),
         },
-        body: JSON.stringify(formData),
-      });
+      );
 
       if (!response.ok) {
         let errorMessage = "店舗の更新に失敗しました";
@@ -95,29 +113,33 @@ export function StoreEditModal({ open, onOpenChange, store, onStoreUpdated }: St
       }
 
       const updatedStore = await response.json();
-      
+
       addToast({
         type: "success",
         title: "店舗更新完了",
         message: "店舗が正常に更新されました",
       });
-      
+
       onStoreUpdated();
       onOpenChange(false);
     } catch (error) {
-      console.error('店舗更新エラー:', error);
+      console.error("店舗更新エラー:", error);
       addToast({
         type: "error",
         title: "エラー",
-        message: error instanceof Error ? error.message : "店舗の更新に失敗しました",
+        message:
+          error instanceof Error ? error.message : "店舗の更新に失敗しました",
       });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleInputChange = (field: keyof AdminStoreUpdateRequest, value: any) => {
-    setFormData(prev => ({
+  const handleInputChange = (
+    field: keyof AdminStoreUpdateRequest,
+    value: any,
+  ) => {
+    setFormData((prev) => ({
       ...prev,
       [field]: value,
     }));
@@ -138,9 +160,8 @@ export function StoreEditModal({ open, onOpenChange, store, onStoreUpdated }: St
             <X className="h-5 w-5" />
           </button>
         </div>
-        
+
         <div className="p-6">
-          
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -153,7 +174,7 @@ export function StoreEditModal({ open, onOpenChange, store, onStoreUpdated }: St
                   required
                 />
               </div>
-              
+
               <div>
                 <Label htmlFor="code">店舗コード *</Label>
                 <Input
@@ -164,18 +185,20 @@ export function StoreEditModal({ open, onOpenChange, store, onStoreUpdated }: St
                   required
                 />
               </div>
-              
+
               <div>
                 <Label htmlFor="prefecture">都道府県 *</Label>
                 <Input
                   id="prefecture"
                   value={formData.prefecture || ""}
-                  onChange={(e) => handleInputChange("prefecture", e.target.value)}
+                  onChange={(e) =>
+                    handleInputChange("prefecture", e.target.value)
+                  }
                   placeholder="例: 東京都"
                   required
                 />
               </div>
-              
+
               <div>
                 <Label htmlFor="city">市区町村 *</Label>
                 <Input
@@ -187,39 +210,45 @@ export function StoreEditModal({ open, onOpenChange, store, onStoreUpdated }: St
                 />
               </div>
             </div>
-            
+
             <div>
               <Label htmlFor="address_line1">住所1 *</Label>
               <Input
                 id="address_line1"
                 value={formData.address_line1 || ""}
-                onChange={(e) => handleInputChange("address_line1", e.target.value)}
+                onChange={(e) =>
+                  handleInputChange("address_line1", e.target.value)
+                }
                 placeholder="例: 東京都千代田区丸の内1-9-1"
                 required
               />
             </div>
-            
+
             <div>
               <Label htmlFor="address_line2">住所2</Label>
               <Input
                 id="address_line2"
                 value={formData.address_line2 || ""}
-                onChange={(e) => handleInputChange("address_line2", e.target.value)}
+                onChange={(e) =>
+                  handleInputChange("address_line2", e.target.value)
+                }
                 placeholder="例: テストビル1F"
               />
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="postal_code">郵便番号</Label>
                 <Input
                   id="postal_code"
                   value={formData.postal_code || ""}
-                  onChange={(e) => handleInputChange("postal_code", e.target.value)}
+                  onChange={(e) =>
+                    handleInputChange("postal_code", e.target.value)
+                  }
                   placeholder="例: 100-0005"
                 />
               </div>
-              
+
               <div>
                 <Label htmlFor="phone">電話番号</Label>
                 <Input
@@ -230,7 +259,7 @@ export function StoreEditModal({ open, onOpenChange, store, onStoreUpdated }: St
                 />
               </div>
             </div>
-            
+
             <div>
               <Label htmlFor="email">メールアドレス</Label>
               <Input
@@ -241,7 +270,7 @@ export function StoreEditModal({ open, onOpenChange, store, onStoreUpdated }: St
                 placeholder="例: tokyo@driverev.jp"
               />
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="latitude">緯度</Label>
@@ -250,11 +279,16 @@ export function StoreEditModal({ open, onOpenChange, store, onStoreUpdated }: St
                   type="number"
                   step="0.00000001"
                   value={formData.latitude || ""}
-                  onChange={(e) => handleInputChange("latitude", e.target.value ? parseFloat(e.target.value) : undefined)}
+                  onChange={(e) =>
+                    handleInputChange(
+                      "latitude",
+                      e.target.value ? parseFloat(e.target.value) : undefined,
+                    )
+                  }
                   placeholder="例: 35.68120000"
                 />
               </div>
-              
+
               <div>
                 <Label htmlFor="longitude">経度</Label>
                 <Input
@@ -262,45 +296,56 @@ export function StoreEditModal({ open, onOpenChange, store, onStoreUpdated }: St
                   type="number"
                   step="0.00000001"
                   value={formData.longitude || ""}
-                  onChange={(e) => handleInputChange("longitude", e.target.value ? parseFloat(e.target.value) : undefined)}
+                  onChange={(e) =>
+                    handleInputChange(
+                      "longitude",
+                      e.target.value ? parseFloat(e.target.value) : undefined,
+                    )
+                  }
                   placeholder="例: 139.76710000"
                 />
               </div>
             </div>
-            
+
             <div className="space-y-4">
               <div className="flex items-center">
                 <input
                   type="checkbox"
                   id="is_airport"
                   checked={formData.is_airport || false}
-                  onChange={(e) => handleInputChange("is_airport", e.target.checked)}
+                  onChange={(e) =>
+                    handleInputChange("is_airport", e.target.checked)
+                  }
                   className="mr-2"
                 />
                 <label htmlFor="is_airport" className="text-sm text-gray-700">
                   空港店舗
                 </label>
               </div>
-              
+
               <div className="flex items-center">
                 <input
                   type="checkbox"
                   id="is_station"
                   checked={formData.is_station || false}
-                  onChange={(e) => handleInputChange("is_station", e.target.checked)}
+                  onChange={(e) =>
+                    handleInputChange("is_station", e.target.checked)
+                  }
                   className="mr-2"
                 />
                 <label htmlFor="is_station" className="text-sm text-gray-700">
                   駅店舗
                 </label>
               </div>
-              
+
               <div className="flex items-center">
                 <input
                   type="checkbox"
                   id="is_active"
                   checked={formData.is_active || false}
-                  onChange={(e) => handleInputChange("is_active", e.target.checked)}
+                  onChange={(e) =>
+                    handleInputChange("is_active", e.target.checked)
+                  }
                   className="mr-2"
                 />
                 <label htmlFor="is_active" className="text-sm text-gray-700">
@@ -308,7 +353,7 @@ export function StoreEditModal({ open, onOpenChange, store, onStoreUpdated }: St
                 </label>
               </div>
             </div>
-            
+
             <div className="flex justify-end space-x-3 pt-4">
               <Button
                 type="button"
@@ -318,10 +363,7 @@ export function StoreEditModal({ open, onOpenChange, store, onStoreUpdated }: St
               >
                 キャンセル
               </Button>
-              <Button
-                type="submit"
-                disabled={isLoading}
-              >
+              <Button type="submit" disabled={isLoading}>
                 {isLoading ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />

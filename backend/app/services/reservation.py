@@ -4,17 +4,18 @@ TDD Green Phase - テストを通すための最小実装
 プロダクション品質の予約管理
 """
 
-from typing import Optional, List, Dict
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-from sqlalchemy.orm import Session, joinedload
-from sqlalchemy.exc import IntegrityError
+from typing import Dict, List, Optional
+
 from fastapi import HTTPException, status
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session, joinedload
 
 from app.models.reservation import Reservation
-from app.models.vehicle import Vehicle
-from app.models.user import User
 from app.models.store import Store
+from app.models.user import User
+from app.models.vehicle import Vehicle
 from app.schemas.reservation import (
     ReservationCreate,
     ReservationQuote,
@@ -59,7 +60,7 @@ class ReservationService:
             # より詳細なエラーメッセージを提供
             pickup_dt = reservation_data.pickup_datetime
             return_dt = reservation_data.return_datetime
-            
+
             if return_dt <= pickup_dt:
                 detail = "返却日時は借り出し日時より後に設定してください。"
             elif pickup_dt <= datetime.now(timezone.utc):
@@ -68,7 +69,7 @@ class ReservationService:
                 detail = "レンタル期間は30日以内に設定してください。"
             else:
                 detail = "予約日時が無効です。"
-                
+
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=detail,
@@ -234,7 +235,7 @@ class ReservationService:
             .options(
                 joinedload(Reservation.vehicle),
                 joinedload(Reservation.pickup_store),
-                joinedload(Reservation.return_store)
+                joinedload(Reservation.return_store),
             )
             .filter(
                 Reservation.id == reservation_id, Reservation.customer_id == customer_id
@@ -266,7 +267,7 @@ class ReservationService:
             .options(
                 joinedload(Reservation.vehicle),
                 joinedload(Reservation.pickup_store),
-                joinedload(Reservation.return_store)
+                joinedload(Reservation.return_store),
             )
             .filter(Reservation.customer_id == customer_id)
         )
@@ -302,14 +303,11 @@ class ReservationService:
         Returns:
             予約リスト
         """
-        query = (
-            self.db.query(Reservation)
-            .options(
-                joinedload(Reservation.vehicle),
-                joinedload(Reservation.pickup_store),
-                joinedload(Reservation.return_store),
-                joinedload(Reservation.customer)
-            )
+        query = self.db.query(Reservation).options(
+            joinedload(Reservation.vehicle),
+            joinedload(Reservation.pickup_store),
+            joinedload(Reservation.return_store),
+            joinedload(Reservation.customer),
         )
 
         # ステータスフィルタ
@@ -349,19 +347,19 @@ class ReservationService:
             HTTPException: 予約が見つからない場合
         """
         # 予約を取得（管理者なので customer_id チェックなし）
-        reservation = self.db.query(Reservation).filter(
-            Reservation.id == reservation_id
-        ).first()
+        reservation = (
+            self.db.query(Reservation).filter(Reservation.id == reservation_id).first()
+        )
 
         if not reservation:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="指定された予約が見つかりません"
+                detail="指定された予約が見つかりません",
             )
 
         # ステータス更新
         reservation.status = new_status
-        
+
         # 変更理由がある場合はspecial_requestsに追加
         if reason:
             current_requests = reservation.special_requests or ""
@@ -447,6 +445,7 @@ class ReservationService:
 
         # 変更期限チェック（借り出し24時間前まで）
         from datetime import timedelta, timezone
+
         change_deadline = reservation.pickup_datetime - timedelta(hours=24)
         if datetime.now(timezone.utc) >= change_deadline:
             raise HTTPException(
@@ -457,12 +456,12 @@ class ReservationService:
         # 更新データ適用
         needs_price_recalc = False
         update_dict = update_data.model_dump(exclude_unset=True)
-        
+
         # 日時変更の場合は車両空き状況をチェック
         if "pickup_datetime" in update_dict or "return_datetime" in update_dict:
             new_pickup = update_dict.get("pickup_datetime", reservation.pickup_datetime)
             new_return = update_dict.get("return_datetime", reservation.return_datetime)
-            
+
             if not self._is_vehicle_available(
                 str(reservation.vehicle_id), new_pickup, new_return, reservation_id
             ):
@@ -479,21 +478,31 @@ class ReservationService:
         # データ更新
         for field, value in update_dict.items():
             setattr(reservation, field, value)
-        
+
         reservation.updated_at = datetime.now(timezone.utc)
 
         # 料金再計算（日時・店舗変更時）
         if needs_price_recalc:
             # 簡単な料金再計算（実際はもっと複雑）
-            duration_hours = (reservation.return_datetime - reservation.pickup_datetime).total_seconds() / 3600
-            vehicle = self.db.query(Vehicle).filter(Vehicle.id == reservation.vehicle_id).first()
+            duration_hours = (
+                reservation.return_datetime - reservation.pickup_datetime
+            ).total_seconds() / 3600
+            vehicle = (
+                self.db.query(Vehicle)
+                .filter(Vehicle.id == reservation.vehicle_id)
+                .first()
+            )
             if vehicle:
-                reservation.base_rate = vehicle.daily_rate * Decimal(str(duration_hours / 24))
+                reservation.base_rate = vehicle.daily_rate * Decimal(
+                    str(duration_hours / 24)
+                )
                 # 簡略化した総額再計算
-                option_fees = reservation.option_fees or Decimal('0')
-                insurance_fee = reservation.insurance_fee or Decimal('0')
-                tax_amount = reservation.tax_amount or Decimal('0')
-                reservation.total_amount = reservation.base_rate + option_fees + insurance_fee + tax_amount
+                option_fees = reservation.option_fees or Decimal("0")
+                insurance_fee = reservation.insurance_fee or Decimal("0")
+                tax_amount = reservation.tax_amount or Decimal("0")
+                reservation.total_amount = (
+                    reservation.base_rate + option_fees + insurance_fee + tax_amount
+                )
 
         self.db.commit()
         self.db.refresh(reservation)
@@ -519,12 +528,12 @@ class ReservationService:
         Returns:
             {"available": bool, "reason": str, "conflicting_reservations": List}
         """
-        # デバッグログ
-        print(f"DEBUG: _check_vehicle_availability called with:")
-        print(f"  vehicle_id: {vehicle_id}")
-        print(f"  pickup_datetime: {pickup_datetime}")
-        print(f"  return_datetime: {return_datetime}")
-        
+        # デバッグログ（本番では削除推奨）
+        # print(f"DEBUG: _check_vehicle_availability called with:")
+        # print(f"  vehicle_id: {vehicle_id}")
+        # print(f"  pickup_datetime: {pickup_datetime}")
+        # print(f"  return_datetime: {return_datetime}")
+
         query = self.db.query(Reservation).filter(
             Reservation.vehicle_id == vehicle_id,
             Reservation.status.in_(["pending", "confirmed", "active"]),
@@ -538,36 +547,50 @@ class ReservationService:
             query = query.filter(Reservation.id != exclude_reservation_id)
 
         conflicting_reservations = query.all()
-        
+
         if conflicting_reservations:
             # 重複する予約の詳細を取得
             conflict_details = []
             for reservation in conflicting_reservations:
-                conflict_details.append({
-                    "confirmation_number": reservation.confirmation_number,
-                    "pickup_datetime": reservation.pickup_datetime,
-                    "return_datetime": reservation.return_datetime,
-                    "status": reservation.status
-                })
-            
+                conflict_details.append(
+                    {
+                        "confirmation_number": reservation.confirmation_number,
+                        "pickup_datetime": reservation.pickup_datetime,
+                        "return_datetime": reservation.return_datetime,
+                        "status": reservation.status,
+                    }
+                )
+
             # 最も近い重複予約を特定
-            closest_conflict = min(conflicting_reservations, 
-                                 key=lambda r: abs((r.pickup_datetime - pickup_datetime).total_seconds()))
-            
-            reason = f"指定された期間（{pickup_datetime.strftime('%Y年%m月%d日 %H:%M')} ～ {return_datetime.strftime('%Y年%m月%d日 %H:%M')}）は、既存の予約（確認番号: {closest_conflict.confirmation_number}）と重複しています。"
-            reason += f" 既存の予約期間: {closest_conflict.pickup_datetime.strftime('%Y年%m月%d日 %H:%M')} ～ {closest_conflict.return_datetime.strftime('%Y年%m月%d日 %H:%M')}"
-            
+            closest_conflict = min(
+                conflicting_reservations,
+                key=lambda r: abs(
+                    (r.pickup_datetime - pickup_datetime).total_seconds()
+                ),
+            )
+
+            pickup_str = pickup_datetime.strftime("%Y年%m月%d日 %H:%M")
+            return_str = return_datetime.strftime("%Y年%m月%d日 %H:%M")
+            existing_pickup = closest_conflict.pickup_datetime.strftime(
+                "%Y年%m月%d日 %H:%M"
+            )
+            existing_return = closest_conflict.return_datetime.strftime(
+                "%Y年%m月%d日 %H:%M"
+            )
+
+            reason = (
+                f"指定された期間（{pickup_str} ～ {return_str}）は、"
+                f"既存の予約（確認番号: {closest_conflict.confirmation_number}）と重複しています。"
+            )
+            reason += f" 既存の予約期間: {existing_pickup} ～ {existing_return}"
+
             return {
                 "available": False,
                 "reason": reason,
-                "conflicting_reservations": conflict_details
+                "conflicting_reservations": conflict_details,
             }
-        
-        return {
-            "available": True,
-            "reason": "",
-            "conflicting_reservations": []
-        }
+
+        return {"available": True, "reason": "", "conflicting_reservations": []}
 
     def _is_vehicle_available(
         self,

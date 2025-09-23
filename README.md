@@ -1,64 +1,68 @@
-# 🚗 JP Rental Car Demo
+# 🚗 DriveRev - レンタカーサービス デモ
 
-日本のレンタカーサービスのデモアプリケーションです。本格的なフルスタック Web アプリケーションの例として作成されました。
+DriveRev は日本のレンタカーサービスのデモアプリケーションです。本格的なフルスタック Web アプリケーションの例として作成されました。
 
 ## 🚀 クイックスタート
 
 ### 前提条件
-- Docker
-- Docker Compose
+
+- Podman
 
 ### 起動方法
 
 1. **リポジトリをクローン**
+
    ```bash
    git clone <このリポジトリのURL>
-   cd JP-RentalCar-demo
+   cd devrev-demo
    ```
 
 2. **環境変数ファイルをコピー**
+
    ```bash
    cp env.example .env
    ```
 
 3. **アプリケーションを起動**
+
    ```bash
-   docker-compose up -d
+   podman compose up -d
    ```
 
 4. **アクセス**
-   - **フロントエンド**: http://localhost:3000
-   - **バックエンド API**: http://localhost:8000
-   - **API ドキュメント**: http://localhost:8000/docs
+   - **Web アプリ**: http://localhost:3000
+   - **API**: http://localhost:8000
+   - **API ドキュメント (Swagger)**: http://localhost:8000/docs
+   - **API ドキュメント (ReDoc)**: http://localhost:8000/redoc
 
 ## 🔑 デモアカウント
 
 以下のアカウントでログインしてお試しいただけます：
 
 ### 管理者アカウント
+
 - **Email**: admin@driverev.jp
 - **Password**: AdminPass123!
 
 ### 顧客アカウント
-- **Email**: customer1@driverev.jp
+
+- **Email**: customer1@example.com
 - **Password**: Customer123!
 
-- **Email**: customer2@driverev.jp
+- **Email**: customer2@example.com
 - **Password**: Customer456!
-
-### スタッフアカウント
-- **Email**: staff@driverev.jp
-- **Password**: StaffPass123!
 
 ## 🏗️ 技術スタック
 
 ### フロントエンド
+
 - **Next.js 14** - React フレームワーク
 - **TypeScript** - 型安全な JavaScript
 - **Tailwind CSS** - ユーティリティファーストの CSS フレームワーク
 - **shadcn/ui** - モダンな UI コンポーネント
 
 ### バックエンド
+
 - **FastAPI** - 高パフォーマンス Python API フレームワーク
 - **PostgreSQL** - リレーショナルデータベース
 - **Redis** - キャッシュとセッション管理
@@ -66,32 +70,49 @@
 - **JWT** - 認証システム
 
 ### インフラ
-- **Docker** - コンテナ化
-- **Docker Compose** - マルチコンテナ管理
+
+- **Podman** - コンテナ化
+- **Podman Compose** - マルチコンテナ管理
+
+### アーキテクチャ
+
+このアプリケーションは以下の 4 つのコンテナで構成されています：
+
+- **Frontend** (Next.js) - ポート 3000 で動作する Web アプリケーション
+- **Backend** (FastAPI) - ポート 8000 で動作する API サーバー
+- **PostgreSQL** - ポート 5432 で動作するデータベース
+- **Redis** - ポート 6379 で動作するキャッシュサーバー
+
+各コンテナは独立したネットワークで通信し、データは永続化ボリュームに保存されます。
 
 ## 📱 主な機能
 
 ### 🔐 認証・認可
+
 - ユーザー登録・ログイン
 - JWT トークンベース認証
-- ロールベースアクセス制御（管理者・スタッフ・顧客）
+- ロールベースアクセス制御（管理者・顧客）
 
 ### 🚗 車両管理
+
 - 車両一覧・詳細表示
 - 車種・タイプ別フィルター
 - 車両在庫管理
 
 ### 📅 予約システム
+
 - 日時・場所指定での予約
 - 予約状況確認
 - 予約変更・キャンセル
 
 ### 🏪 店舗管理
+
 - 複数店舗対応
 - 営業時間管理
 - 店舗別在庫管理
 
 ### 👨‍💼 管理機能
+
 - ダッシュボード
 - ユーザー管理
 - 車両管理
@@ -104,21 +125,15 @@
 
 アプリケーション起動時に自動的にサンプルデータが投入されます。
 
-### API ドキュメント
-
-FastAPI の自動生成ドキュメントが利用できます：
-- **Swagger UI**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
-
 ### ログ確認
 
 ```bash
 # 全サービスのログ
-docker-compose logs
+podman compose logs
 
 # 特定サービスのログ
-docker-compose logs backend
-docker-compose logs frontend
+podman compose logs backend
+podman compose logs frontend
 ```
 
 ## 📄 ライセンス

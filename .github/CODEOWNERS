@@ -1,0 +1,112 @@
+# DriveRev CODEOWNERS Configuration
+
+# Global owners - すべてのファイルのデフォルトオーナー
+* @takanorisuzuki
+
+# Frontend related files
+/frontend/ @takanorisuzuki
+*.tsx @takanorisuzuki
+*.ts @takanorisuzuki
+*.jsx @takanorisuzuki
+*.js @takanorisuzuki
+*.css @takanorisuzuki
+*.scss @takanorisuzuki
+*.json @takanorisuzuki
+
+# Backend related files
+/backend/ @takanorisuzuki
+*.py @takanorisuzuki
+*.pyi @takanorisuzuki
+
+# Database related files
+/backend/alembic/ @takanorisuzuki
+*.sql @takanorisuzuki
+*.db @takanorisuzuki
+
+# Configuration files
+*.yml @takanorisuzuki
+*.yaml @takanorisuzuki
+*.json @takanorisuzuki
+*.toml @takanorisuzuki
+*.ini @takanorisuzuki
+*.cfg @takanorisuzuki
+
+# Docker related files
+Dockerfile @takanorisuzuki
+docker-compose.yml @takanorisuzuki
+compose.yml @takanorisuzuki
+.dockerignore @takanorisuzuki
+
+# CI/CD related files
+/.github/ @takanorisuzuki
+*.yml @takanorisuzuki
+*.yaml @takanorisuzuki
+
+# Documentation
+*.md @takanorisuzuki
+/docs/ @takanorisuzuki
+README.md @takanorisuzuki
+CHANGELOG.md @takanorisuzuki
+LICENSE @takanorisuzuki
+
+# Environment files
+.env* @takanorisuzuki
+env.example @takanorisuzuki
+
+# Package management
+package.json @takanorisuzuki
+package-lock.json @takanorisuzuki
+requirements.txt @takanorisuzuki
+Pipfile @takanorisuzuki
+Pipfile.lock @takanorisuzuki
+
+# Build and deployment
+next.config.js @takanorisuzuki
+tailwind.config.js @takanorisuzuki
+postcss.config.js @takanorisuzuki
+tsconfig.json @takanorisuzuki
+tsconfig.tsbuildinfo @takanorisuzuki
+
+# Testing
+*.test.ts @takanorisuzuki
+*.test.tsx @takanorisuzuki
+*.test.js @takanorisuzuki
+*.test.jsx @takanorisuzuki
+*.spec.ts @takanorisuzuki
+*.spec.tsx @takanorisuzuki
+*.spec.js @takanorisuzuki
+*.spec.jsx @takanorisuzuki
+*.test.py @takanorisuzuki
+*.spec.py @takanorisuzuki
+
+# Assets
+/assets/ @takanorisuzuki
+*.jpg @takanorisuzuki
+*.jpeg @takanorisuzuki
+*.png @takanorisuzuki
+*.gif @takanorisuzuki
+*.svg @takanorisuzuki
+*.ico @takanorisuzuki
+
+# Logs and temporary files
+*.log @takanorisuzuki
+*.tmp @takanorisuzuki
+*.temp @takanorisuzuki
+*.bak @takanorisuzuki
+*.backup @takanorisuzuki
+
+# IDE and editor files
+.vscode/ @takanorisuzuki
+.idea/ @takanorisuzuki
+*.swp @takanorisuzuki
+*.swo @takanorisuzuki
+*~ @takanorisuzuki
+
+# OS generated files
+.DS_Store @takanorisuzuki
+.DS_Store? @takanorisuzuki
+._* @takanorisuzuki
+.Spotlight-V100 @takanorisuzuki
+.Trashes @takanorisuzuki
+ehthumbs.db @takanorisuzuki
+Thumbs.db @takanorisuzuki

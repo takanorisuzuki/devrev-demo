@@ -4,8 +4,10 @@ TDD Green Phase - テストを通すための最小実装
 ビジネスロジック層
 """
 
-from typing import Optional, List
+from typing import List, Optional
+
 from sqlalchemy.orm import Session, joinedload
+
 from app.models.vehicle import Vehicle
 from app.schemas.vehicle import VehicleCreate, VehicleUpdate
 
@@ -106,7 +108,9 @@ class VehicleService:
         # ページング適用と結果返却
         return query.offset(skip).limit(limit).all()
 
-    def update_vehicle(self, vehicle_id: str, vehicle_data: VehicleUpdate) -> Optional[Vehicle]:
+    def update_vehicle(
+        self, vehicle_id: str, vehicle_data: VehicleUpdate
+    ) -> Optional[Vehicle]:
         """
         車両情報を更新する
 

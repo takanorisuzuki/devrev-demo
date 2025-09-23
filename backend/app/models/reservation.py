@@ -4,22 +4,23 @@ TDD Red Phase - 失敗テストから開始
 TECHNICAL_SPEC.md完全準拠実装
 """
 
+import uuid
+
 from sqlalchemy import (
-    Column,
-    String,
-    Integer,
-    Boolean,
     DECIMAL,
-    DateTime,
-    Text,
-    ForeignKey,
     JSON,
+    Column,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
 )
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
+
 from app.db.database import Base
-import uuid
 
 
 class Reservation(Base):

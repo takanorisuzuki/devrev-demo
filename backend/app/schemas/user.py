@@ -4,7 +4,9 @@
 
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, EmailStr, Field, field_validator, ConfigDict
+
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+
 from app.models.user import UserRole
 
 
@@ -83,12 +85,12 @@ class UserResponse(UserBase):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
-    
-    @field_validator('id', mode='before')
+
+    @field_validator("id", mode="before")
     @classmethod
     def convert_uuid_to_str(cls, v):
         """UUIDオブジェクトを文字列に変換"""
-        if hasattr(v, 'hex'):  # UUIDオブジェクトの場合
+        if hasattr(v, "hex"):  # UUIDオブジェクトの場合
             return str(v)
         return v
 
@@ -110,7 +112,9 @@ class PasswordResetConfirm(BaseModel):
     """パスワードリセット確定スキーマ"""
 
     token: str = Field(..., description="リセットトークン")
-    new_password: str = Field(..., min_length=8, max_length=128, description="新しいパスワード")
+    new_password: str = Field(
+        ..., min_length=8, max_length=128, description="新しいパスワード"
+    )
 
     @field_validator("new_password")
     def validate_new_password(cls, v):
@@ -129,8 +133,12 @@ class PasswordResetConfirm(BaseModel):
 class AdminPasswordReset(BaseModel):
     """管理者によるパスワードリセットスキーマ"""
 
-    new_password: str = Field(..., min_length=8, max_length=128, description="新しいパスワード")
-    reason: Optional[str] = Field(None, max_length=200, description="パスワードリセット理由")
+    new_password: str = Field(
+        ..., min_length=8, max_length=128, description="新しいパスワード"
+    )
+    reason: Optional[str] = Field(
+        None, max_length=200, description="パスワードリセット理由"
+    )
 
     @field_validator("new_password")
     def validate_new_password(cls, v):
@@ -149,7 +157,9 @@ class AdminPasswordReset(BaseModel):
 class AdminUserCreate(UserBase):
     """管理者による新規ユーザー作成スキーマ"""
 
-    password: str = Field(..., min_length=8, max_length=128, description="初期パスワード")
+    password: str = Field(
+        ..., min_length=8, max_length=128, description="初期パスワード"
+    )
     role: UserRole = Field(..., description="ユーザーロール")
     is_active: bool = Field(True, description="アクティブ状態")
     is_verified: bool = Field(False, description="認証状態")

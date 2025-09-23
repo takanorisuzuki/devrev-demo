@@ -4,8 +4,10 @@
 
 from datetime import datetime, timedelta, timezone
 from typing import Optional
+
 from jose import JWTError, jwt
 from passlib.context import CryptContext
+
 from app.core.config import settings
 
 # パスワードハッシュ化設定
@@ -29,14 +31,12 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     return encoded_jwt
 
 
-def create_refresh_token(email: str, role: str, expires_delta: Optional[timedelta] = None) -> str:
+def create_refresh_token(
+    email: str, role: str, expires_delta: Optional[timedelta] = None
+) -> str:
     """JWTリフレッシュトークン作成"""
-    to_encode = {
-        "sub": email,
-        "role": role,
-        "type": "refresh"
-    }
-    
+    to_encode = {"sub": email, "role": role, "type": "refresh"}
+
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
     else:
