@@ -162,7 +162,7 @@ jobs:
           category: "/language:${{matrix.language}}"
 
   # Podman イメージのセキュリティスキャン
-  podman-security-scan:
+  docker-security-scan:
     name: Podman Security Scan
     runs-on: ubuntu-latest
 
@@ -170,23 +170,20 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Podman 5.5.0
-        uses: redhat-actions/setup-podman@v1
-        with:
-          version: '5.5.0'
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v2
 
-      - name: Configure Podman for rootless
+      - name: Configure Docker
         run: |
-          echo 'unqualified-search-registries = ["docker.io"]' | sudo tee -a /etc/containers/registries.conf
-          sudo chmod 644 /etc/containers/registries.conf
+          echo "Docker is already configured in GitHub Actions"
 
-      - name: Build backend image with Podman
+      - name: Build backend image with Docker
         run: |
-          podman build -t driverev-backend:security-scan ./backend
+          docker build -t driverev-backend:security-scan ./backend
 
-      - name: Build frontend image with Podman
+      - name: Build frontend image with Docker
         run: |
-          podman build -t driverev-frontend:security-scan ./frontend
+          docker build -t driverev-frontend:security-scan ./frontend
 
       - name: Run Trivy vulnerability scanner on backend
         uses: aquasecurity/trivy-action@master
@@ -247,7 +244,7 @@ jobs:
         dependency-scan,
         code-security-scan,
         codeql-analysis,
-        podman-security-scan,
+        docker-security-scan,
         secret-scan,
       ]
     if: always()
@@ -262,7 +259,7 @@ jobs:
           echo "- Dependency Scan: ${{ needs.dependency-scan.result }}" >> security-report.md
           echo "- Code Security Scan: ${{ needs.code-security-scan.result }}" >> security-report.md
           echo "- CodeQL Analysis: ${{ needs.codeql-analysis.result }}" >> security-report.md
-          echo "- Podman Security Scan: ${{ needs.podman-security-scan.result }}" >> security-report.md
+          echo "- Podman Security Scan: ${{ needs.docker-security-scan.result }}" >> security-report.md
           echo "- Secret Detection: ${{ needs.secret-scan.result }}" >> security-report.md
           echo "" >> security-report.md
           echo "## Recommendations" >> security-report.md
