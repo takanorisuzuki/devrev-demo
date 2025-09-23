@@ -5,8 +5,7 @@ TDD Green Phase - テストを通すための最小実装
 
 import uuid
 
-from sqlalchemy import (DECIMAL, Boolean, Column, DateTime, ForeignKey,
-                        Integer, String)
+from sqlalchemy import DECIMAL, Boolean, Column, DateTime, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func

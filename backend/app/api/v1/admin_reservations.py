@@ -12,9 +12,11 @@ from app.api.v1.auth import get_current_user
 from app.core.auth import get_admin_user
 from app.db.database import get_db
 from app.models.user import User
-from app.schemas.reservation import (ReservationListResponse,
-                                     ReservationResponse,
-                                     ReservationStatusUpdate)
+from app.schemas.reservation import (
+    ReservationListResponse,
+    ReservationResponse,
+    ReservationStatusUpdate,
+)
 from app.services.reservation import ReservationService
 
 # 管理者予約管理ルーター
@@ -50,7 +52,8 @@ async def get_all_reservations_for_admin(
 
     - **skip**: スキップ数（ページング）
     - **limit**: 取得上限数（最大200）
-    - **status**: 予約ステータスでフィルタ（pending, confirmed, active, completed, cancelled）
+    - **status**: 予約ステータスでフィルタ
+      （pending, confirmed, active, completed, cancelled）
     - **customer_email**: 顧客メールアドレスでフィルタ（部分一致）
     - **vehicle_id**: 車両IDでフィルタ
 

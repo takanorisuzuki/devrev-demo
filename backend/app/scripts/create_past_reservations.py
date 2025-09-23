@@ -125,9 +125,7 @@ def create_reservation_data(customer, vehicle, stores):
         "special_requests": "",
         "staff_notes": "",
         "cancellation_reason": (
-            random.choice(cancellation_reasons)
-            if status == "cancelled"
-            else None
+            random.choice(cancellation_reasons) if status == "cancelled" else None
         ),
         "payment_method": "credit_card",
         "payment_status": (
@@ -151,9 +149,7 @@ def print_customer_stats(db, target_customers):
     print("\n🎯 テスト用アカウント:")
     for customer in target_customers:
         total_reservations = (
-            db.query(Reservation)
-            .filter(Reservation.customer_id == customer.id)
-            .count()
+            db.query(Reservation).filter(Reservation.customer_id == customer.id).count()
         )
         completed_reservations = (
             db.query(Reservation)
@@ -225,16 +221,12 @@ def create_past_reservations():
                 continue
 
             num_reservations = random.randint(3, 4)
-            print(
-                f"   {customer.email}: {num_reservations}件の過去の予約を作成中..."
-            )
+            print(f"   {customer.email}: {num_reservations}件の過去の予約を作成中...")
 
             reservations_data = []
             for i in range(num_reservations):
                 vehicle = random.choice(vehicles)
-                reservation_data = create_reservation_data(
-                    customer, vehicle, stores
-                )
+                reservation_data = create_reservation_data(customer, vehicle, stores)
                 reservations_data.append(reservation_data)
 
             # データベースに挿入

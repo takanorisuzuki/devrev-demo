@@ -13,10 +13,12 @@ from sqlalchemy.orm import Session
 from app.models.reservation import Reservation
 from app.models.store import Store
 from app.models.vehicle import Vehicle
-from app.schemas.availability import (AvailabilitySearchRequest,
-                                      AvailableVehicle,
-                                      VehicleAvailabilityRequest,
-                                      VehicleAvailabilityResponse)
+from app.schemas.availability import (
+    AvailabilitySearchRequest,
+    AvailableVehicle,
+    VehicleAvailabilityRequest,
+    VehicleAvailabilityResponse,
+)
 from app.utils.store_mapping import StoreMapping
 
 

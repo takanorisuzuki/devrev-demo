@@ -16,8 +16,11 @@ from app.models.reservation import Reservation
 from app.models.store import Store
 from app.models.user import User
 from app.models.vehicle import Vehicle
-from app.schemas.reservation import (ReservationCreate, ReservationQuote,
-                                     ReservationUpdate)
+from app.schemas.reservation import (
+    ReservationCreate,
+    ReservationQuote,
+    ReservationUpdate,
+)
 from app.services.price_calculator import PriceCalculator
 
 
@@ -566,13 +569,13 @@ class ReservationService:
                 ),
             )
 
-            pickup_str = pickup_datetime.strftime('%Y年%m月%d日 %H:%M')
-            return_str = return_datetime.strftime('%Y年%m月%d日 %H:%M')
+            pickup_str = pickup_datetime.strftime("%Y年%m月%d日 %H:%M")
+            return_str = return_datetime.strftime("%Y年%m月%d日 %H:%M")
             existing_pickup = closest_conflict.pickup_datetime.strftime(
-                '%Y年%m月%d日 %H:%M'
+                "%Y年%m月%d日 %H:%M"
             )
             existing_return = closest_conflict.return_datetime.strftime(
-                '%Y年%m月%d日 %H:%M'
+                "%Y年%m月%d日 %H:%M"
             )
 
             reason = (

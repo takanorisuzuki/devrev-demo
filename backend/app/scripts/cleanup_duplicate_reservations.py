@@ -89,8 +89,7 @@ def cleanup_duplicate_reservations():
 
             for reservation in reservations_to_delete:
                 print(
-                    f"   🗑️  削除: {reservation.id} "
-                    f"(作成: {reservation.created_at})"
+                    f"   🗑️  削除: {reservation.id} " f"(作成: {reservation.created_at})"
                 )
                 db.delete(reservation)
                 deleted_count += 1

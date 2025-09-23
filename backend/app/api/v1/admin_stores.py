@@ -13,8 +13,7 @@ from app.api.v1.auth import get_current_user
 from app.core.auth import get_admin_user
 from app.db.database import get_db
 from app.models.user import User
-from app.schemas.store import (StoreCreate, StoreListResponse, StoreResponse,
-                               StoreUpdate)
+from app.schemas.store import StoreCreate, StoreListResponse, StoreResponse, StoreUpdate
 from app.services.store import StoreService
 from app.utils.validators import validate_uuid_format
 

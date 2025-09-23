@@ -14,16 +14,22 @@ from app.api.v1.auth import get_current_user
 from app.core.auth import get_admin_user
 from app.db.database import get_db
 from app.models.user import User
-from app.schemas.availability import (AvailabilitySearchRequest,
-                                      AvailabilitySearchResponse,
-                                      VehicleAvailabilityRequest,
-                                      VehicleAvailabilityResponse)
-from app.schemas.vehicle import (StoreInfo, VehicleCreate, VehicleListResponse,
-                                 VehicleResponse, VehicleUpdate)
+from app.schemas.availability import (
+    AvailabilitySearchRequest,
+    AvailabilitySearchResponse,
+    VehicleAvailabilityRequest,
+    VehicleAvailabilityResponse,
+)
+from app.schemas.vehicle import (
+    StoreInfo,
+    VehicleCreate,
+    VehicleListResponse,
+    VehicleResponse,
+    VehicleUpdate,
+)
 from app.services.availability import AvailabilityService
 from app.services.vehicle import VehicleService
-from app.utils.validators import (validate_license_plate_format,
-                                  validate_uuid_format)
+from app.utils.validators import validate_license_plate_format, validate_uuid_format
 
 # Vehicle API ルーター
 router = APIRouter()

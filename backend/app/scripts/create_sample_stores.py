@@ -161,8 +161,7 @@ def create_sample_stores():
             existing_store = store_service.get_store_by_code(store_data.code)
             if existing_store:
                 print(
-                    f"⏭️  店舗コード '{store_data.code}' "
-                    "は既に存在します - スキップ"
+                    f"⏭️  店舗コード '{store_data.code}' " "は既に存在します - スキップ"
                 )
                 continue
 
@@ -179,10 +178,7 @@ def create_sample_stores():
         for store in all_stores:
             airport_flag = "✈️" if store.is_airport else ""
             station_flag = "🚃" if store.is_station else ""
-            print(
-                f"  - {store.name} ({store.code}) "
-                f"{airport_flag}{station_flag}"
-            )
+            print(f"  - {store.name} ({store.code}) " f"{airport_flag}{station_flag}")
 
     except Exception as e:
         print(f"❌ エラーが発生しました: {e}")

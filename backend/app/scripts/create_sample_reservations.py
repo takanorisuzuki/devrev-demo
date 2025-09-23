@@ -79,8 +79,7 @@ def create_single_reservation(customer, vehicles, stores, base_date):
     pricing = calculate_reservation_pricing(vehicle, pickup_date, return_date)
 
     confirmation_number = (
-        f"RES{pickup_date.strftime('%Y%m%d')}"
-        f"{str(uuid4())[:8].upper()}"
+        f"RES{pickup_date.strftime('%Y%m%d')}" f"{str(uuid4())[:8].upper()}"
     )
 
     return {

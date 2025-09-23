@@ -13,14 +13,18 @@ from sqlalchemy.orm import Session
 from app.models.reservation import Reservation
 from app.models.store import Store
 from app.models.vehicle import Vehicle
-from app.schemas.reservation_stats import (CategoryBreakdown,
-                                           CategoryUtilization, PeriodInfo,
-                                           PeriodUtilization,
-                                           ReservationStatsResponse,
-                                           RevenueSummary, StatusBreakdown,
-                                           StoreBreakdown,
-                                           VehicleUtilizationItem,
-                                           VehicleUtilizationResponse)
+from app.schemas.reservation_stats import (
+    CategoryBreakdown,
+    CategoryUtilization,
+    PeriodInfo,
+    PeriodUtilization,
+    ReservationStatsResponse,
+    RevenueSummary,
+    StatusBreakdown,
+    StoreBreakdown,
+    VehicleUtilizationItem,
+    VehicleUtilizationResponse,
+)
 
 
 class ReservationStatsService:

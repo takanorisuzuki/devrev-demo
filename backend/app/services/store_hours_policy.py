@@ -9,8 +9,12 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 
 from app.models.store import Store
-from app.schemas.store_hours_policy import (StoreHours, StoreHoursResponse,
-                                            StorePolicy, StorePolicyResponse)
+from app.schemas.store_hours_policy import (
+    StoreHours,
+    StoreHoursResponse,
+    StorePolicy,
+    StorePolicyResponse,
+)
 
 logger = logging.getLogger(__name__)
 

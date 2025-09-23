@@ -4,9 +4,18 @@ API v1 ルーター統合
 
 from fastapi import APIRouter
 
-from app.api.v1 import (admin_reservations, admin_stats, admin_stores,
-                        admin_users, auth, payments, reservations, stores,
-                        system_settings, vehicles)
+from app.api.v1 import (
+    admin_reservations,
+    admin_stats,
+    admin_stores,
+    admin_users,
+    auth,
+    payments,
+    reservations,
+    stores,
+    system_settings,
+    vehicles,
+)
 
 # API v1 ルーター
 api_router = APIRouter()

@@ -6,8 +6,16 @@ TECHNICAL_SPEC.md完全準拠実装
 
 import uuid
 
-from sqlalchemy import (DECIMAL, JSON, Column, DateTime, ForeignKey,
-                        Integer, String, Text)
+from sqlalchemy import (
+    DECIMAL,
+    JSON,
+    Column,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
