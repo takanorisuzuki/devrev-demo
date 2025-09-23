@@ -1,0 +1,103 @@
+name: Dependabot Auto-Merge
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  dependabot-auto-merge:
+    name: Auto-merge Dependabot PRs
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
+
+    steps:
+    - name: Dependabot metadata
+      id: metadata
+      uses: dependabot/fetch-metadata@v2
+      with:
+        github-token: "${{ secrets.GITHUB_TOKEN }}"
+
+    - name: Auto-approve and merge safe updates
+      if: |
+        (
+          steps.metadata.outputs.update-type == 'version-update:semver-patch' ||
+          steps.metadata.outputs.dependency-type == 'direct:development' ||
+          steps.metadata.outputs.dependency-type == 'indirect' ||
+          (
+            steps.metadata.outputs.update-type == 'version-update:semver-minor' &&
+            contains(steps.metadata.outputs.dependency-names, '@types/')
+          ) ||
+          (
+            steps.metadata.outputs.update-type == 'version-update:semver-minor' &&
+            (
+              contains(steps.metadata.outputs.dependency-names, 'eslint') ||
+              contains(steps.metadata.outputs.dependency-names, 'prettier') ||
+              contains(steps.metadata.outputs.dependency-names, 'typescript') ||
+              contains(steps.metadata.outputs.dependency-names, 'tailwindcss') ||
+              contains(steps.metadata.outputs.dependency-names, 'autoprefixer') ||
+              contains(steps.metadata.outputs.dependency-names, 'postcss')
+            )
+          ) ||
+          (
+            steps.metadata.outputs.package-ecosystem == 'github-actions' &&
+            (
+              steps.metadata.outputs.update-type == 'version-update:semver-patch' ||
+              steps.metadata.outputs.update-type == 'version-update:semver-minor'
+            )
+          )
+        )
+      run: |
+        echo "Auto-approving and merging safe dependency update"
+        gh pr review --approve "$PR_URL"
+
+        # Wait for CI checks to complete
+        echo "Waiting for CI checks to complete..."
+        timeout 600 bash -c '
+          while true; do
+            status=$(gh pr view "$PR_URL" --json statusCheckRollup --jq ".statusCheckRollup[] | select(.conclusion != \"SUCCESS\" and .conclusion != \"SKIPPED\" and .conclusion != \"NEUTRAL\") | .conclusion")
+            if [ -z "$status" ]; then
+              echo "All checks passed!"
+              break
+            fi
+            echo "Waiting for checks to complete..."
+            sleep 30
+          done
+        '
+
+        # Merge the PR
+        gh pr merge --auto --squash "$PR_URL"
+      env:
+        PR_URL: ${{github.event.pull_request.html_url}}
+        GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+
+    - name: Comment on manual review required
+      if: |
+        steps.metadata.outputs.update-type == 'version-update:semver-major' ||
+        (
+          steps.metadata.outputs.dependency-type == 'direct:production' &&
+          (
+            contains(steps.metadata.outputs.dependency-names, 'react') ||
+            contains(steps.metadata.outputs.dependency-names, 'next') ||
+            contains(steps.metadata.outputs.dependency-names, 'fastapi') ||
+            contains(steps.metadata.outputs.dependency-names, 'sqlalchemy') ||
+            contains(steps.metadata.outputs.dependency-names, 'alembic') ||
+            contains(steps.metadata.outputs.dependency-names, 'uvicorn') ||
+            contains(steps.metadata.outputs.dependency-names, 'pydantic')
+          )
+        )
+      run: |
+        gh pr comment "$PR_URL" --body "🔍 **Manual review required**
+
+        This update requires manual review because:
+        - Major version update or critical dependency
+        - Potential breaking changes
+        - Core framework/library update
+
+        Please review the changes carefully before merging."
+      env:
+        PR_URL: ${{github.event.pull_request.html_url}}
+        GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
