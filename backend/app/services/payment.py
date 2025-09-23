@@ -6,7 +6,7 @@ TDD Green Phase - テストを通すための最小実装
 import uuid
 from datetime import datetime
 from decimal import Decimal
-from typing import Dict, List, Optional
+from typing import Optional
 
 from fastapi import HTTPException, status
 from sqlalchemy.exc import IntegrityError

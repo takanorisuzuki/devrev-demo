@@ -9,20 +9,26 @@
 - 過去の予約データ作成
 """
 
-import os
 import subprocess
 import sys
 from pathlib import Path
 
-# プロジェクトルートをPythonパスに追加
-project_root = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(project_root))
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
-from app.db.database import SessionLocal
-from app.models.reservation import Reservation
-from app.models.store import Store
-from app.models.user import User
-from app.models.vehicle import Vehicle
+try:
+    from app.db.database import SessionLocal
+    from app.models.reservation import Reservation
+    from app.models.store import Store
+    from app.models.user import User
+    from app.models.vehicle import Vehicle
+except ImportError:  # pragma: no cover
+    if str(PROJECT_ROOT) not in sys.path:
+        sys.path.insert(0, str(PROJECT_ROOT))
+    from app.db.database import SessionLocal
+    from app.models.reservation import Reservation
+    from app.models.store import Store
+    from app.models.user import User
+    from app.models.vehicle import Vehicle
 
 
 def check_database_ready():
@@ -56,7 +62,7 @@ def check_data_exists():
         # 予約データの確認
         reservation_count = db.query(Reservation).count()
 
-        print(f"📊 現在のデータ状況:")
+        print("📊 現在のデータ状況:")
         print(f"   顧客数: {customer_count}")
         print(f"   車両数: {vehicle_count}")
         print(f"   店舗数: {store_count}")
@@ -83,7 +89,7 @@ def run_script(script_name):
         print(f"🔄 {script_name} を実行中...")
         result = subprocess.run(
             [sys.executable, "-m", f"app.scripts.{script_name}"],
-            cwd=project_root,
+            cwd=PROJECT_ROOT,
             capture_output=True,
             text=True,
         )

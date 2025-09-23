@@ -8,13 +8,18 @@ import sys
 from decimal import Decimal
 from pathlib import Path
 
-# プロジェクトルートをPythonパスに追加
-project_root = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(project_root))
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
-from app.db.database import SessionLocal
-from app.schemas.store import StoreCreate
-from app.services.store import StoreService
+try:
+    from app.db.database import SessionLocal
+    from app.schemas.store import StoreCreate
+    from app.services.store import StoreService
+except ImportError:  # pragma: no cover
+    if str(PROJECT_ROOT) not in sys.path:
+        sys.path.insert(0, str(PROJECT_ROOT))
+    from app.db.database import SessionLocal
+    from app.schemas.store import StoreCreate
+    from app.services.store import StoreService
 
 
 def create_sample_stores():

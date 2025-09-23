@@ -9,14 +9,20 @@ from pathlib import Path
 
 from sqlalchemy import and_, func
 
-# プロジェクトルートをPythonパスに追加
-project_root = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(project_root))
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
-from app.db.database import SessionLocal
-from app.models.reservation import Reservation
-from app.models.user import User
-from app.models.vehicle import Vehicle
+try:
+    from app.db.database import SessionLocal
+    from app.models.reservation import Reservation
+    from app.models.user import User
+    from app.models.vehicle import Vehicle
+except ImportError:  # pragma: no cover
+    if str(PROJECT_ROOT) not in sys.path:
+        sys.path.insert(0, str(PROJECT_ROOT))
+    from app.db.database import SessionLocal
+    from app.models.reservation import Reservation
+    from app.models.user import User
+    from app.models.vehicle import Vehicle
 
 
 def cleanup_duplicate_reservations():
