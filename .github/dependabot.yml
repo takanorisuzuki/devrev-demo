@@ -1,6 +1,16 @@
 version: 2
 # LTS-focused configuration: Blocks non-LTS versions while allowing security updates
 # Security updates automatically bypass ignore rules to ensure critical patches are applied
+
+# Common version patterns for consistency
+non_lts_node_versions: &non_lts_node_versions
+  - ">=25.0.0"
+  - "23.*"
+  - "21.*"
+  - "19.*"
+  - "17.*"
+  - "15.*"
+  - "13.*"
 updates:
   # Python dependencies (Backend)
   - package-ecosystem: "pip"
@@ -24,7 +34,7 @@ updates:
       - "backend"
       - "auto-merge-candidate"
     ignore:
-      # Block bleeding edge Python versions
+      # デフォルトですべての依存関係のメジャーアップデートをブロック
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
       # Allow specific stable frameworks to have major updates
@@ -57,7 +67,7 @@ updates:
     ignore:
       # Block non-LTS Node.js versions and related packages
       - dependency-name: "@types/node"
-        versions: [">=25.0.0", "23.*", "21.*", "19.*", "17.*", "15.*", "13.*"]
+        versions: *non_lts_node_versions
       # Block major version updates by default (require manual review)
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
@@ -140,4 +150,4 @@ updates:
     ignore:
       # Block non-LTS Node.js versions in Docker images
       - dependency-name: "node"
-        versions: [">=25.0.0", "23.*", "21.*", "19.*", "17.*", "15.*", "13.*"]
+        versions: *non_lts_node_versions
