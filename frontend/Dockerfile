@@ -1,5 +1,5 @@
 # DriveRev Frontend - Next.js Dockerfile
-FROM node:24-alpine
+FROM node:22-alpine
 
 # 作業ディレクトリを設定
 WORKDIR /app
