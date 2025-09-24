@@ -43,7 +43,7 @@
     "zustand": "^4.4.6"
   },
   "devDependencies": {
-    "@next/eslint-plugin-next": "^15.5.3",
+    "@next/eslint-plugin-next": "^15.5.4",
     "@playwright/test": "^1.40.0",
     "@tailwindcss/postcss": "^4.0.0",
     "@testing-library/jest-dom": "^6.8.0",
