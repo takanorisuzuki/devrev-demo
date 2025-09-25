@@ -1,4 +1,16 @@
 version: 2
+# LTS-focused configuration: Blocks non-LTS versions while allowing security updates
+# Security updates automatically bypass ignore rules to ensure critical patches are applied
+
+# Common version patterns for consistency
+non_lts_node_versions: &non_lts_node_versions
+  - ">=25.0.0"
+  - "23.*"
+  - "21.*"
+  - "19.*"
+  - "17.*"
+  - "15.*"
+  - "13.*"
 updates:
   # Python dependencies (Backend)
   - package-ecosystem: "pip"
@@ -21,6 +33,15 @@ updates:
       - "python"
       - "backend"
       - "auto-merge-candidate"
+    ignore:
+      # デフォルトですべての依存関係のメジャーアップデートをブロック
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+      # Allow specific stable frameworks to have major updates
+      - dependency-name: "fastapi"
+        update-types: []
+      - dependency-name: "pydantic"
+        update-types: []
 
   # Node.js dependencies (Frontend)
   - package-ecosystem: "npm"
@@ -43,6 +64,20 @@ updates:
       - "javascript"
       - "frontend"
       - "auto-merge-candidate"
+    ignore:
+      # Block non-LTS Node.js versions and related packages
+      - dependency-name: "@types/node"
+        versions: *non_lts_node_versions
+      # Block major version updates by default (require manual review)
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+      # Allow specific stable major updates for well-tested packages
+      - dependency-name: "react"
+        update-types: []
+      - dependency-name: "react-dom"
+        update-types: []
+      - dependency-name: "next"
+        update-types: []
 
   # GitHub Actions dependencies
   - package-ecosystem: "github-actions"
@@ -87,6 +122,10 @@ updates:
       - "docker"
       - "backend"
       - "auto-merge-candidate"
+    ignore:
+      # Block non-LTS Python versions in Docker images
+      - dependency-name: "python"
+        versions: [">=3.13.0", "3.12.*"]
 
   - package-ecosystem: "docker"
     directory: "/frontend"
@@ -108,3 +147,7 @@ updates:
       - "docker"
       - "frontend"
       - "auto-merge-candidate"
+    ignore:
+      # Block non-LTS Node.js versions in Docker images
+      - dependency-name: "node"
+        versions: *non_lts_node_versions
