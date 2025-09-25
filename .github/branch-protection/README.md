@@ -192,19 +192,19 @@ git push origin develop
 **mainブランチ保護**:
 ```bash
 # 実際の設定確認
-gh api repos/takanorisuzuki/devrev-demo/branches/main/protection
+gh api repos/:owner/:repo/branches/main/protection
 ```
 
 **developブランチ保護**:
 ```bash
 # 実際の設定確認
-gh api repos/takanorisuzuki/devrev-demo/branches/develop/protection
+gh api repos/:owner/:repo/branches/develop/protection
 ```
 
 **セキュリティ機能**:
 ```bash
 # セキュリティ設定確認
-gh api repos/takanorisuzuki/devrev-demo | jq '.security_and_analysis'
+gh api repos/:owner/:repo | jq '.security_and_analysis'
 ```
 
 ### 🛠️ 手動調整（必要時）
@@ -213,7 +213,7 @@ gh api repos/takanorisuzuki/devrev-demo | jq '.security_and_analysis'
 
 ```bash
 # mainブランチ設定変更例
-gh api repos/takanorisuzuki/devrev-demo/branches/main/protection \
+gh api repos/:owner/:repo/branches/main/protection \
   --method PUT \
   --input - << 'EOF'
 {
@@ -264,12 +264,12 @@ EOF
 
 ```bash
 # 現在の保護設定を確認
-gh api repos/takanorisuzuki/devrev-demo/branches/main/protection | jq '.required_status_checks'
-gh api repos/takanorisuzuki/devrev-demo/branches/develop/protection | jq '.required_status_checks'
+gh api repos/:owner/:repo/branches/main/protection | jq '.required_status_checks'
+gh api repos/:owner/:repo/branches/develop/protection | jq '.required_status_checks'
 
 # セキュリティ設定を確認
-gh api repos/takanorisuzuki/devrev-demo | jq '.security_and_analysis'
+gh api repos/:owner/:repo | jq '.security_and_analysis'
 
 # マージ設定を確認
-gh api repos/takanorisuzuki/devrev-demo | jq '{allow_squash_merge, allow_merge_commit, allow_rebase_merge, delete_branch_on_merge}'
+gh api repos/:owner/:repo | jq '{allow_squash_merge, allow_merge_commit, allow_rebase_merge, delete_branch_on_merge}'
 ```

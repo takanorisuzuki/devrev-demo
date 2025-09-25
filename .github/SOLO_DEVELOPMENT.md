@@ -86,11 +86,17 @@ gh pr create --base main --head hotfix/critical-fix
 
 ### **依存関係更新**
 ```bash
-# フロントエンド
-cd frontend && npm update && npm audit fix
+# ⚠️ 注意: 手動更新はDependabotの安定性戦略と競合する可能性があります
+# 基本的にはDependabotの自動PRを利用することを推奨
 
-# バックエンド
-cd backend && pip install -U -r requirements.txt
+# フロントエンド（パッチレベルのみ）
+cd frontend && npm update --save --save-exact
+
+# バックエンド（セキュリティアップデートのみ）
+cd backend && pip install --upgrade --upgrade-strategy only-if-needed -r requirements.txt
+
+# Dependabotが管理する更新を確認
+gh pr list --label "dependencies"
 ```
 
 ### **品質チェック**
