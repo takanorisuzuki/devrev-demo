@@ -1,81 +1,87 @@
 name: CI/CD Pipeline
 
+permissions: {}
+
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
   workflow_dispatch:
     inputs:
       branch:
-        description: 'Branch to run on'
+        description: "Branch to run on"
         required: false
-        default: 'develop'
+        default: "develop"
 
 env:
-  NODE_VERSION: '20'
-  PYTHON_VERSION: '3.11'
+  NODE_VERSION: "20"
+  PYTHON_VERSION: "3.11"
   POSTGRES_PASSWORD: postgres123
   SECRET_KEY: test-secret-key
-  FORCE_CACHE_REFRESH: 'true'
+  FORCE_CACHE_REFRESH: "true"
 
 jobs:
   # フロントエンド（Next.js）のテストとビルド
   frontend:
     name: Frontend Tests & Build
     runs-on: ubuntu-latest
-    
+    permissions:
+      contents: read
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v5
+      - name: Checkout code
+        uses: actions/checkout@v5
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ env.NODE_VERSION }}
-        cache: 'npm'
-        cache-dependency-path: frontend/package-lock.json
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
 
-    - name: Install dependencies
-      working-directory: ./frontend
-      run: npm ci
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: npm ci
 
-    - name: Type check
-      working-directory: ./frontend
-      run: |
-        echo "Current directory: $(pwd)"
-        echo "Files in lib directory:"
-        ls -la lib/
-        echo "TypeScript configuration:"
-        cat tsconfig.json
-        echo "Running type check with verbose output:"
-        npx tsc --noEmit --listFiles | head -20
+      - name: Type check
+        working-directory: ./frontend
+        run: |
+          echo "Current directory: $(pwd)"
+          echo "Files in lib directory:"
+          ls -la lib/
+          echo "TypeScript configuration:"
+          cat tsconfig.json
+          echo "Running type check with verbose output:"
+          # `head` causes SIGPIPE under pipefail, so keep the pipeline happy with sed
+          npx tsc --noEmit --listFiles | sed -n '1,20p'
 
-    - name: Lint
-      working-directory: ./frontend
-      run: npm run lint
+      - name: Lint
+        working-directory: ./frontend
+        run: npm run lint
 
-    - name: Run tests with coverage
-      working-directory: ./frontend
-      run: npm run test:coverage
+      - name: Run tests with coverage
+        working-directory: ./frontend
+        run: npm run test:coverage
 
-    - name: Build application
-      working-directory: ./frontend
-      run: npm run build
+      - name: Build application
+        working-directory: ./frontend
+        run: npm run build
 
-    - name: Upload coverage reports
-      uses: codecov/codecov-action@v4
-      env:
-        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-      with:
-        directory: ./frontend/coverage
-        flags: frontend
-        name: frontend-coverage
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v4
+        with:
+          directory: ./frontend/coverage
+          flags: frontend
+          name: frontend-coverage
+          token: ${{ secrets.CODECOV_TOKEN }}
 
   # バックエンド（FastAPI）のテストとビルド
   backend:
     name: Backend Tests & Build
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     services:
       postgres:
@@ -102,130 +108,133 @@ jobs:
           - 6379:6379
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v5
+      - name: Checkout code
+        uses: actions/checkout@v5
 
-    - name: Setup Python
-      uses: actions/setup-python@v6
-      with:
-        python-version: ${{ env.PYTHON_VERSION }}
-        cache: 'pip'
-        cache-dependency-path: backend/requirements.txt
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+          cache-dependency-path: backend/requirements.txt
 
-    - name: Install dependencies
-      working-directory: ./backend
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
+      - name: Install dependencies
+        working-directory: ./backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
-    - name: Run linting
-      working-directory: ./backend
-      run: |
-        flake8 app/ --max-line-length=88 --extend-ignore=E203,W503
-        black --check app/
-        isort --check-only --profile=black app/
-        # mypy app/ # 一時的に無効化 - 型エラーが多すぎるため
+      - name: Run linting
+        working-directory: ./backend
+        run: |
+          flake8 app/ --max-line-length=88 --extend-ignore=E203,W503
+          black --check app/
+          isort --check-only --profile=black app/
+          # mypy app/ # 一時的に無効化 - 型エラーが多すぎるため
 
-    - name: Run tests
-      working-directory: ./backend
-      env:
-        DATABASE_URL: postgresql://postgres:${{ env.POSTGRES_PASSWORD }}@localhost:5432/driverev_test_db
-        REDIS_URL: redis://localhost:6379/0
-        SECRET_KEY: ${{ env.SECRET_KEY }}
-        ENVIRONMENT: test
-      run: |
-        pytest --cov=app --cov-report=xml --cov-report=html
+      - name: Run tests
+        working-directory: ./backend
+        env:
+          DATABASE_URL: postgresql://postgres:${{ env.POSTGRES_PASSWORD }}@localhost:5432/driverev_test_db
+          REDIS_URL: redis://localhost:6379/0
+          SECRET_KEY: ${{ env.SECRET_KEY }}
+          ENVIRONMENT: test
+        run: |
+          pytest --cov=app --cov-report=xml --cov-report=html
 
-    - name: Upload coverage reports
-      uses: codecov/codecov-action@v4
-      env:
-        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-      with:
-        directory: ./backend
-        flags: backend
-        name: backend-coverage
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v4
+        with:
+          directory: ./backend
+          flags: backend
+          name: backend-coverage
+          token: ${{ secrets.CODECOV_TOKEN }}
 
   # Docker ビルドテスト
   docker-build:
     name: Docker Build Test
     runs-on: ubuntu-latest
     needs: [frontend, backend]
+    permissions:
+      contents: read
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v5
+      - name: Checkout code
+        uses: actions/checkout@v5
 
-    - name: Setup Docker Buildx
-      uses: docker/setup-buildx-action@v2
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v2
 
-    - name: Build backend image with Docker
-      run: |
-        docker build -t driverev-backend:test ./backend
+      - name: Build backend image with Docker
+        run: |
+          docker build -t driverev-backend:test ./backend
 
-    - name: Build frontend image with Docker
-      run: |
-        docker build -t driverev-frontend:test ./frontend
+      - name: Build frontend image with Docker
+        run: |
+          docker build -t driverev-frontend:test ./frontend
 
-    - name: Test images
-      run: |
-        docker images
-        docker inspect driverev-backend:test
-        docker inspect driverev-frontend:test
+      - name: Test images
+        run: |
+          docker images
+          docker inspect driverev-backend:test
+          docker inspect driverev-frontend:test
 
-    - name: Export images as artifacts
-      run: |
-        docker save -o backend.tar driverev-backend:test
-        docker save -o frontend.tar driverev-frontend:test
+      - name: Export images as artifacts
+        run: |
+          docker save -o backend.tar driverev-backend:test
+          docker save -o frontend.tar driverev-frontend:test
 
-    - name: Upload docker images
-      uses: actions/upload-artifact@v4
-      with:
-        name: docker-images
-        path: |
-          backend.tar
-          frontend.tar
+      - name: Upload docker images
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-images
+          path: |
+            backend.tar
+            frontend.tar
 
   # 統合テスト（Docker Compose）
   integration-test:
     name: Integration Tests
     runs-on: ubuntu-latest
     needs: [docker-build]
+    permissions:
+      contents: read
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v5
+      - name: Checkout code
+        uses: actions/checkout@v5
 
-    - name: Setup Docker Buildx
-      uses: docker/setup-buildx-action@v2
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v2
 
-    - name: Download docker images
-      uses: actions/download-artifact@v4
-      with:
-        name: docker-images
-        path: ./artifacts
+      - name: Download docker images
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-images
+          path: ./artifacts
 
-    - name: Load docker images
-      run: |
-        docker load -i ./artifacts/backend.tar
-        docker load -i ./artifacts/frontend.tar
+      - name: Load docker images
+        run: |
+          docker load -i ./artifacts/backend.tar
+          docker load -i ./artifacts/frontend.tar
 
-    - name: Start services with Docker Compose
-      run: |
-        PROJECT=devrev-${{ github.run_id }}
-        docker compose -f .github/compose.ci.yml -p "$PROJECT" up -d --wait --wait-timeout 180 backend
+      - name: Start services with Docker Compose
+        run: |
+          PROJECT=devrev-${{ github.run_id }}
+          docker compose -f .github/compose.ci.yml -p "$PROJECT" up -d --wait --wait-timeout 180 backend
 
-    - name: Run integration tests
-      run: |
-        PROJECT=devrev-${{ github.run_id }}
-        # backend のヘルスチェック（コンテナ内のcurlで確認）
-        docker compose -f .github/compose.ci.yml -p "$PROJECT" exec backend curl -fsS http://localhost:8000/health
-        echo "Backend health check passed"
+      - name: Run integration tests
+        run: |
+          PROJECT=devrev-${{ github.run_id }}
+          # backend のヘルスチェック（コンテナ内のcurlで確認）
+          docker compose -f .github/compose.ci.yml -p "$PROJECT" exec backend curl -fsS http://localhost:8000/health
+          echo "Backend health check passed"
 
-    - name: Cleanup
-      if: always()
-      run: |
-        PROJECT=devrev-${{ github.run_id }}
-        docker compose -f .github/compose.ci.yml -p "$PROJECT" down
+      - name: Cleanup
+        if: always()
+        run: |
+          PROJECT=devrev-${{ github.run_id }}
+          docker compose -f .github/compose.ci.yml -p "$PROJECT" down
 
   # デプロイ（mainブランチのみ）
   deploy:
@@ -233,14 +242,16 @@ jobs:
     runs-on: ubuntu-latest
     needs: [frontend, backend, docker-build, integration-test]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: read
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v5
+      - name: Checkout code
+        uses: actions/checkout@v5
 
-    - name: Deploy to production
-      run: |
-        echo "🚀 Deploying to production..."
-        # ここに実際のデプロイスクリプトを追加
-        # 例: AWS ECS、Google Cloud Run、Heroku等へのデプロイ
-        echo "✅ Deployment completed successfully"
+      - name: Deploy to production
+        run: |
+          echo "🚀 Deploying to production..."
+          # ここに実際のデプロイスクリプトを追加
+          # 例: AWS ECS、Google Cloud Run、Heroku等へのデプロイ
+          echo "✅ Deployment completed successfully"
