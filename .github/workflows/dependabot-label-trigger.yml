@@ -1,0 +1,81 @@
+name: Dependabot Label Trigger
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Action to perform'
+        required: true
+        default: 'add-labels'
+        type: choice
+        options:
+          - add-labels
+          - auto-merge-safe
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  process-dependabot-prs:
+    name: Process Dependabot PRs
+    runs-on: ubuntu-latest
+    if: github.repository == 'takanorisuzuki/devrev-demo'
+
+    steps:
+    - name: Add auto-merge labels to existing PRs
+      if: github.event.inputs.action == 'add-labels'
+      run: |
+        echo "🏷️ Adding auto-merge-candidate labels to Dependabot PRs"
+
+        # Get all open Dependabot PRs
+        gh pr list --author "dependabot[bot]" --state open --json number,title | \
+        jq -r '.[] | "\(.number) \(.title)"' | \
+        while read -r pr_number title; do
+          echo "Processing PR #$pr_number: $title"
+          gh pr edit $pr_number --add-label "auto-merge-candidate"
+        done
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Auto-merge safe PRs
+      if: github.event.inputs.action == 'auto-merge-safe'
+      run: |
+        echo "🤖 Auto-merging safe Dependabot PRs"
+
+        # Get all open Dependabot PRs with auto-merge-candidate label
+        gh pr list --author "dependabot[bot]" --state open --label "auto-merge-candidate" --json number,title | \
+        jq -r '.[] | "\(.number) \(.title)"' | \
+        while read -r pr_number title; do
+          echo "Checking PR #$pr_number: $title"
+
+          # Check if it's safe to auto-merge
+          safe=false
+
+          # GitHub Actions minor/patch updates
+          if [[ "$title" =~ actions/.* ]] && [[ ! "$title" =~ "from [0-9]+ to [0-9]+" ]]; then
+            safe=true
+            echo "  ✅ GitHub Actions update detected"
+          fi
+
+          # Development dependencies
+          if [[ "$title" =~ deps-dev.*in\ /frontend ]]; then
+            safe=true
+            echo "  ✅ Frontend dev dependency detected"
+          fi
+
+          # Type definitions
+          if [[ "$title" =~ @types/ ]]; then
+            safe=true
+            echo "  ✅ Type definition update detected"
+          fi
+
+          if [ "$safe" = true ]; then
+            echo "  🚀 Attempting to merge PR #$pr_number"
+            gh pr merge --auto --squash $pr_number || echo "  ❌ Failed to merge PR #$pr_number"
+          else
+            echo "  ⚠️  Skipping PR #$pr_number (requires manual review)"
+          fi
+        done
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
