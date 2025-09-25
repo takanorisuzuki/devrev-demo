@@ -1,22 +1,22 @@
 # Main Branch Protection Configuration
 
-## 🛡️ main ブランチ保護設定
+## 🛡️ main ブランチ保護設定（ソロ開発最適化）
 
 ### 基本設定
 ```yaml
 branch_name: "main"
-description: "本番環境にデプロイされる安定版ブランチ"
-protection_level: "strict"
+description: "本番環境にデプロイされる安定版ブランチ（ソロ開発向け）"
+protection_level: "moderate"
 ```
 
-### 保護ルール
+### 実際の保護ルール
 
-#### 1. プルリクエスト必須
+#### 1. プルリクエスト必須（自己承認可）
 ```yaml
 require_pull_request: true
-require_approvals: 2
+require_approvals: 0  # ソロ開発最適化: 自己承認可
 dismiss_stale_reviews: true
-require_code_owner_reviews: true
+require_code_owner_reviews: false  # ソロ開発では無効
 require_conversation_resolution: true
 ```
 
@@ -25,27 +25,25 @@ require_conversation_resolution: true
 required_status_checks:
   strict: true
   contexts:
-    - "CI Pipeline"
-    - "Code Quality"
+    - "CI/CD Pipeline"
+    - "Code Quality Checks v2"
     - "Security Scan"
-    - "Build"
-    - "E2E Tests"
 ```
 
 #### 3. ブランチの最新性
 ```yaml
-require_branches_up_to_date: true
-require_linear_history: true
+require_branches_up_to_date: true  # 最新でないとマージ不可
+require_linear_history: false  # ソロ開発では柔軟に
 ```
 
 #### 4. コミット署名
 ```yaml
-require_signed_commits: true
+require_signed_commits: false  # ソロ開発では任意
 ```
 
 #### 5. 管理者制限
 ```yaml
-include_administrators: true
+include_administrators: true  # 管理者も従う
 restrict_pushes: true
 allow_force_pushes: false
 allow_deletions: false
