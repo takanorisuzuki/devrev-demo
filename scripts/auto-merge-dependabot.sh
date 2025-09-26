@@ -27,7 +27,7 @@ echo "$DEPENDABOT_PRS" | jq -c '.[]' | while read -r pr_json; do
     echo "🔍 PR #$PR_NUMBER を処理中..."
 
     # Check if it's a safe auto-merge candidate
-    if [[ "$PR_TITLE" =~ "actions/".*"from".*"to" ]] && [[ ! "$PR_TITLE" =~ "from [0-9]+ to [0-9]+" ]]; then
+    if [[ "$PR_TITLE" =~ "actions/".*"from".*"to" ]] && [[ ! "$PR_TITLE" =~ from\sv?[^.\s]+\sto\sv?[^.\s]+ ]]; then
         # GitHub Actions minor/patch updates
         echo "  ✅ GitHub Actions minor/patch更新: $PR_TITLE"
         SAFE=true
