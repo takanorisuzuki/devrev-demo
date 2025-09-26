@@ -1,52 +1,49 @@
 # Develop Branch Protection Configuration
 
-## 🛡️ develop ブランチ保護設定
+## 🛡️ develop ブランチ保護設定（ソロ開発最適化）
 
 ### 基本設定
 ```yaml
 branch_name: "develop"
-description: "開発中の機能を統合するブランチ"
-protection_level: "moderate"
+description: "開発中の機能を統合するブランチ（高速開発向け）"
+protection_level: "lightweight"
 ```
 
-### 保護ルール
+### 実際の保護ルール
 
-#### 1. プルリクエスト必須
+#### 1. プルリクエスト不要（直接プッシュ可）
 ```yaml
-require_pull_request: true
-require_approvals: 1
-dismiss_stale_reviews: true
+require_pull_request: false  # ソロ開発最適化: 直接プッシュ可能
+require_approvals: 0
+dismiss_stale_reviews: false
 require_code_owner_reviews: false
-require_conversation_resolution: true
+require_conversation_resolution: false
 ```
 
-#### 2. ステータスチェック必須
+#### 2. ステータスチェック必須（軽量）
 ```yaml
 required_status_checks:
-  strict: true
+  strict: false  # 最新でなくてもマージ可
   contexts:
-    - "CI Pipeline"
-    - "Code Quality"
-    - "Security Scan"
-    - "Build"
+    - "CI/CD Pipeline"  # 基本テストのみ
 ```
 
 #### 3. ブランチの最新性
 ```yaml
-require_branches_up_to_date: true
+require_branches_up_to_date: false  # 柔軟性重視
 require_linear_history: false
 ```
 
 #### 4. コミット署名
 ```yaml
-require_signed_commits: true
+require_signed_commits: false  # ソロ開発では任意
 ```
 
 #### 5. 管理者制限
 ```yaml
-include_administrators: true
-restrict_pushes: true
-allow_force_pushes: false
+include_administrators: false  # ソロ開発では制限なし
+restrict_pushes: false
+allow_force_pushes: false  # 安全性は確保
 allow_deletions: false
 ```
 

@@ -9,23 +9,22 @@ echo "🤖 Dependabot自動マージスクリプト"
 echo "================================"
 
 # Get all open Dependabot PRs
-DEPENDABOT_PRS=$(gh pr list --author "dependabot[bot]" --state open --json number,title,labels --jq '.[] | {number: .number, title: .title}')
+DEPENDABOT_PRS=$(gh pr list --author "dependabot[bot]" --state open --json number,title)
 
-if [ -z "$DEPENDABOT_PRS" ]; then
+if [ -z "$DEPENDABOT_PRS" ] || [ "$DEPENDABOT_PRS" = "[]" ]; then
     echo "❌ 処理対象のDependabot PRがありません"
     exit 0
 fi
 
 echo "📋 処理対象のPR:"
-echo "$DEPENDABOT_PRS" | jq -r '. | "  #\(.number): \(.title)"'
+echo "$DEPENDABOT_PRS" | jq -r '.[] | "  #\(.number): \(.title)"'
 echo ""
 
 # Process each PR
-echo "$DEPENDABOT_PRS" | jq -r '.number' | while read PR_NUMBER; do
+echo "$DEPENDABOT_PRS" | jq -c '.[]' | while read -r pr_json; do
+    PR_NUMBER=$(echo "$pr_json" | jq -r '.number')
+    PR_TITLE=$(echo "$pr_json" | jq -r '.title')
     echo "🔍 PR #$PR_NUMBER を処理中..."
-
-    # Get PR details
-    PR_TITLE=$(gh pr view $PR_NUMBER --json title --jq '.title')
 
     # Check if it's a safe auto-merge candidate
     if [[ "$PR_TITLE" =~ "actions/".*"from".*"to" ]] && [[ ! "$PR_TITLE" =~ "from [0-9]+ to [0-9]+" ]]; then
@@ -50,15 +49,11 @@ echo "$DEPENDABOT_PRS" | jq -r '.number' | while read PR_NUMBER; do
     fi
 
     if [ "$SAFE" = true ]; then
-        # Check CI status
-        echo "  🔄 CI状況を確認中..."
-        sleep 5
-
-        # Attempt to merge
-        if gh pr merge --squash $PR_NUMBER 2>/dev/null; then
-            echo "  🎉 PR #$PR_NUMBER マージ完了"
+        # 自動マージを設定
+        if gh pr merge --auto --squash $PR_NUMBER; then
+            echo "  🎉 PR #$PR_NUMBER の自動マージを設定しました"
         else
-            echo "  ❌ PR #$PR_NUMBER マージ失敗（CI待ちまたは競合）"
+            echo "  ❌ PR #$PR_NUMBER の自動マージ設定に失敗しました"
         fi
     fi
 
