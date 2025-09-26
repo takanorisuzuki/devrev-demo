@@ -249,9 +249,82 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
 
-      - name: Deploy to production
+      # --- Authenticate to Google Cloud (to fetch latest VM external IP) ---
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          install_components: compute
+
+      # --- Get current ephemeral IP of the VM ---
+      - name: Get GCE external IP
+        id: gce-ip
         run: |
-          echo "🚀 Deploying to production..."
-          # ここに実際のデプロイスクリプトを追加
-          # 例: AWS ECS、Google Cloud Run、Heroku等へのデプロイ
-          echo "✅ Deployment completed successfully"
+          IP=$(gcloud compute instances describe free-vm01 \
+            --zone=us-west1-b \
+            --format='get(networkInterfaces[0].accessConfigs[0].natIP)')
+          if [ -z "$IP" ]; then
+            echo "VM external IP not found (is the VM running?)" >&2
+            exit 1
+          fi
+          echo "ip=$IP" >> $GITHUB_OUTPUT
+
+      - name: Prepare app directory on VM
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ steps.gce-ip.outputs.ip }}
+          username: ${{ secrets.GCE_USER }}
+          key: ${{ secrets.GCE_SSH_KEY }}
+          script: |
+            set -euxo pipefail
+            mkdir -p ~/app
+
+      # --- Download Docker images built in earlier jobs ---
+      - name: Download docker images
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-images
+          path: ./artifacts
+
+      # --- Copy compose file and images to VM ---
+      - name: Copy compose file to VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ steps.gce-ip.outputs.ip }}
+          username: ${{ secrets.GCE_USER }}
+          key: ${{ secrets.GCE_SSH_KEY }}
+          source: ".github/compose.ci.yml"
+          target: "~/app/docker-compose.yml"
+
+      - name: Copy docker image tarballs to VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ steps.gce-ip.outputs.ip }}
+          username: ${{ secrets.GCE_USER }}
+          key: ${{ secrets.GCE_SSH_KEY }}
+          source: |
+            artifacts/backend.tar
+            artifacts/frontend.tar
+          target: "~/app"
+
+      # --- Load images and (re)start services on the VM ---
+      - name: SSH into VM and deploy
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ steps.gce-ip.outputs.ip }}
+          username: ${{ secrets.GCE_USER }}
+          key: ${{ secrets.GCE_SSH_KEY }}
+          script: |
+            set -euxo pipefail
+            cd ~/app
+            # Load the images built in CI
+            docker load -i backend.tar
+            docker load -i frontend.tar
+            # Bring up services defined in docker-compose (backend required; add frontend if defined)
+            PROJECT=devrev-${GITHUB_RUN_ID}
+            docker compose -p "$PROJECT" up -d --remove-orphans
