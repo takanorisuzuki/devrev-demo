@@ -191,7 +191,7 @@ jobs:
           image-ref: "driverev-backend:security-scan"
           format: "json"
           output: "trivy-backend-results.json"
-          scanner: "image"
+          scan-type: "image"
         continue-on-error: true
 
       - name: Upload Trivy scan results (Backend)
@@ -273,6 +273,15 @@ jobs:
         with:
           name: security-report
           path: security-report.md
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          directory: ./frontend/coverage
+          flags: security-scan
+          name: security-coverage
+          token: ${{ secrets.CODECOV_TOKEN }}
+        continue-on-error: true
 
       - name: Comment on PR
         if: github.event_name == 'pull_request'
