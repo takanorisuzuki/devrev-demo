@@ -12,6 +12,9 @@ updates:
       - "takanorisuzuki"
     assignees:
       - "takanorisuzuki"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
     labels:
       - "dependencies"
       - "python"
