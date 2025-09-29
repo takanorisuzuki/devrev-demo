@@ -52,15 +52,18 @@ git push origin v1.2.0
 ## 🔧 設定済み保護ルール
 
 ### **main ブランチ**（適度に厳格）
+
 - ✅ プルリクエスト必須
-- ✅ **承認者0人**（自己承認可）
-- ✅ CI/CDチェック必須
+- ✅ **承認者 0 人**（自己承認可）
+- ✅ CI/CD チェック必須
 - ✅ 会話解決必須
 
-### **develop ブランチ**（高速開発）
-- ✅ **直接プッシュ可**
-- ✅ CI基本チェックのみ
-- ✅ strict設定なし（柔軟）
+### **develop ブランチ**（品質重視）
+
+- ✅ **プルリクエスト推奨（直接プッシュ可）**
+- ✅ CI 基本チェック必須
+- ✅ **会話解決必須**（コメント対応）
+- ✅ strict 設定なし（柔軟）
 
 ## 🛡️ 自動セキュリティ機能
 
@@ -71,12 +74,14 @@ git push origin v1.2.0
 ## 📋 クイックコマンド
 
 ### **開発開始**
+
 ```bash
 git checkout develop && git pull origin develop
 git checkout -b feature/new-feature
 ```
 
 ### **緊急修正**
+
 ```bash
 git checkout main && git pull origin main
 git checkout -b hotfix/critical-fix
@@ -85,6 +90,7 @@ gh pr create --base main --head hotfix/critical-fix
 ```
 
 ### **依存関係更新**
+
 ```bash
 # ⚠️ 注意: 手動更新はDependabotの安定性戦略と競合する可能性があります
 # 基本的にはDependabotの自動PRを利用することを推奨
@@ -100,6 +106,7 @@ gh pr list --label "dependencies"
 ```
 
 ### **品質チェック**
+
 ```bash
 # フロントエンド
 npm run lint && npm run type-check && npm test
@@ -111,12 +118,14 @@ python -m flake8 && python -m pytest
 ## 🎛️ 効率化のコツ
 
 ### ✅ **やること**
-- developへの直接プッシュを活用
-- CI/CDによる自動品質チェックに依存
-- 自己承認でmainへの迅速なリリース
-- Dependabot PRの自動マージを利用
+
+- develop への直接プッシュを活用
+- CI/CD による自動品質チェックに依存
+- 自己承認で main への迅速なリリース
+- Dependabot PR の自動マージを利用
 
 ### ❌ **やらないこと**
+
 - 複雑なブランチ戦略
 - 過度なドキュメント作成
 - 不必要なレビュープロセス
@@ -124,7 +133,8 @@ python -m flake8 && python -m pytest
 
 ## 🆘 トラブルシューティング
 
-### **CI/CDが失敗する**
+### **CI/CD が失敗する**
+
 ```bash
 # ローカルで同じチェックを実行
 npm run lint && npm run type-check && npm test
@@ -132,6 +142,7 @@ python -m flake8 && python -m pytest
 ```
 
 ### **プッシュが拒否される**
+
 ```bash
 # ブランチ保護を確認
 gh api repos/:owner/:repo/branches/main/protection
@@ -141,6 +152,7 @@ git pull origin main
 ```
 
 ### **マージコンフリクト**
+
 ```bash
 # developの最新を取得
 git checkout develop && git pull origin develop
@@ -155,15 +167,17 @@ git add . && git commit
 ## 📊 パフォーマンス指標
 
 ### **目標値**
-- PR作成〜マージ: **30分以内**
-- CI/CD実行時間: **15分以内**
-- 緊急修正: **1時間以内**
+
+- PR 作成〜マージ: **30 分以内**
+- CI/CD 実行時間: **15 分以内**
+- 緊急修正: **1 時間以内**
 
 ### **品質指標**
+
 - テストカバレッジ: **80%以上**
 - セキュリティスキャン: **クリア必須**
 - 型チェック: **エラーゼロ**
 
 ---
 
-💡 **Tips**: 迷った時は`develop`に直接プッシュ。品質はCI/CDが保証し、効率を最大化できます。
+💡 **Tips**: 軽微な修正では`develop`への直接プッシュも可能ですが、品質向上のためプルリクエストの作成を推奨します。AIレビュー等のコメントを解決することが義務付けられているため、コードの品質をさらに高めることができます。
