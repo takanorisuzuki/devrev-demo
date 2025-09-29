@@ -69,7 +69,7 @@ jobs:
         run: npm run build
 
       - name: Upload coverage reports
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           directory: ./frontend/coverage
           flags: frontend
@@ -143,7 +143,7 @@ jobs:
           pytest --cov=app --cov-report=xml --cov-report=html
 
       - name: Upload coverage reports
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           directory: ./backend
           flags: backend
