@@ -2,17 +2,8 @@ version: 2
 # LTS-focused configuration: Blocks non-LTS versions while allowing security updates
 # Security updates automatically bypass ignore rules to ensure critical patches are applied
 
-# Common version patterns for consistency
-non_lts_node_versions: &non_lts_node_versions
-  - ">=25.0.0"
-  - "23.*"
-  - "21.*"
-  - "19.*"
-  - "17.*"
-  - "15.*"
-  - "13.*"
-  # Note: 24.* excluded as Node.js 24.x is still in active development
-  # and may become LTS in the future
+# Note: YAML aliases not supported by Dependabot
+# Node.js non-LTS versions listed inline where needed
 updates:
   # Python dependencies (Backend)
   - package-ecosystem: "pip"
@@ -69,7 +60,7 @@ updates:
     ignore:
       # Block non-LTS Node.js versions and related packages
       - dependency-name: "@types/node"
-        versions: *non_lts_node_versions
+        versions: [">=25.0.0", "23.*", "21.*", "19.*", "17.*", "15.*", "13.*"]
       # Block major version updates by default (require manual review)
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
@@ -153,4 +144,4 @@ updates:
     ignore:
       # Block non-LTS Node.js versions in Docker images
       - dependency-name: "node"
-        versions: *non_lts_node_versions
+        versions: [">=25.0.0", "23.*", "21.*", "19.*", "17.*", "15.*", "13.*"]
