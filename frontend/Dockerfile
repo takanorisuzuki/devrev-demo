@@ -1,6 +1,6 @@
 # DriveRev Frontend - Next.js Dockerfile
 # Use specific LTS version for stability
-FROM node:22.12.0-alpine
+FROM node:22.20.0-alpine
 
 # 作業ディレクトリを設定
 WORKDIR /app
