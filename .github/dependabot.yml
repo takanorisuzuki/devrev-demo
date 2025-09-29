@@ -5,13 +5,14 @@ version: 2
 # Common version patterns for consistency
 non_lts_node_versions: &non_lts_node_versions
   - ">=25.0.0"
-  - "24.*"
   - "23.*"
   - "21.*"
   - "19.*"
   - "17.*"
   - "15.*"
   - "13.*"
+  # Note: 24.* excluded as Node.js 24.x is still in active development
+  # and may become LTS in the future
 updates:
   # Python dependencies (Backend)
   - package-ecosystem: "pip"
@@ -124,10 +125,10 @@ updates:
       - "backend"
       - "auto-merge-candidate"
     ignore:
-      # Only allow major updates within the same LTS series
-      # Current LTS: Python 3.12.x, 3.11.x
+      # Only allow minor/patch updates within supported LTS versions
+      # Current LTS: Python 3.12.x (primary), 3.11.x (maintenance)
       - dependency-name: "python"
-        update-types: ["version-update:semver-major"]
+        versions: [">=3.13.0", "3.10.*", "3.9.*", "3.8.*", "<3.11"]
 
   - package-ecosystem: "docker"
     directory: "/frontend"
