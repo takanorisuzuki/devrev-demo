@@ -172,7 +172,7 @@ brew install jq yq
      --field restrictions=null
    ```
 
-4. **検証実行**
+5. **検証実行**
    ```bash
    ./scripts/validate-branch-protection.sh
    ```
