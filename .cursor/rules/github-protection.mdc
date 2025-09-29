@@ -149,6 +149,93 @@ if [[ ${#WORKFLOW_FILES[@]} -eq 0 ]]; then
 fi
 ```
 
+### 🤖 Dependabot 自動マージワークフローの学習事項
+
+#### GitHub Actions の権限とトークンの制限
+
+```yaml
+# ❌ 失敗パターン: GITHUB_TOKEN での PR 承認
+- name: Auto-approve and merge
+  run: |
+    gh pr review --approve "$PR_URL"  # <- 権限エラーが発生
+    gh pr merge --auto --squash "$PR_URL"
+  env:
+    GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+```
+
+**エラー**: `GitHub Actions is not permitted to approve pull requests`
+
+#### 正しい解決方法
+
+```yaml
+# ✅ 成功パターン: 承認スキップ、直接 auto-merge
+- name: Auto-enable merge
+  run: |
+    # 承認ステップを削除し、直接 auto-merge を有効化
+    gh pr merge --auto --squash "$PR_URL"
+  env:
+    GH_TOKEN: ${{secrets.GITHUB_TOKEN}}  # または GITHUB_TOKEN
+```
+
+#### トラブルシューティングのコマンド
+
+```bash
+# Dependabot PR の分析
+gh pr view [PR番号] --json title,body,state,mergeable,reviewDecision,statusCheckRollup
+
+# 失敗したワークフローの詳細確認
+gh run view [実行ID] --log
+
+# Dependabot に再実行を指示
+gh pr comment [PR番号] --body "@dependabot rebase"
+gh pr comment [PR番号] --body "@dependabot recreate"
+
+# ブランチの更新状況確認
+gh pr view [PR番号] --json mergeStateStatus,mergeable
+```
+
+#### ブランチ保護ルールとの関係
+
+- **承認要件が 0 件の場合**: 承認ステップは不要、直接 auto-merge 可能
+- **必須ステータスチェック**: CI が成功すれば auto-merge が実行される
+- **strict モード**: ブランチが最新でない場合はマージ不可（Update Branch 必要）
+
+#### 自動マージの条件設定
+
+```yaml
+# 安全な自動マージ条件
+if: |
+  (
+    steps.metadata.outputs.update-type == 'version-update:semver-patch' ||
+    steps.metadata.outputs.dependency-type == 'direct:development' ||
+    steps.metadata.outputs.dependency-type == 'indirect' ||
+    (
+      steps.metadata.outputs.package-ecosystem == 'github-actions' &&
+      (
+        steps.metadata.outputs.update-type == 'version-update:semver-patch' ||
+        steps.metadata.outputs.update-type == 'version-update:semver-minor'
+      )
+    )
+  )
+```
+
+#### 緊急時の手動対応
+
+```bash
+# 1. 手動承認（管理者として）
+gh pr review [PR番号] --approve
+
+# 2. ブランチ更新（GUI または Dependabot コメント）
+# GUI: "Update branch" ボタン
+# コメント: @dependabot rebase
+
+# 3. 管理者権限での強制マージ（最終手段）
+gh pr merge [PR番号] --admin --squash
+
+# 4. ワークフロー再実行
+gh run rerun [実行ID]
+```
+
 ### 🎯 次回への教訓
 
 1. **PR 作成時**: 即座にベースブランチが develop か確認
@@ -156,5 +243,7 @@ fi
 3. **CI 失敗時**: ログを詳細確認し、根本原因を特定してから修正
 4. **セキュリティ設定**: 削除ではなく、包括的な更新で対応
 5. **検証スクリプト**: 動的検出とフォールバック処理を含む堅牢な実装
+6. **Dependabot エラー**: 権限問題は承認ステップを削除し、直接 auto-merge で解決
+7. **ワークフロー修正**: 本番適用前に develop ブランチで修正を完了させる
 
 これらのルールに従うことで、今回のような PR の適切な管理とマージが可能になります。
