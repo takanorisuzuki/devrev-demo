@@ -1,9 +1,4 @@
 version: 2
-# LTS-focused configuration: Blocks non-LTS versions while allowing security updates
-# Security updates automatically bypass ignore rules to ensure critical patches are applied
-
-# Note: YAML aliases not supported by Dependabot
-# Node.js non-LTS versions listed inline where needed
 updates:
   # Python dependencies (Backend)
   - package-ecosystem: "pip"
@@ -27,7 +22,7 @@ updates:
       - "backend"
       - "auto-merge-candidate"
     ignore:
-      # デフォルトですべての依存関係のメジャーアップデートをブロック
+      # Block major version updates by default (require manual review)
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
       # Allow specific stable frameworks to have major updates
@@ -83,7 +78,7 @@ updates:
     open-pull-requests-limit: 3
     reviewers:
       - "takanorisuzuki"
-    assignees:
+    assignees:  
       - "takanorisuzuki"
     commit-message:
       prefix: "chore"
@@ -94,7 +89,7 @@ updates:
       - "ci/cd"
       - "auto-merge-candidate"
 
-  # Docker dependencies
+  # Docker dependencies - Backend
   - package-ecosystem: "docker"
     directory: "/backend"
     schedule:
@@ -116,11 +111,12 @@ updates:
       - "backend"
       - "auto-merge-candidate"
     ignore:
-      # Only allow minor/patch updates within supported LTS versions
+      # Only allow updates within supported LTS versions
       # Current LTS: Python 3.12.x (primary), 3.11.x (maintenance)
       - dependency-name: "python"
         versions: [">=3.13.0", "3.10.*", "3.9.*", "3.8.*", "<3.11"]
 
+  # Docker dependencies - Frontend  
   - package-ecosystem: "docker"
     directory: "/frontend"
     schedule:
