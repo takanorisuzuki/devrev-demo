@@ -1,0 +1,128 @@
+name: Branch Protection Monitor
+
+on:
+  schedule:
+    # 毎日午前9時（JST）にチェック
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+    inputs:
+      target_branch:
+        description: 'チェック対象ブランチ'
+        required: false
+        default: 'main'
+
+env:
+  TARGET_BRANCH: ${{ github.event.inputs.target_branch || 'main' }}
+
+jobs:
+  monitor-branch-protection:
+    name: Branch Protection Validation
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Install dependencies
+        run: |
+          # jqは標準でインストール済み
+          if ! command -v yq &> /dev/null; then
+            sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+            sudo chmod +x /usr/local/bin/yq
+          fi
+
+      - name: Run branch protection validation
+        id: validation
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # 検証スクリプトの実行
+          if ./scripts/validate-branch-protection.sh > validation_report.txt 2>&1; then
+            echo "validation_status=success" >> $GITHUB_OUTPUT
+            echo "設定検証が正常に完了しました" >> validation_report.txt
+          else
+            echo "validation_status=failure" >> $GITHUB_OUTPUT
+            echo "⚠️ 設定不整合が検出されました" >> validation_report.txt
+          fi
+
+      - name: Upload validation report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: branch-protection-validation-report
+          path: validation_report.txt
+
+      - name: Create issue on validation failure
+        if: steps.validation.outputs.validation_status == 'failure'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # 既存の同種のissueをチェック
+          EXISTING_ISSUE=$(gh issue list --label "branch-protection,automation" --state open --limit 1 --json number --jq '.[0].number' || echo "")
+
+          # レポート内容の準備
+          REPORT_CONTENT=$(cat validation_report.txt)
+
+          ISSUE_BODY="## 🚨 ブランチ保護設定の不整合検出
+
+          ### 📊 検証レポート
+          \`\`\`
+          $REPORT_CONTENT
+          \`\`\`
+
+          ### 🔧 推奨アクション
+          1. \`.github/workflows/\` ディレクトリのワークフローファイルを確認
+          2. ジョブ名と必須ステータスチェック名の整合性を確認
+          3. GitHubリポジトリ設定でブランチ保護ルールを更新
+          4. 修正後、このスクリプトを再実行して検証
+
+          ### 📅 検出日時
+          $(date -u '+%Y-%m-%d %H:%M:%S UTC')
+
+          ### 🤖 自動生成
+          このissueは自動生成されました。Branch Protection Monitorワークフローによる定期チェックの結果です。
+
+          ---
+          > 修正完了後、このissueをクローズしてください。"
+
+          if [[ -n "$EXISTING_ISSUE" ]]; then
+            echo "既存issue #$EXISTING_ISSUE を更新中..."
+            gh issue comment "$EXISTING_ISSUE" --body "### 🔄 最新の検証結果 ($(date -u '+%Y-%m-%d %H:%M:%S UTC'))
+
+            $ISSUE_BODY"
+          else
+            echo "新しいissueを作成中..."
+            gh issue create \
+              --title "🚨 ブランチ保護設定の不整合検出 - 要修正" \
+              --body "$ISSUE_BODY" \
+              --label "branch-protection,automation,bug" \
+              --assignee "takanorisuzuki"
+          fi
+
+      - name: Comment on success
+        if: steps.validation.outputs.validation_status == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # 成功時は既存のissueがあればクローズ
+          EXISTING_ISSUE=$(gh issue list --label "branch-protection,automation" --state open --limit 1 --json number --jq '.[0].number' || echo "")
+
+          if [[ -n "$EXISTING_ISSUE" ]]; then
+            gh issue comment "$EXISTING_ISSUE" --body "✅ **修正確認済み**
+
+            最新の検証（$(date -u '+%Y-%m-%d %H:%M:%S UTC')）でブランチ保護設定の整合性が確認されました。
+
+            このissueをクローズします。"
+            gh issue close "$EXISTING_ISSUE"
+            echo "Issue #$EXISTING_ISSUE をクローズしました"
+          fi
+
+      - name: Notify if validation fails
+        if: failure()
+        run: |
+          echo "⚠️ ブランチ保護監視ワークフローで問題が発生しました"
+          echo "アーティファクトの検証レポートを確認してください"
