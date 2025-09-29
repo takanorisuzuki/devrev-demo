@@ -5,6 +5,7 @@ version: 2
 # Common version patterns for consistency
 non_lts_node_versions: &non_lts_node_versions
   - ">=25.0.0"
+  - "24.*"
   - "23.*"
   - "21.*"
   - "19.*"
