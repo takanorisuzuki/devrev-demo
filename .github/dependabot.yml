@@ -124,9 +124,10 @@ updates:
       - "backend"
       - "auto-merge-candidate"
     ignore:
-      # Block non-LTS Python versions in Docker images
+      # Only allow major updates within the same LTS series
+      # Current LTS: Python 3.12.x, 3.11.x
       - dependency-name: "python"
-        versions: [">=3.13.0", "3.12.*"]
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "docker"
     directory: "/frontend"
