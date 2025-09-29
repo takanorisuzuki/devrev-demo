@@ -182,16 +182,20 @@ fi
 ```bash
 # Dependabot PR の分析
 gh pr view [PR番号] --json title,body,state,mergeable,reviewDecision,statusCheckRollup
+# 出力例: PR状態、マージ可能性、チェック結果の詳細情報
 
 # 失敗したワークフローの詳細確認
 gh run view [実行ID] --log
+# または失敗したジョブのみ: gh run view [実行ID] --log-failed
 
 # Dependabot に再実行を指示
-gh pr comment [PR番号] --body "@dependabot rebase"
-gh pr comment [PR番号] --body "@dependabot recreate"
+gh pr comment [PR番号] --body "@dependabot rebase"    # ブランチを最新状態に更新
+gh pr comment [PR番号] --body "@dependabot recreate"  # PR全体を再作成
 
 # ブランチの更新状況確認
 gh pr view [PR番号] --json mergeStateStatus,mergeable
+# mergeStateStatus: BEHIND(更新必要), CLEAN(最新), UNKNOWN(不明)
+# mergeable: MERGEABLE(マージ可能), CONFLICTING(競合), UNKNOWN(不明)
 ```
 
 #### ブランチ保護ルールとの関係
@@ -219,22 +223,39 @@ if: |
   )
 ```
 
-#### 緊急時の手動対応
+#### 緊急時の手動対応手順
+
+**段階的アプローチ（安全性を重視した順序で実行）**
 
 ```bash
-# 1. 手動承認（管理者として）
+# ステップ1: 状況分析
+gh pr view [PR番号] --json state,mergeStateStatus,statusCheckRollup
+gh pr checks [PR番号]  # 詳細なチェック結果を確認
+
+# ステップ2a: ブランチ更新（一般的な解決方法）
+# 方法1 - GUI操作: GitHub Web UI で "Update branch" ボタンをクリック
+# 方法2 - Dependabot コマンド:
+gh pr comment [PR番号] --body "@dependabot rebase"
+
+# ステップ2b: 手動承認（承認が必要な場合のみ）
 gh pr review [PR番号] --approve
 
-# 2. ブランチ更新（GUI または Dependabot コメント）
-# GUI: "Update branch" ボタン
-# コメント: @dependabot rebase
+# ステップ3: auto-merge有効化（通常はワークフローが実行）
+gh pr merge [PR番号] --auto --squash
 
-# 3. 管理者権限での強制マージ（最終手段）
+# ステップ4: 最終手段 - 管理者権限での強制マージ
+# 注意: 必須チェックが失敗している場合やブランチ保護を無視する場合のみ
 gh pr merge [PR番号] --admin --squash
 
-# 4. ワークフロー再実行
-gh run rerun [実行ID]
+# 追加オプション: ワークフロー再実行
+gh run list --limit 5  # 最新の実行ID確認
+gh run rerun [実行ID]  # 特定ワークフローの再実行
 ```
+
+**判断基準**
+- `mergeStateStatus: BEHIND` → ステップ2a（ブランチ更新）
+- `statusCheck: FAILURE` → ステップ4（管理者権限）または問題修正
+- `reviewDecision: REVIEW_REQUIRED` → ステップ2b（手動承認）
 
 ### 🎯 次回への教訓
 
