@@ -75,9 +75,10 @@ updates:
       - "backend"
       - "auto-merge-candidate"
     ignore:
-      # Block major Python updates (maintain LTS policy)
+      # Block updates to new minor (non-LTS) or major versions.
+      # This allows patch updates for the current LTS (e.g., 3.12.x).
       - dependency-name: "python"
-        update-types: ["version-update:semver-major"]
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
 
   # Docker dependencies - Frontend  
   - package-ecosystem: "docker"
