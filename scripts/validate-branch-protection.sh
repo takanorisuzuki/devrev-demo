@@ -77,12 +77,12 @@ for workflow_file in "${WORKFLOW_FILES[@]}"; do
 
         if [[ -n "$JOBS" ]]; then
             echo "  ジョブ発見:"
-            echo "$JOBS" | while read -r job; do
-                if [[ -n "$job" ]]; then
+            while IFS= read -r job; do
+                if [[ -n "$job" && "$job" != "null" ]]; then
                     echo "    - $job"
                     ACTUAL_JOBS+=("$job")
                 fi
-            done
+            done <<< "$JOBS"
         fi
     else
         echo "⚠️  ワークフローファイルが見つかりません: $workflow_file"
@@ -117,12 +117,12 @@ for workflow_file in "${WORKFLOW_FILES[@]}"; do
         fi
 
         if [[ -n "$JOB_NAMES_FROM_FILE" ]]; then
-            echo "$JOB_NAMES_FROM_FILE" | while read -r name; do
-                if [[ -n "$name" ]]; then
+            while IFS= read -r name; do
+                if [[ -n "$name" && "$name" != "null" ]]; then
                     JOB_NAMES+=("$name")
                     echo "  - $name"
                 fi
-            done
+            done <<< "$JOB_NAMES_FROM_FILE"
         fi
     fi
 done
