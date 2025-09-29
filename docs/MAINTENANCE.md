@@ -132,21 +132,34 @@ brew install jq yq
 
 #### ブランチ保護ルールが原因でマージできない場合
 
-**⚠️ 注意**: 以下は緊急時のみ実行
+**⚠️ 注意**: 以下は緊急時のみ実行。保護ルールを削除せず、一時的に設定を緩和
 
-1. **一時的な保護無効化**
+1. **設定確認と問題特定**
    ```bash
-   gh api --method DELETE "repos/:owner/:repo/branches/main/protection"
+   # 現在の保護設定を確認
+   gh api "repos/:owner/:repo/branches/main/protection"
+   # 失敗している具体的なチェックを特定
+   gh pr checks [PR番号]
    ```
 
-2. **マージ実行**
+2. **安全な設定更新（削除しない）**
+   ```bash
+   # 問題のあるチェック名のみを一時的に除外
+   gh api --method PUT "repos/:owner/:repo/branches/main/protection" \
+     --field required_status_checks='{"strict":true,"contexts":["Backend Tests & Build","Backend Code Quality v2"]}' \
+     --field enforce_admins=true \
+     --field required_pull_request_reviews='{"required_approving_review_count":1}' \
+     --field restrictions=null
+   ```
+
+3. **マージ実行**
    ```bash
    gh pr merge [PR番号] --squash
    ```
 
-3. **保護ルールの復旧**
+4. **完全な保護ルールの復旧**
    ```bash
-   # 正しい設定で復旧
+   # 全ての正しい設定で復旧
    gh api --method PUT "repos/:owner/:repo/branches/main/protection" \
      --field required_status_checks='{"strict":true,"contexts":["Backend Tests & Build","Backend Code Quality v2","Code Security Scan"]}' \
      --field enforce_admins=true \

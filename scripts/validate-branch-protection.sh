@@ -49,15 +49,17 @@ echo "$REQUIRED_CHECKS" | while read -r check; do
     echo "  - $check"
 done
 
-# CI/CDワークフローの解析
+# CI/CDワークフローの動的検出と解析
 echo ""
 echo "🔄 CI/CDワークフローのジョブ名を解析中..."
 
-WORKFLOW_FILES=(
-    ".github/workflows/ci.yml"
-    ".github/workflows/quality.yml"
-    ".github/workflows/security.yml"
-)
+# ワークフローファイルを動的に検出
+WORKFLOW_FILES=($(find .github/workflows -name "*.yml" -o -name "*.yaml" 2>/dev/null || echo ""))
+
+if [[ ${#WORKFLOW_FILES[@]} -eq 0 ]]; then
+    echo "⚠️  ワークフローファイルが見つかりません"
+    exit 1
+fi
 
 declare -a ACTUAL_JOBS=()
 
@@ -65,19 +67,21 @@ for workflow_file in "${WORKFLOW_FILES[@]}"; do
     if [[ -f "$workflow_file" ]]; then
         echo "📄 解析中: $workflow_file"
 
-        # yqがある場合はyqを使用、ない場合はgrepで代用
+        # yqがある場合はyqを使用、ない場合は改良されたgrepで代用
         if command -v yq &> /dev/null; then
             JOBS=$(yq eval '.jobs | keys | .[]' "$workflow_file" 2>/dev/null || echo "")
         else
-            # grepベースの代替解析
-            JOBS=$(grep -E "^  [a-zA-Z0-9_-]+:" "$workflow_file" | sed 's/://g' | sed 's/^  //g' || echo "")
+            # より堅牢なgrepベースの解析
+            JOBS=$(awk '/^jobs:/{flag=1; next} flag && /^[[:space:]]*[a-zA-Z0-9_-]+:/{gsub(/^[[:space:]]*/, ""); gsub(/:.*/, ""); if($0 !~ /^[[:space:]]*$/) print $0} flag && /^[a-zA-Z]/ && !/^[[:space:]]/{flag=0}' "$workflow_file" || echo "")
         fi
 
         if [[ -n "$JOBS" ]]; then
             echo "  ジョブ発見:"
             echo "$JOBS" | while read -r job; do
-                echo "    - $job"
-                ACTUAL_JOBS+=("$job")
+                if [[ -n "$job" ]]; then
+                    echo "    - $job"
+                    ACTUAL_JOBS+=("$job")
+                fi
             done
         fi
     else
@@ -93,16 +97,33 @@ declare -a JOB_NAMES=()
 
 for workflow_file in "${WORKFLOW_FILES[@]}"; do
     if [[ -f "$workflow_file" ]]; then
-        # name: で始まる行を抽出（ジョブレベル）
-        while IFS= read -r line; do
-            if [[ "$line" =~ ^[[:space:]]+name:[[:space:]]*(.+)$ ]]; then
-                name="${BASH_REMATCH[1]}"
-                # クォートを除去
-                name=$(echo "$name" | sed 's/^["'\'']//' | sed 's/["'\'']$//')
-                JOB_NAMES+=("$name")
-                echo "  - $name"
-            fi
-        done < "$workflow_file"
+        # yqがある場合はより正確な解析
+        if command -v yq &> /dev/null; then
+            # ジョブレベルのnameフィールドを抽出
+            JOB_NAMES_FROM_FILE=$(yq eval '.jobs[] | select(has("name")) | .name' "$workflow_file" 2>/dev/null || echo "")
+        else
+            # 改良されたgrepベースの解析（jobs配下のnameのみ）
+            JOB_NAMES_FROM_FILE=$(awk '
+                /^jobs:/{in_jobs=1; next}
+                in_jobs && /^[[:space:]]*[a-zA-Z0-9_-]+:/{in_job=1}
+                in_jobs && in_job && /^[[:space:]]+name:[[:space:]]*/{
+                    gsub(/^[[:space:]]+name:[[:space:]]*/, "")
+                    gsub(/^["'"'"']/, "")
+                    gsub(/["'"'"']$/, "")
+                    if($0 !~ /^[[:space:]]*$/) print $0
+                }
+                /^[a-zA-Z]/ && !/^[[:space:]]/{in_jobs=0; in_job=0}
+            ' "$workflow_file" || echo "")
+        fi
+
+        if [[ -n "$JOB_NAMES_FROM_FILE" ]]; then
+            echo "$JOB_NAMES_FROM_FILE" | while read -r name; do
+                if [[ -n "$name" ]]; then
+                    JOB_NAMES+=("$name")
+                    echo "  - $name"
+                fi
+            done
+        fi
     fi
 done
 
