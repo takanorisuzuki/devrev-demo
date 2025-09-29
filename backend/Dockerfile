@@ -1,6 +1,6 @@
 # DriveRev Backend - FastAPI Dockerfile
-# Use specific stable version for security and reliability
-FROM python:3.11.11-slim
+# Use LTS version for security and reliability
+FROM python:3.12.7-slim
 
 # 作業ディレクトリを設定
 WORKDIR /app
