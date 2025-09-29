@@ -27,10 +27,26 @@ echo "$DEPENDABOT_PRS" | jq -c '.[]' | while read -r pr_json; do
     echo "🔍 PR #$PR_NUMBER を処理中..."
 
     # Check if it's a safe auto-merge candidate
-    if [[ "$PR_TITLE" =~ "actions/".*"from".*"to" ]] && [[ ! "$PR_TITLE" =~ from\sv?[^.\s]+\sto\sv?[^.\s]+ ]]; then
-        # GitHub Actions minor/patch updates
-        echo "  ✅ GitHub Actions minor/patch更新: $PR_TITLE"
-        SAFE=true
+    # GitHub Actions minor/patch updates
+    if [[ "$PR_TITLE" =~ "actions/" ]] && [[ "$PR_TITLE" =~ "from".*"to" ]]; then
+        # Extract version numbers to check for major versions upgrade
+        if [[ "$PR_TITLE" =~ from\sv([0-9]+)\.([0-9]+) ]]; then
+            OLD_MAJOR="${BASH_REMATCH[1]}"
+            OLD_MINOR="${BASH_REMATCH[2]}"
+        fi
+        if [[ "$PR_TITLE" =~ to\sv([0-9]+)\.([0-9]+) ]]; then
+            NEW_MAJOR="${BASH_REMATCH[1]}"
+            NEW_MINOR="${BASH_REMATCH[2]}"
+        fi
+        
+        # Only auto-merge if same major version (minor/patch updates only)
+        if [[ -n "$OLD_MAJOR" && -n "$NEW_MAJOR" && "$OLD_MAJOR" = "$NEW_MAJOR" ]]; then
+            echo "  ✅ GitHub Actions minor/patch更新: $PR_TITLE"
+            SAFE=true
+        else
+            echo "  ⚠️  メジャーバージョンアップ: $PR_TITLE"
+            SAFE=false
+        fi
     elif [[ "$PR_TITLE" =~ "deps-dev".*"bump".*"in /frontend" ]]; then
         # Frontend dev dependencies
         echo "  ✅ Frontend開発依存関係: $PR_TITLE"
