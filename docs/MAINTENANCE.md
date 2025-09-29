@@ -159,7 +159,7 @@ brew install jq yq
    gh pr merge [PR番号] --squash
    ```
 
-4. **完全な保護ルールの復旧**
+5. **完全な保護ルールの復旧**
    ```bash
    # 全ての正しい設定で復旧（包括的な保護設定）
    gh api --method PUT "repos/:owner/:repo/branches/main/protection" \
@@ -172,10 +172,7 @@ brew install jq yq
      --field restrictions=null
    ```
 
-4. **検証実行**
-   ```bash
-   ./scripts/validate-branch-protection.sh
-   ```
+6. **検証実行**
 
 ### 問い合わせ先
 
