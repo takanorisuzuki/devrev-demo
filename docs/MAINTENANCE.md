@@ -173,9 +173,6 @@ brew install jq yq
    ```
 
 6. **検証実行**
-   ```bash
-   ./scripts/validate-branch-protection.sh
-   ```
 
 ### 問い合わせ先
 
