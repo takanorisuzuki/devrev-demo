@@ -172,11 +172,7 @@ brew install jq yq
      --field restrictions=null
    ```
 
-<<<<<<< HEAD
 5. **検証実行**
-=======
-4. **検証実行**
->>>>>>> origin/main
    ```bash
    ./scripts/validate-branch-protection.sh
    ```
@@ -187,8 +183,4 @@ brew install jq yq
 
 - **自動生成issue**: 検出時に自動作成されるissueにコメント
 - **手動issue**: "branch-protection", "maintenance" ラベルでissue作成
-<<<<<<< HEAD
 - **緊急時**: @takanorisuzukiにmentionで即座に通知
-=======
-- **緊急時**: @takanorisuzukiにmentionで即座に通知
->>>>>>> origin/main
