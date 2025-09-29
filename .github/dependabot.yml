@@ -52,7 +52,11 @@ updates:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
 
+<<<<<<< HEAD
   # Docker base images - Backend
+=======
+  # Docker base images
+>>>>>>> origin/main
   - package-ecosystem: "docker"
     directory: "/backend"
     schedule:
@@ -77,7 +81,10 @@ updates:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
 
+<<<<<<< HEAD
   # Docker base images - Frontend
+=======
+>>>>>>> origin/main
   - package-ecosystem: "docker"
     directory: "/frontend"
     schedule:

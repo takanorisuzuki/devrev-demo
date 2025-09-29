@@ -18,12 +18,15 @@ if ! command -v jq &> /dev/null; then
     exit 1
 fi
 
+<<<<<<< HEAD
 if ! command -v yq &> /dev/null; then
     echo "❌ yq がインストールされていません"
     echo "   brew install yq または適切なパッケージマネージャーでインストールしてください"
     exit 1
 fi
 
+=======
+>>>>>>> origin/main
 # リポジトリ情報の取得
 REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
 if [[ -z "$REPO" ]]; then
@@ -67,18 +70,37 @@ if [[ ${#WORKFLOW_FILES[@]} -eq 0 ]]; then
     exit 1
 fi
 
+<<<<<<< HEAD
+=======
+declare -a ACTUAL_JOBS=()
+
+>>>>>>> origin/main
 for workflow_file in "${WORKFLOW_FILES[@]}"; do
     if [[ -f "$workflow_file" ]]; then
         echo "📄 解析中: $workflow_file"
 
+<<<<<<< HEAD
         # yqが必須の依存関係として使用
         JOBS=$(yq eval '.jobs | keys | .[]' "$workflow_file" 2>/dev/null || echo "")
+=======
+        # yqがある場合はyqを使用、ない場合は改良されたgrepで代用
+        if command -v yq &> /dev/null; then
+            JOBS=$(yq eval '.jobs | keys | .[]' "$workflow_file" 2>/dev/null || echo "")
+        else
+            # より堅牢なgrepベースの解析
+            JOBS=$(awk '/^jobs:/{flag=1; next} flag && /^[[:space:]]*[a-zA-Z0-9_-]+:/{gsub(/^[[:space:]]*/, ""); gsub(/:.*/, ""); if($0 !~ /^[[:space:]]*$/) print $0} flag && /^[a-zA-Z]/ && !/^[[:space:]]/{flag=0}' "$workflow_file" || echo "")
+        fi
+>>>>>>> origin/main
 
         if [[ -n "$JOBS" ]]; then
             echo "  ジョブ発見:"
             while IFS= read -r job; do
                 if [[ -n "$job" && "$job" != "null" ]]; then
                     echo "    - $job"
+<<<<<<< HEAD
+=======
+                    ACTUAL_JOBS+=("$job")
+>>>>>>> origin/main
                 fi
             done <<< "$JOBS"
         fi
@@ -95,8 +117,29 @@ declare -a JOB_NAMES=()
 
 for workflow_file in "${WORKFLOW_FILES[@]}"; do
     if [[ -f "$workflow_file" ]]; then
+<<<<<<< HEAD
         # yqが必須の依存関係として使用（より正確な解析）
         JOB_NAMES_FROM_FILE=$(yq eval '.jobs[] | select(has("name")) | .name' "$workflow_file" 2>/dev/null || echo "")
+=======
+        # yqがある場合はより正確な解析
+        if command -v yq &> /dev/null; then
+            # ジョブレベルのnameフィールドを抽出
+            JOB_NAMES_FROM_FILE=$(yq eval '.jobs[] | select(has("name")) | .name' "$workflow_file" 2>/dev/null || echo "")
+        else
+            # 改良されたgrepベースの解析（jobs配下のnameのみ）
+            JOB_NAMES_FROM_FILE=$(awk '
+                /^jobs:/{in_jobs=1; next}
+                in_jobs && /^[[:space:]]*[a-zA-Z0-9_-]+:/{in_job=1}
+                in_jobs && in_job && /^[[:space:]]+name:[[:space:]]*/{
+                    gsub(/^[[:space:]]+name:[[:space:]]*/, "")
+                    gsub(/^["'"'"']/, "")
+                    gsub(/["'"'"']$/, "")
+                    if($0 !~ /^[[:space:]]*$/) print $0
+                }
+                /^[a-zA-Z]/ && !/^[[:space:]]/{in_jobs=0; in_job=0}
+            ' "$workflow_file" || echo "")
+        fi
+>>>>>>> origin/main
 
         if [[ -n "$JOB_NAMES_FROM_FILE" ]]; then
             while IFS= read -r name; do
@@ -115,8 +158,12 @@ echo "🔍 整合性チェック実行中..."
 
 VALIDATION_ERRORS=0
 
+<<<<<<< HEAD
 while IFS= read -r required_check; do
     if [[ -z "$required_check" ]]; then continue; fi
+=======
+echo "$REQUIRED_CHECKS" | while read -r required_check; do
+>>>>>>> origin/main
     FOUND=false
 
     # ジョブ名での照合
@@ -141,7 +188,11 @@ while IFS= read -r required_check; do
             fi
         done
     fi
+<<<<<<< HEAD
 done <<< "$REQUIRED_CHECKS"
+=======
+done
+>>>>>>> origin/main
 
 echo ""
 if [[ $VALIDATION_ERRORS -eq 0 ]]; then
@@ -155,4 +206,8 @@ else
     echo "2. ブランチ保護ルールの必須チェック名を更新"
     echo "3. GitHub UI またはAPIでブランチ保護設定を修正"
     exit 1
+<<<<<<< HEAD
 fi
+=======
+fi
+>>>>>>> origin/main
