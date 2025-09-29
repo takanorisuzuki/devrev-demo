@@ -7,9 +7,9 @@ RUN apk add --no-cache libc6-compat curl
 
 WORKDIR /app
 
-# Copy package files and install dependencies (cached layer)
+# Copy package files and install all dependencies (including devDependencies for build)
 COPY package.json package-lock.json* ./
-RUN npm ci --omit=dev --frozen-lockfile
+RUN npm ci --frozen-lockfile
 
 # Builder stage
 FROM node:22.20.0-alpine AS builder
@@ -33,6 +33,10 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+
+# Install only production dependencies for minimal image size
+COPY package.json package-lock.json* ./
+RUN npm ci --omit=dev --frozen-lockfile && npm cache clean --force
 
 # Create nextjs user
 RUN addgroup --system --gid 1001 nodejs
