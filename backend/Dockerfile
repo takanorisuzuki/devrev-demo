@@ -1,22 +1,40 @@
-# DriveRev Backend - FastAPI Dockerfile
-# Use LTS version for security and reliability
-FROM python:3.12.7-slim
+# DriveRev Backend - FastAPI Dockerfile (Multi-stage optimized)
+# Build stage for dependencies
+FROM python:3.12.7-slim as builder
 
-# 作業ディレクトリを設定
-WORKDIR /app
-
-# システムの依存関係をインストール
+# Install build dependencies
 RUN apt-get update && apt-get install -y \
     build-essential \
-    curl \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Python依存関係をコピーしてインストール
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Create virtual environment
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 
-# アプリケーションコードをコピー
+# Copy and install Python dependencies (cached layer)
+COPY requirements.txt .
+RUN pip install --upgrade pip \
+    && pip install --no-cache-dir -r requirements.txt
+
+# Production stage
+FROM python:3.12.7-slim
+
+# Install runtime dependencies only
+RUN apt-get update && apt-get install -y \
+    curl \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Copy virtual environment from builder
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Set working directory
+WORKDIR /app
+
+# Copy application code (last to maximize cache efficiency)
 COPY . .
 
 # ポート8000を露出

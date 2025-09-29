@@ -1,0 +1,434 @@
+name: Optimized CI/CD Pipeline
+
+permissions: {}
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch to run on"
+        required: false
+        default: "develop"
+      skip_deploy:
+        description: "Skip deployment step"
+        type: boolean
+        default: false
+
+env:
+  NODE_VERSION: "20"
+  PYTHON_VERSION: "3.12"
+  POSTGRES_PASSWORD: postgres123
+  SECRET_KEY: test-secret-key
+  FORCE_CACHE_REFRESH: "true"
+
+jobs:
+  # 高速チェック：基本的なlint/type-check（並列実行）
+  fast-checks:
+    name: Fast Code Quality Checks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: "Frontend Lint & TypeCheck"
+            working-directory: "./frontend"
+            cache-dependency-path: "frontend/package-lock.json"
+            setup: "node"
+            commands: |
+              npm ci
+              npm run lint
+              npm run type-check
+          - name: "Backend Lint & Format"
+            working-directory: "./backend"
+            cache-dependency-path: "backend/requirements.txt"
+            setup: "python"
+            commands: |
+              python -m pip install --upgrade pip
+              pip install -r requirements.txt
+              flake8 app/ --max-line-length=88 --extend-ignore=E203,W503
+              black --check app/
+              isort --check-only --profile=black app/
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        if: matrix.setup == 'node'
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+          cache-dependency-path: ${{ matrix.cache-dependency-path }}
+
+      - name: Setup Python
+        if: matrix.setup == 'python'
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+          cache-dependency-path: ${{ matrix.cache-dependency-path }}
+
+      - name: Run checks
+        working-directory: ${{ matrix.working-directory }}
+        run: ${{ matrix.commands }}
+
+  # フロントエンドテスト・ビルド
+  frontend-build-test:
+    name: Frontend Build & Test
+    runs-on: ubuntu-latest
+    needs: fast-checks
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Run tests with coverage
+        working-directory: ./frontend
+        run: npm run test:coverage
+
+      - name: Build application
+        working-directory: ./frontend
+        run: npm run build
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v4
+        with:
+          directory: ./frontend/coverage
+          flags: frontend
+          name: frontend-coverage
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  # バックエンドテスト
+  backend-build-test:
+    name: Backend Build & Test
+    runs-on: ubuntu-latest
+    needs: fast-checks
+    permissions:
+      contents: read
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_PASSWORD: ${{ env.POSTGRES_PASSWORD }}
+          POSTGRES_DB: driverev_test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        working-directory: ./backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run tests
+        working-directory: ./backend
+        env:
+          DATABASE_URL: postgresql://postgres:${{ env.POSTGRES_PASSWORD }}@localhost:5432/driverev_test_db
+          REDIS_URL: redis://localhost:6379/0
+          SECRET_KEY: ${{ env.SECRET_KEY }}
+          ENVIRONMENT: test
+        run: |
+          pytest --cov=app --cov-report=xml --cov-report=html
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v4
+        with:
+          directory: ./backend
+          flags: backend
+          name: backend-coverage
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  # Docker統合ビルド・テスト
+  docker-integration:
+    name: Docker Integration Tests
+    runs-on: ubuntu-latest
+    needs: [frontend-build-test, backend-build-test]
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Enable BuildKit for better caching
+      - name: Enable Docker BuildKit
+        run: echo "DOCKER_BUILDKIT=1" >> $GITHUB_ENV
+
+      - name: Build backend image with cache
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: false
+          tags: driverev-backend:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build frontend image with cache
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          push: false
+          tags: driverev-frontend:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Start services with Docker Compose
+        run: |
+          PROJECT=devrev-${{ github.run_id }}
+          docker compose -f .github/compose.ci.yml -p "$PROJECT" up -d --wait --wait-timeout 180 backend
+
+      - name: Run integration tests
+        run: |
+          PROJECT=devrev-${{ github.run_id }}
+          docker compose -f .github/compose.ci.yml -p "$PROJECT" exec backend curl -fsS http://localhost:8000/health
+          echo "Backend health check passed"
+
+      - name: Export images as artifacts (for deployment)
+        if: github.ref == 'refs/heads/main'
+        run: |
+          docker save -o backend.tar driverev-backend:test
+          docker save -o frontend.tar driverev-frontend:test
+
+      - name: Upload docker images
+        if: github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-images-${{ github.sha }}
+          path: |
+            backend.tar
+            frontend.tar
+          retention-days: 1
+
+      - name: Cleanup
+        if: always()
+        run: |
+          PROJECT=devrev-${{ github.run_id }}
+          docker compose -f .github/compose.ci.yml -p "$PROJECT" down
+
+  # コード解析（オプション、スケジュール実行など）
+  code-analysis:
+    name: Extended Code Analysis
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    needs: fast-checks
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install analysis tools
+        run: |
+          pip install radon xenon bandit
+          pip install -r backend/requirements.txt
+
+      - name: Run complexity analysis
+        continue-on-error: true
+        run: |
+          echo "=== Cyclomatic Complexity ==="
+          radon cc backend/app/ -a
+          echo "=== Maintainability Index ==="
+          radon mi backend/app/ -a
+
+      - name: Run security analysis
+        continue-on-error: true
+        run: |
+          bandit -r backend/app/ -f json -o bandit-report.json
+
+      - name: Upload analysis reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: code-analysis-report-${{ github.sha }}
+          path: |
+            bandit-report.json
+
+  # デプロイメント（条件分岐：develop→staging, main→production）
+  deploy:
+    name: Deploy Application
+    runs-on: ubuntu-latest
+    needs: [docker-integration]
+    if: >
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      !inputs.skip_deploy
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      # Set deployment environment (production only)
+      - name: Set deployment environment
+        id: env
+        run: |
+          echo "environment=production" >> $GITHUB_OUTPUT
+          echo "vm_name=free-vm01" >> $GITHUB_OUTPUT
+
+      # Authenticate to Google Cloud
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          install_components: compute
+
+      # Get production VM IP
+      - name: Get GCE external IP
+        id: gce-ip
+        run: |
+          IP=$(gcloud compute instances describe free-vm01 \
+            --zone=us-west1-b \
+            --format='get(networkInterfaces[0].accessConfigs[0].natIP)')
+
+          if [ -z "$IP" ]; then
+            echo "VM external IP not found (is the VM running?)" >&2
+            exit 1
+          fi
+          echo "ip=$IP" >> $GITHUB_OUTPUT
+          echo "Using production VM IP: $IP"
+
+      - name: Download docker images
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-images-${{ github.sha }}
+          path: ./artifacts
+
+      # Prepare production app directory
+      - name: Prepare production app directory
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ steps.gce-ip.outputs.ip }}
+          username: ${{ secrets.GCE_USER }}
+          key: ${{ secrets.GCE_SSH_KEY }}
+          script: |
+            set -euxo pipefail
+            mkdir -p ~/app
+
+      - name: Copy compose and images to VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ steps.gce-ip.outputs.ip }}
+          username: ${{ secrets.GCE_USER }}
+          key: ${{ secrets.GCE_SSH_KEY }}
+          source: |
+            .github/compose.ci.yml
+            artifacts/backend.tar
+            artifacts/frontend.tar
+          target: "~/app"
+
+      - name: Deploy and start services
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ steps.gce-ip.outputs.ip }}
+          username: ${{ secrets.GCE_USER }}
+          key: ${{ secrets.GCE_SSH_KEY }}
+          script: |
+            set -euxo pipefail
+            cd ~/app
+
+            # Load images
+            docker load -i artifacts/backend.tar
+            docker load -i artifacts/frontend.tar
+
+            # Deploy to production
+            PROJECT="devrev-production"
+
+            # Stop existing deployment
+            docker compose -f .github/compose.ci.yml -p "$PROJECT" down --remove-orphans || true
+
+            # Start new deployment
+            docker compose -f .github/compose.ci.yml -p "$PROJECT" up -d --wait --wait-timeout 180
+
+            echo "Production deployment completed successfully"
+
+  # 品質レポート生成
+  quality-summary:
+    name: Quality Summary
+    runs-on: ubuntu-latest
+    needs: [fast-checks, frontend-build-test, backend-build-test, docker-integration]
+    if: always()
+    permissions:
+      contents: read
+
+    steps:
+      - name: Generate quality summary
+        run: |
+          echo "# CI/CD Quality Summary" > summary.md
+          echo "Generated on: $(date)" >> summary.md
+          echo "" >> summary.md
+          echo "## Job Results" >> summary.md
+          echo "- Fast Checks: ${{ needs.fast-checks.result }}" >> summary.md
+          echo "- Frontend Build & Test: ${{ needs.frontend-build-test.result }}" >> summary.md
+          echo "- Backend Build & Test: ${{ needs.backend-build-test.result }}" >> summary.md
+          echo "- Docker Integration: ${{ needs.docker-integration.result }}" >> summary.md
+          echo "" >> summary.md
+          echo "## Performance Metrics" >> summary.md
+          echo "- Total execution time: $(date)" >> summary.md
+
+      - name: Upload quality summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-summary-${{ github.sha }}
+          path: summary.md
