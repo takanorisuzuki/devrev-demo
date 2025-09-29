@@ -1,11 +1,13 @@
-# CI専用 Podman Compose 設定
+# Production deployment compose file
 services:
   postgres:
     image: postgres:15-alpine
     environment:
-      POSTGRES_DB: driverev_test_db
+      POSTGRES_DB: driverev_db
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres123}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
@@ -14,7 +16,9 @@ services:
 
   redis:
     image: redis:7-alpine
-    command: redis-server --appendonly no
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -24,10 +28,14 @@ services:
   backend:
     image: driverev-backend:test
     environment:
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres123}@postgres:5432/driverev_test_db
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres123}@postgres:5432/driverev_db
       REDIS_URL: redis://redis:6379/0
-      SECRET_KEY: ${SECRET_KEY:-test-secret-key}
-      ENVIRONMENT: test
+      SECRET_KEY: ${SECRET_KEY:-production-secret-key}
+      ENVIRONMENT: production
+      DEBUG: "false"
+      APP_NAME: DriveRev
+      ACCESS_TOKEN_EXPIRE_MINUTES: 30
+      REFRESH_TOKEN_EXPIRE_DAYS: 7
     depends_on:
       - postgres
       - redis
@@ -36,3 +44,24 @@ services:
       interval: 20s
       timeout: 5s
       retries: 10
+
+  frontend:
+    image: driverev-frontend:test
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NEXT_PUBLIC_APP_ENV=production
+      - NEXT_PUBLIC_APP_NAME=DriveRev
+      - NEXT_PUBLIC_DEFAULT_LOCALE=ja
+      - NEXT_PUBLIC_SUPPORTED_LOCALES=["ja", "en"]
+      - NODE_ENV=production
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+volumes:
+  postgres_data:
+  redis_data:

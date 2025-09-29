@@ -1,5 +1,6 @@
-# Docker Compose file for DriveRev
+# Docker Compose file for DriveRev - LOCAL DEVELOPMENT ONLY
 # version field is now optional in modern compose
+# WARNING: This file contains development settings - DO NOT use in production
 
 services:
   # PostgreSQL データベース
