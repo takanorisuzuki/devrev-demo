@@ -148,7 +148,9 @@ brew install jq yq
    gh api --method PUT "repos/:owner/:repo/branches/main/protection" \
      --field required_status_checks='{"strict":true,"contexts":["Backend Tests & Build","Backend Code Quality v2"]}' \
      --field enforce_admins=true \
-     --field required_pull_request_reviews='{"required_approving_review_count":1}' \
+     --field required_pull_request_reviews='{"required_approving_review_count":1,"dismiss_stale_reviews":true,"require_code_owner_reviews":false,"restrict_dismissal_reviews":false}' \
+     --field allow_force_pushes=false \
+     --field allow_deletions=false \
      --field restrictions=null
    ```
 
@@ -159,11 +161,14 @@ brew install jq yq
 
 4. **完全な保護ルールの復旧**
    ```bash
-   # 全ての正しい設定で復旧
+   # 全ての正しい設定で復旧（包括的な保護設定）
    gh api --method PUT "repos/:owner/:repo/branches/main/protection" \
      --field required_status_checks='{"strict":true,"contexts":["Backend Tests & Build","Backend Code Quality v2","Code Security Scan"]}' \
      --field enforce_admins=true \
-     --field required_pull_request_reviews='{"required_approving_review_count":1}' \
+     --field required_pull_request_reviews='{"required_approving_review_count":1,"dismiss_stale_reviews":true,"require_code_owner_reviews":false,"restrict_dismissal_reviews":false}' \
+     --field allow_force_pushes=false \
+     --field allow_deletions=false \
+     --field block_creations=false \
      --field restrictions=null
    ```
 
