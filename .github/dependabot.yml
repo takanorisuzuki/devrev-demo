@@ -52,6 +52,55 @@ updates:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
 
+  # Docker base images
+  - package-ecosystem: "docker"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Tokyo"
+    open-pull-requests-limit: 3
+    reviewers:
+      - "takanorisuzuki"
+    assignees:
+      - "takanorisuzuki"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "docker"
+      - "backend"
+      - "security"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: "docker"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Tokyo"
+    open-pull-requests-limit: 3
+    reviewers:
+      - "takanorisuzuki"
+    assignees:
+      - "takanorisuzuki"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "docker"
+      - "frontend"
+      - "security"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
   # GitHub Actions dependencies
   - package-ecosystem: "github-actions"
     directory: "/"
