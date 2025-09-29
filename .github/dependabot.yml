@@ -1,4 +1,16 @@
 version: 2
+# LTS-focused configuration: Blocks non-LTS versions while allowing security updates
+# Security updates automatically bypass ignore rules to ensure critical patches are applied
+
+# Common version patterns for consistency
+non_lts_node_versions: &non_lts_node_versions
+  - ">=25.0.0"
+  - "23.*"
+  - "21.*"
+  - "19.*"
+  - "17.*"
+  - "15.*"
+  - "13.*"
 updates:
   # Python dependencies (Backend)
   - package-ecosystem: "pip"
@@ -9,6 +21,13 @@ updates:
       time: "09:00"
       timezone: "Asia/Tokyo"
     open-pull-requests-limit: 5
+    reviewers:
+      - "takanorisuzuki"
+    assignees:
+      - "takanorisuzuki"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
     labels:
       - "dependencies"
       - "python"
@@ -28,15 +47,22 @@ updates:
       time: "09:00"
       timezone: "Asia/Tokyo"
     open-pull-requests-limit: 5
+    reviewers:
+      - "takanorisuzuki"
+    assignees:
+      - "takanorisuzuki"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
     labels:
       - "dependencies"
       - "javascript"
       - "frontend"
       - "auto-merge-candidate"
     ignore:
-      # Block dependencies explicitly for non-LTS versions  
+      # Block non-LTS Node.js versions and related packages
       - dependency-name: "@types/node"
-        versions: [">=25.0.0"]
+        versions: *non_lts_node_versions
       # Block major version updates by default (require manual review)
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
@@ -50,6 +76,13 @@ updates:
       time: "09:00"
       timezone: "Asia/Tokyo"
     open-pull-requests-limit: 3
+    reviewers:
+      - "takanorisuzuki"
+    assignees:
+      - "takanorisuzuki"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
     labels:
       - "dependencies"
       - "github-actions"
@@ -60,7 +93,7 @@ updates:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
 
-  # Docker dependencies - Backend
+  # Docker dependencies
   - package-ecosystem: "docker"
     directory: "/backend"
     schedule:
@@ -69,6 +102,13 @@ updates:
       time: "09:00"
       timezone: "Asia/Tokyo"
     open-pull-requests-limit: 3
+    reviewers:
+      - "takanorisuzuki"
+    assignees:
+      - "takanorisuzuki"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
     labels:
       - "dependencies"
       - "docker"
@@ -80,7 +120,7 @@ updates:
       - dependency-name: "python"
         update-types: ["version-update:semver-minor", "version-update:semver-major"]
 
-  # Docker dependencies - Frontend  
+
   - package-ecosystem: "docker"
     directory: "/frontend"
     schedule:
@@ -89,12 +129,19 @@ updates:
       time: "09:00"
       timezone: "Asia/Tokyo"
     open-pull-requests-limit: 3
+    reviewers:
+      - "takanorisuzuki"
+    assignees:
+      - "takanorisuzuki"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
     labels:
       - "dependencies"
       - "docker"
       - "frontend"
       - "auto-merge-candidate"
     ignore:
-      # Block major Node.js updates (maintain LTS policy)
+      # Block non-LTS Node.js versions in Docker images
       - dependency-name: "node"
-        update-types: ["version-update:semver-major"]
+        versions: *non_lts_node_versions
