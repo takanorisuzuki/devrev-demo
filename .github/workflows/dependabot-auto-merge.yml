@@ -51,28 +51,16 @@ jobs:
           )
         )
       run: |
-        echo "Auto-approving and merging safe dependency update"
-        gh pr review --approve "$PR_URL"
+        echo "Auto-enabling merge for safe dependency update"
 
-        # Wait for CI checks to complete
-        echo "Waiting for CI checks to complete..."
-        timeout 600 bash -c '
-          while true; do
-            status=$(gh pr view "$PR_URL" --json statusCheckRollup --jq ".statusCheckRollup[] | select(.conclusion != \"SUCCESS\" and .conclusion != \"SKIPPED\" and .conclusion != \"NEUTRAL\") | .conclusion")
-            if [ -z "$status" ]; then
-              echo "All checks passed!"
-              break
-            fi
-            echo "Waiting for checks to complete..."
-            sleep 30
-          done
-        '
-
-        # Merge the PR
+        # Enable auto-merge directly without manual approval
+        # This works since the PR requirements are satisfied by CI checks
         gh pr merge --auto --squash "$PR_URL"
+
+        echo "Auto-merge enabled for PR. It will merge automatically when all checks pass."
       env:
         PR_URL: ${{github.event.pull_request.html_url}}
-        GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+        GH_TOKEN: ${{secrets.GITHUB_TOKEN}}
 
     - name: Comment on manual review required
       if: |
