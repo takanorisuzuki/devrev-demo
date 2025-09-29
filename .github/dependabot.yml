@@ -9,13 +9,6 @@ updates:
       time: "09:00"
       timezone: "Asia/Tokyo"
     open-pull-requests-limit: 5
-    reviewers:
-      - "takanorisuzuki"
-    assignees:
-      - "takanorisuzuki"
-    commit-message:
-      prefix: "chore"
-      include: "scope"
     labels:
       - "dependencies"
       - "python"
@@ -25,11 +18,6 @@ updates:
       # Block major version updates by default (require manual review)
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
-      # Allow specific stable frameworks to have all updates
-      - dependency-name: "fastapi"
-        update-types: ["version-update:semver-minor", "version-update:semver-patch"]
-      - dependency-name: "pydantic"
-        update-types: ["version-update:semver-minor", "version-update:semver-patch"]
 
   # Node.js dependencies (Frontend)
   - package-ecosystem: "npm"
@@ -40,32 +28,18 @@ updates:
       time: "09:00"
       timezone: "Asia/Tokyo"
     open-pull-requests-limit: 5
-    reviewers:
-      - "takanorisuzuki"
-    assignees:
-      - "takanorisuzuki"
-    commit-message:
-      prefix: "chore"
-      include: "scope"
     labels:
       - "dependencies"
       - "javascript"
       - "frontend"
       - "auto-merge-candidate"
     ignore:
-      # Block non-LTS Node.js versions and related packages
+      # Block dependencies explicitly for non-LTS versions  
       - dependency-name: "@types/node"
-        versions: [">=25.0.0", "23.*", "21.*", "19.*", "17.*", "15.*", "13.*"]
+        versions: [">=25.0.0"]
       # Block major version updates by default (require manual review)
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
-      # Allow specific stable packages to have minor/patch updates
-      - dependency-name: "react"
-        update-types: ["version-update:semver-minor", "version-update:semver-patch"]
-      - dependency-name: "react-dom"
-        update-types: ["version-update:semver-minor", "version-update:semver-patch"]
-      - dependency-name: "next"
-        update-types: ["version-update:semver-minor", "version-update:semver-patch"]
 
   # GitHub Actions dependencies
   - package-ecosystem: "github-actions"
@@ -76,18 +50,15 @@ updates:
       time: "09:00"
       timezone: "Asia/Tokyo"
     open-pull-requests-limit: 3
-    reviewers:
-      - "takanorisuzuki"
-    assignees:
-      - "takanorisuzuki"
-    commit-message:
-      prefix: "chore"
-      include: "scope"
     labels:
       - "dependencies"
       - "github-actions"
       - "ci/cd"
       - "auto-merge-candidate"
+    ignore:
+      # Block major version updates (require manual review)
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   # Docker dependencies - Backend
   - package-ecosystem: "docker"
@@ -98,25 +69,17 @@ updates:
       time: "09:00"
       timezone: "Asia/Tokyo"
     open-pull-requests-limit: 3
-    reviewers:
-      - "takanorisuzuki"
-    assignees:
-      - "takanorisuzuki"
-    commit-message:
-      prefix: "chore"
-      include: "scope"
     labels:
       - "dependencies"
       - "docker"
       - "backend"
       - "auto-merge-candidate"
     ignore:
-      # Only allow updates within supported LTS versions
-      # Current LTS: Python 3.12.x (primary), 3.11.x (maintenance)
+      # Block major Python updates (maintain LTS policy)
       - dependency-name: "python"
-        versions: [">=3.13.0", "3.10.*", "3.9.*", "3.8.*", "<3.11"]
+        update-types: ["version-update:semver-major"]
 
-  # Docker dependencies - Frontend
+  # Docker dependencies - Frontend  
   - package-ecosystem: "docker"
     directory: "/frontend"
     schedule:
@@ -125,19 +88,12 @@ updates:
       time: "09:00"
       timezone: "Asia/Tokyo"
     open-pull-requests-limit: 3
-    reviewers:
-      - "takanorisuzuki"
-    assignees:
-      - "takanorisuzuki"
-    commit-message:
-      prefix: "chore"
-      include: "scope"
     labels:
       - "dependencies"
       - "docker"
       - "frontend"
       - "auto-merge-candidate"
     ignore:
-      # Block non-LTS Node.js versions in Docker images
+      # Block major Node.js updates (maintain LTS policy)
       - dependency-name: "node"
-        versions: [">=25.0.0", "23.*", "21.*", "19.*", "17.*", "15.*", "13.*"]
+        update-types: ["version-update:semver-major"]
