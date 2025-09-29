@@ -4,9 +4,15 @@ updates:
     directory: "/backend"
     schedule:
       interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Tokyo"
+    open-pull-requests-limit: 5
     labels:
       - "dependencies"
       - "python"
+      - "backend"
+      - "auto-merge-candidate"
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
@@ -15,11 +21,28 @@ updates:
     directory: "/frontend"
     schedule:
       interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Tokyo"
+    open-pull-requests-limit: 5
     labels:
       - "dependencies"
       - "javascript"
+      - "frontend"
+      - "auto-merge-candidate"
     ignore:
       - dependency-name: "@types/node"
-        versions: [">=25.0.0", "23.*", "21.*"]
+        versions: [">=25.0.0", "23.*", "21.*", "19.*", "17.*", "15.*", "13.*"]
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: "docker"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "docker"
+    ignore:
+      - dependency-name: "python"
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
