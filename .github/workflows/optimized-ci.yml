@@ -209,6 +209,7 @@ jobs:
         with:
           context: ./backend
           push: false
+          load: true
           tags: driverev-backend:test
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -218,6 +219,7 @@ jobs:
         with:
           context: ./frontend
           push: false
+          load: true
           tags: driverev-frontend:test
           cache-from: type=gha
           cache-to: type=gha,mode=max
