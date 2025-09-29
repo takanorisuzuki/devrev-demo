@@ -1,46 +1,46 @@
+# Common configuration anchors
+x-common-deps:
+  schedule: &schedule
+    interval: "weekly"
+    day: "monday"
+    time: "09:00"
+    timezone: "Asia/Tokyo"
+  reviewers: &reviewers
+    - "takanorisuzuki"
+  assignees: &assignees
+    - "takanorisuzuki"
+  commit-message: &commit_message
+    prefix: "chore"
+    include: "scope"
+  ignore-major: &ignore_major
+    - dependency-name: "*"
+      update-types: ["version-update:semver-major"]
+
 version: 2
 updates:
   # Python dependencies (Backend)
   - package-ecosystem: "pip"
     directory: "/backend"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "09:00"
-      timezone: "Asia/Tokyo"
+    schedule: *schedule
     open-pull-requests-limit: 5
-    reviewers:
-      - "takanorisuzuki"
-    assignees:
-      - "takanorisuzuki"
-    commit-message:
-      prefix: "chore"
-      include: "scope"
+    reviewers: *reviewers
+    assignees: *assignees
+    commit-message: *commit_message
     labels:
       - "dependencies"
       - "python"
       - "backend"
       - "auto-merge-candidate"
-    ignore:
-      - dependency-name: "*"
-        update-types: ["version-update:semver-major"]
+    ignore: *ignore_major
 
   # Node.js dependencies (Frontend)
   - package-ecosystem: "npm"
     directory: "/frontend"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "09:00"
-      timezone: "Asia/Tokyo"
+    schedule: *schedule
     open-pull-requests-limit: 5
-    reviewers:
-      - "takanorisuzuki"
-    assignees:
-      - "takanorisuzuki"
-    commit-message:
-      prefix: "chore"
-      include: "scope"
+    reviewers: *reviewers
+    assignees: *assignees
+    commit-message: *commit_message
     labels:
       - "dependencies"
       - "javascript"
@@ -52,75 +52,46 @@ updates:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
 
-  # Docker base images
+  # Docker base images - Backend
   - package-ecosystem: "docker"
     directory: "/backend"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "09:00"
-      timezone: "Asia/Tokyo"
+    schedule: *schedule
     open-pull-requests-limit: 3
-    reviewers:
-      - "takanorisuzuki"
-    assignees:
-      - "takanorisuzuki"
-    commit-message:
-      prefix: "chore"
-      include: "scope"
+    reviewers: *reviewers
+    assignees: *assignees
+    commit-message: *commit_message
     labels:
       - "dependencies"
       - "docker"
       - "backend"
       - "security"
-    ignore:
-      - dependency-name: "*"
-        update-types: ["version-update:semver-major"]
+    ignore: *ignore_major
 
+  # Docker base images - Frontend
   - package-ecosystem: "docker"
     directory: "/frontend"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "09:00"
-      timezone: "Asia/Tokyo"
+    schedule: *schedule
     open-pull-requests-limit: 3
-    reviewers:
-      - "takanorisuzuki"
-    assignees:
-      - "takanorisuzuki"
-    commit-message:
-      prefix: "chore"
-      include: "scope"
+    reviewers: *reviewers
+    assignees: *assignees
+    commit-message: *commit_message
     labels:
       - "dependencies"
       - "docker"
       - "frontend"
       - "security"
-    ignore:
-      - dependency-name: "*"
-        update-types: ["version-update:semver-major"]
+    ignore: *ignore_major
 
   # GitHub Actions dependencies
   - package-ecosystem: "github-actions"
     directory: "/"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "09:00"
-      timezone: "Asia/Tokyo"
+    schedule: *schedule
     open-pull-requests-limit: 3
-    reviewers:
-      - "takanorisuzuki"
-    assignees:
-      - "takanorisuzuki"
-    commit-message:
-      prefix: "chore"
-      include: "scope"
+    reviewers: *reviewers
+    assignees: *assignees
+    commit-message: *commit_message
     labels:
       - "dependencies"
       - "github-actions"
       - "security"
-    ignore:
-      - dependency-name: "*"
-        update-types: ["version-update:semver-major"]
+    ignore: *ignore_major

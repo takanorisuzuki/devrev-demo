@@ -115,7 +115,8 @@ echo "🔍 整合性チェック実行中..."
 
 VALIDATION_ERRORS=0
 
-echo "$REQUIRED_CHECKS" | while read -r required_check; do
+while IFS= read -r required_check; do
+    if [[ -z "$required_check" ]]; then continue; fi
     FOUND=false
 
     # ジョブ名での照合
@@ -140,7 +141,7 @@ echo "$REQUIRED_CHECKS" | while read -r required_check; do
             fi
         done
     fi
-done
+done <<< "$REQUIRED_CHECKS"
 
 echo ""
 if [[ $VALIDATION_ERRORS -eq 0 ]]; then
