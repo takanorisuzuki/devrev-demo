@@ -1,7 +1,4 @@
 version: 2
-# LTS-focused configuration: Blocks non-LTS versions while allowing security updates
-# Security updates automatically bypass ignore rules to ensure critical patches are applied
-
 updates:
   # Python dependencies (Backend)
   - package-ecosystem: "pip"
@@ -25,7 +22,6 @@ updates:
       - "backend"
       - "auto-merge-candidate"
     ignore:
-      # Block major version updates by default (require manual review)
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
 
@@ -51,10 +47,8 @@ updates:
       - "frontend"
       - "auto-merge-candidate"
     ignore:
-      # Block non-LTS Node.js versions and related packages
       - dependency-name: "@types/node"
         versions: [">=25.0.0", "23.*", "21.*", "19.*", "17.*", "15.*", "13.*"]
-      # Block major version updates by default (require manual review)
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
 
@@ -80,11 +74,10 @@ updates:
       - "ci/cd"
       - "auto-merge-candidate"
     ignore:
-      # Block major version updates (require manual review)
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
 
-  # Docker dependencies
+  # Docker dependencies - Backend
   - package-ecosystem: "docker"
     directory: "/backend"
     schedule:
@@ -106,11 +99,10 @@ updates:
       - "backend"
       - "auto-merge-candidate"
     ignore:
-      # Block updates to new minor (non-LTS) or major versions.
-      # This allows patch updates for the current LTS (e.g., 3.12.x).
       - dependency-name: "python"
         update-types: ["version-update:semver-minor", "version-update:semver-major"]
 
+  # Docker dependencies - Frontend
   - package-ecosystem: "docker"
     directory: "/frontend"
     schedule:
@@ -132,6 +124,5 @@ updates:
       - "frontend"
       - "auto-merge-candidate"
     ignore:
-      # Block non-LTS Node.js versions in Docker images
       - dependency-name: "node"
         versions: [">=25.0.0", "23.*", "21.*", "19.*", "17.*", "15.*", "13.*"]
