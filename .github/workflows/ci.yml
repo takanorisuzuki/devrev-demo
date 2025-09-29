@@ -16,7 +16,7 @@ on:
 
 env:
   NODE_VERSION: "20"
-  PYTHON_VERSION: "3.11"
+  PYTHON_VERSION: "3.12"
   POSTGRES_PASSWORD: postgres123
   SECRET_KEY: test-secret-key
   FORCE_CACHE_REFRESH: "true"
