@@ -370,6 +370,16 @@ jobs:
           name: docker-images-${{ github.sha }}
           path: ./artifacts
 
+      # Debug: Verify downloaded artifacts
+      - name: Verify artifact structure
+        run: |
+          echo "=== Workspace structure ==="
+          ls -la ./
+          echo "=== Artifacts directory ==="
+          ls -la ./artifacts/
+          echo "=== File details ==="
+          file ./artifacts/* || echo "No files in artifacts/"
+
       # Prepare production app directory
       - name: Prepare production app directory
         uses: appleboy/ssh-action@v0.1.10
@@ -379,19 +389,28 @@ jobs:
           key: ${{ secrets.GCE_SSH_KEY }}
           script: |
             set -euxo pipefail
+            rm -rf ~/app
             mkdir -p ~/app
 
-      - name: Copy compose and images to VM
+      - name: Copy compose file to VM
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ steps.gce-ip.outputs.ip }}
           username: ${{ secrets.GCE_USER }}
           key: ${{ secrets.GCE_SSH_KEY }}
-          source: |
-            .github/compose.ci.yml
-            artifacts/backend.tar
-            artifacts/frontend.tar
+          source: ".github/compose.ci.yml"
           target: "~/app"
+          strip_components: 0
+
+      - name: Copy docker images to VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ steps.gce-ip.outputs.ip }}
+          username: ${{ secrets.GCE_USER }}
+          key: ${{ secrets.GCE_SSH_KEY }}
+          source: "artifacts/*"
+          target: "~/app"
+          strip_components: 0
 
       - name: Deploy and start services
         uses: appleboy/ssh-action@v0.1.10
