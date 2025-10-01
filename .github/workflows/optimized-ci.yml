@@ -143,7 +143,7 @@ jobs:
     if: |
       always() &&
       !cancelled() &&
-      github.event_name == 'pull_request' &&
+      (github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) &&
       needs.frontend-quality.result == 'success' &&
       (needs.detect-changes.outputs.frontend == 'true' || needs.detect-changes.outputs.ci == 'true')
     permissions:
@@ -188,7 +188,7 @@ jobs:
     if: |
       always() &&
       !cancelled() &&
-      github.event_name == 'pull_request' &&
+      (github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) &&
       needs.backend-quality.result == 'success' &&
       (needs.detect-changes.outputs.backend == 'true' || needs.detect-changes.outputs.ci == 'true')
     permissions:
@@ -267,7 +267,7 @@ jobs:
       (github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main'))
     permissions:
       contents: read
-      packages: write  # GHCR push用
+      packages: write # GHCR push用
 
     steps:
       - name: Checkout code
@@ -531,7 +531,14 @@ jobs:
   quality-summary:
     name: Quality Summary
     runs-on: ubuntu-latest
-    needs: [backend-quality, frontend-quality, frontend-build-test, backend-build-test, docker-integration]
+    needs:
+      [
+        backend-quality,
+        frontend-quality,
+        frontend-build-test,
+        backend-build-test,
+        docker-integration,
+      ]
     if: always()
     permissions:
       contents: read
