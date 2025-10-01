@@ -1,13 +1,11 @@
 name: Security Scan
 
 on:
-  push:
-    branches: [main, develop]
   pull_request:
     branches: [main, develop]
   schedule:
-    # 毎日午前3時（JST）に実行
-    - cron: "0 18 * * *"
+    # 毎週月曜日午前3時（JST）に実行
+    - cron: "0 18 * * 1"
 
 env:
   NODE_VERSION: "20"
