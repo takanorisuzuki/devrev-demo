@@ -501,6 +501,11 @@ jobs:
             docker compose -f .github/compose.ci.yml -p "$PROJECT" down --remove-orphans || true
 
             # Start new deployment with generated .env
+            # Export .env variables for docker compose
+            set -a
+            source .env
+            set +a
+            
             docker compose -f .github/compose.ci.yml -p "$PROJECT" up -d --wait --wait-timeout 240
             
             echo "✅ Deployment complete!"
