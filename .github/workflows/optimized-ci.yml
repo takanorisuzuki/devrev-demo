@@ -198,13 +198,14 @@ jobs:
           name: backend-coverage
           token: ${{ secrets.CODECOV_TOKEN }}
 
-  # Docker統合ビルド・テスト
+  # Docker統合ビルド・テスト (GHCR最適化版)
   docker-integration:
     name: Docker Integration Tests
     runs-on: ubuntu-latest
     needs: [frontend-build-test, backend-build-test]
     permissions:
       contents: read
+      packages: write  # GHCR push用
 
     steps:
       - name: Checkout code
@@ -213,11 +214,16 @@ jobs:
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # Enable BuildKit for better caching
-      - name: Enable Docker BuildKit
-        run: echo "DOCKER_BUILDKIT=1" >> $GITHUB_ENV
+      - name: Log in to GitHub Container Registry
+        if: github.ref == 'refs/heads/main'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build backend image with cache
+      # Backend: ビルド (integration test用)
+      - name: Build backend image for testing
         uses: docker/build-push-action@v5
         with:
           context: ./backend
@@ -227,7 +233,20 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Build frontend image with cache
+      # Backend: GHCR push (main only)
+      - name: Push backend image to GHCR
+        if: github.ref == 'refs/heads/main'
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/driverev-backend:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/driverev-backend:latest
+          cache-from: type=gha
+
+      # Frontend: ビルド (integration test用)
+      - name: Build frontend image for testing
         uses: docker/build-push-action@v5
         with:
           context: ./frontend
@@ -237,32 +256,28 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      # Frontend: GHCR push (main only)
+      - name: Push frontend image to GHCR
+        if: github.ref == 'refs/heads/main'
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/driverev-frontend:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/driverev-frontend:latest
+          cache-from: type=gha
+
       - name: Start services with Docker Compose
         run: |
           PROJECT=devrev-${{ github.run_id }}
-          docker compose -f .github/compose.ci.yml -p "$PROJECT" up -d --wait --wait-timeout 180 backend
+          docker compose -f .github/compose.ci.yml -p "$PROJECT" up -d --wait --wait-timeout 240 backend
 
       - name: Run integration tests
         run: |
           PROJECT=devrev-${{ github.run_id }}
           docker compose -f .github/compose.ci.yml -p "$PROJECT" exec backend curl -fsS http://localhost:8000/health
           echo "Backend health check passed"
-
-      - name: Export images as artifacts (for deployment)
-        if: github.ref == 'refs/heads/main'
-        run: |
-          docker save -o backend.tar driverev-backend:test
-          docker save -o frontend.tar driverev-frontend:test
-
-      - name: Upload docker images
-        if: github.ref == 'refs/heads/main'
-        uses: actions/upload-artifact@v4
-        with:
-          name: docker-images-${{ github.sha }}
-          path: |
-            backend.tar
-            frontend.tar
-          retention-days: 1
 
       - name: Cleanup
         if: always()
@@ -364,22 +379,6 @@ jobs:
           echo "ip=$IP" >> $GITHUB_OUTPUT
           echo "Using production VM IP: $IP"
 
-      - name: Download docker images
-        uses: actions/download-artifact@v4
-        with:
-          name: docker-images-${{ github.sha }}
-          path: ./artifacts
-
-      # Debug: Verify downloaded artifacts
-      - name: Verify artifact structure
-        run: |
-          echo "=== Workspace structure ==="
-          ls -la ./
-          echo "=== Artifacts directory ==="
-          ls -la ./artifacts/
-          echo "=== File details ==="
-          file ./artifacts/* || echo "No files in artifacts/"
-
       # Prepare production app directory
       - name: Prepare production app directory
         uses: appleboy/ssh-action@v0.1.10
@@ -402,18 +401,6 @@ jobs:
           target: "~/app"
           strip_components: 0
 
-      - name: Copy docker images to VM
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ steps.gce-ip.outputs.ip }}
-          username: ${{ secrets.GCE_USER }}
-          key: ${{ secrets.GCE_SSH_KEY }}
-          source: "artifacts/*"
-          target: "~/app"
-          strip_components: 0
-          timeout: 120s
-          command_timeout: 30m
-
       - name: Deploy and start services
         uses: appleboy/ssh-action@v0.1.10
         with:
@@ -424,9 +411,14 @@ jobs:
             set -euxo pipefail
             cd ~/app
 
-            # Load images
-            docker load -i artifacts/backend.tar
-            docker load -i artifacts/frontend.tar
+            # Pull images from GHCR
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            docker pull ghcr.io/${{ github.repository_owner }}/driverev-backend:${{ github.sha }}
+            docker pull ghcr.io/${{ github.repository_owner }}/driverev-frontend:${{ github.sha }}
+
+            # Tag for compose
+            docker tag ghcr.io/${{ github.repository_owner }}/driverev-backend:${{ github.sha }} driverev-backend:test
+            docker tag ghcr.io/${{ github.repository_owner }}/driverev-frontend:${{ github.sha }} driverev-frontend:test
 
             # Deploy to production
             PROJECT="devrev-production"
@@ -435,7 +427,7 @@ jobs:
             docker compose -f .github/compose.ci.yml -p "$PROJECT" down --remove-orphans || true
 
             # Start new deployment
-            docker compose -f .github/compose.ci.yml -p "$PROJECT" up -d --wait --wait-timeout 180
+            docker compose -f .github/compose.ci.yml -p "$PROJECT" up -d --wait --wait-timeout 240
 
             echo "Production deployment completed successfully"
 
