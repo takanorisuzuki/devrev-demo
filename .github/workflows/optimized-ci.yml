@@ -26,10 +26,49 @@ env:
   FORCE_CACHE_REFRESH: "true"
 
 jobs:
+  # 変更検知 - どのコンポーネントが変更されたかを判定
+  detect-changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      docker: ${{ steps.filter.outputs.docker }}
+      ci: ${{ steps.filter.outputs.ci }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Check path filters
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+              - 'backend/requirements.txt'
+            frontend:
+              - 'frontend/**'
+              - 'frontend/package*.json'
+            docker:
+              - 'backend/Dockerfile'
+              - 'frontend/Dockerfile'
+              - '.github/compose.ci.yml'
+            ci:
+              - '.github/workflows/**'
+
   # Backend品質チェック（ブランチプロテクション要件）
   backend-quality:
     name: Backend Code Quality v2
     runs-on: ubuntu-latest
+    needs: detect-changes
+    if: |
+      github.event_name == 'pull_request' &&
+      (needs.detect-changes.outputs.backend == 'true' || needs.detect-changes.outputs.ci == 'true')
     permissions:
       contents: read
 
@@ -66,6 +105,10 @@ jobs:
   frontend-quality:
     name: Frontend Code Quality
     runs-on: ubuntu-latest
+    needs: detect-changes
+    if: |
+      github.event_name == 'pull_request' &&
+      (needs.detect-changes.outputs.frontend == 'true' || needs.detect-changes.outputs.ci == 'true')
     permissions:
       contents: read
 
@@ -96,7 +139,13 @@ jobs:
   frontend-build-test:
     name: Frontend Build & Test
     runs-on: ubuntu-latest
-    needs: frontend-quality
+    needs: [detect-changes, frontend-quality]
+    if: |
+      always() &&
+      !cancelled() &&
+      github.event_name == 'pull_request' &&
+      needs.frontend-quality.result == 'success' &&
+      (needs.detect-changes.outputs.frontend == 'true' || needs.detect-changes.outputs.ci == 'true')
     permissions:
       contents: read
 
@@ -135,7 +184,13 @@ jobs:
   backend-build-test:
     name: Backend Tests & Build
     runs-on: ubuntu-latest
-    needs: backend-quality
+    needs: [detect-changes, backend-quality]
+    if: |
+      always() &&
+      !cancelled() &&
+      github.event_name == 'pull_request' &&
+      needs.backend-quality.result == 'success' &&
+      (needs.detect-changes.outputs.backend == 'true' || needs.detect-changes.outputs.ci == 'true')
     permissions:
       contents: read
 
@@ -202,7 +257,14 @@ jobs:
   docker-integration:
     name: Docker Integration Tests
     runs-on: ubuntu-latest
-    needs: [frontend-build-test, backend-build-test]
+    needs: [detect-changes, frontend-build-test, backend-build-test]
+    if: |
+      always() &&
+      !cancelled() &&
+      (needs.frontend-build-test.result == 'success' || needs.frontend-build-test.result == 'skipped') &&
+      (needs.backend-build-test.result == 'success' || needs.backend-build-test.result == 'skipped') &&
+      (needs.detect-changes.outputs.backend == 'true' || needs.detect-changes.outputs.frontend == 'true' || needs.detect-changes.outputs.docker == 'true' || needs.detect-changes.outputs.ci == 'true') &&
+      (github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main'))
     permissions:
       contents: read
       packages: write  # GHCR push用
@@ -428,6 +490,19 @@ jobs:
 
             # Start new deployment
             docker compose -f .github/compose.ci.yml -p "$PROJECT" up -d --wait --wait-timeout 240
+
+            echo "=== Deployment Status ==="
+            docker compose -f .github/compose.ci.yml -p "$PROJECT" ps
+
+            echo "=== Container Health Status ==="
+            docker inspect ${PROJECT}-frontend-1 --format='{{.Name}}: {{.State.Health.Status}}' || echo "Frontend inspection failed"
+            docker inspect ${PROJECT}-backend-1 --format='{{.Name}}: {{.State.Health.Status}}' || echo "Backend inspection failed"
+
+            echo "=== Frontend Logs (last 50 lines) ==="
+            docker compose -f .github/compose.ci.yml -p "$PROJECT" logs frontend --tail 50
+
+            echo "=== Backend Logs (last 30 lines) ==="
+            docker compose -f .github/compose.ci.yml -p "$PROJECT" logs backend --tail 30
 
             echo "Production deployment completed successfully"
 
