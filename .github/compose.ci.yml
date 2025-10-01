@@ -28,7 +28,7 @@ services:
   backend:
     image: driverev-backend:test
     ports:
-      - "8000:8000"
+      - "${BACKEND_PORT:-8000}:8000"
     environment:
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres123}@postgres:5432/driverev_db
       REDIS_URL: redis://redis:6379/0
@@ -50,7 +50,7 @@ services:
   frontend:
     image: driverev-frontend:test
     ports:
-      - "3000:3000"
+      - "${FRONTEND_PORT:-3000}:3000"
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8000
       - NEXT_PUBLIC_APP_ENV=production
