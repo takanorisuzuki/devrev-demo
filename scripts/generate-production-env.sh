@@ -14,6 +14,10 @@ fi
 
 echo "🔧 外部IP: $EXTERNAL_IP で本番環境変数ファイルを生成中..."
 
+# Generate secure passwords if not provided
+GENERATED_DB_PASSWORD="${DB_PASSWORD:-postgres_prod_$(openssl rand -hex 16)}"
+GENERATED_SECRET_KEY="${SECRET_KEY:-$(openssl rand -hex 32)}"
+
 cat > .env << EOF
 # ==============================================
 # DriveRev - Production Environment (GCE VM)
@@ -27,9 +31,9 @@ DB_HOST=postgres
 DB_PORT=5432
 DB_NAME=driverev_db
 DB_USER=postgres
-DB_PASSWORD=${DB_PASSWORD:-postgres_prod_$(openssl rand -hex 16)}
+DB_PASSWORD=${GENERATED_DB_PASSWORD}
 
-DATABASE_URL=postgresql://postgres:${DB_PASSWORD:-postgres_prod_$(openssl rand -hex 16)}@postgres:5432/driverev_db
+DATABASE_URL=postgresql://postgres:${GENERATED_DB_PASSWORD}@postgres:5432/driverev_db
 
 # --------------------------------
 # Redis Configuration
@@ -43,7 +47,7 @@ REDIS_URL=redis://redis:6379/0
 # --------------------------------
 # JWT & Security Configuration
 # --------------------------------
-SECRET_KEY=${SECRET_KEY:-$(openssl rand -hex 32)}
+SECRET_KEY=${GENERATED_SECRET_KEY}
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 REFRESH_TOKEN_EXPIRE_DAYS=7
