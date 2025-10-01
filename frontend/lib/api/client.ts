@@ -13,11 +13,6 @@ import {
 // API Base URL - 環境変数から取得、デフォルトはlocalhost:8000（ブラウザアクセス用）
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-// DEBUG: APIベースURL確認
-if (typeof window !== "undefined") {
-  console.log("Frontend API Base URL:", API_BASE_URL);
-}
-
 // Axios インスタンス作成
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,

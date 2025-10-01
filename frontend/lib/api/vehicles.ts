@@ -29,11 +29,7 @@ export async function getVehicles(
     }
 
     const url = `/api/v1/vehicles/${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
-    console.log("Vehicle API Request URL:", url); // DEBUG
-
     const response = await apiClient.get(url);
-
-    console.log("Vehicle API Response:", response.data); // DEBUG
     return response.data;
   } catch (error) {
     console.error("車両一覧の取得に失敗しました:", error);
@@ -61,9 +57,7 @@ export async function getAdminVehicles(
     // 管理者用は全ての車両を取得（利用可能・不可問わず表示）
 
     const url = `/api/v1/vehicles/${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
-    console.log("Admin Vehicle API Request URL:", url); // DEBUG
     const response = await apiClient.get(url);
-    console.log("Admin Vehicle API Response:", response.data); // DEBUG
     return response.data;
   } catch (error) {
     console.error("管理者車両一覧の取得に失敗しました:", error);

@@ -21,11 +21,7 @@ export async function getStores(params?: StoreSearchParams): Promise<Store[]> {
     }
 
     const url = `/api/v1/stores${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
-    console.log("API Request URL:", url); // DEBUG
-
     const response = await apiClient.get(url);
-
-    console.log("API Response:", response.data); // DEBUG
     return response.data;
   } catch (error) {
     console.error("店舗一覧の取得に失敗しました:", error);
