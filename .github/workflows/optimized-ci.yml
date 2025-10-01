@@ -271,7 +271,7 @@ jobs:
       - name: Start services with Docker Compose
         run: |
           PROJECT=devrev-${{ github.run_id }}
-          docker compose -f .github/compose.ci.yml -p "$PROJECT" up -d --wait --wait-timeout 180 backend
+          docker compose -f .github/compose.ci.yml -p "$PROJECT" up -d --wait --wait-timeout 240 backend
 
       - name: Run integration tests
         run: |
@@ -427,7 +427,7 @@ jobs:
             docker compose -f .github/compose.ci.yml -p "$PROJECT" down --remove-orphans || true
 
             # Start new deployment
-            docker compose -f .github/compose.ci.yml -p "$PROJECT" up -d --wait --wait-timeout 180
+            docker compose -f .github/compose.ci.yml -p "$PROJECT" up -d --wait --wait-timeout 240
 
             echo "Production deployment completed successfully"
 
