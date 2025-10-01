@@ -71,8 +71,8 @@ API_PREFIX=/api/v1
 BASE_PATH=/
 
 # CORS Settings - 動的に生成
-ALLOWED_HOSTS=["localhost", "127.0.0.1", "0.0.0.0", "__EXTERNAL_IP__"]
-CORS_ORIGINS=["http://__EXTERNAL_IP__:3000"]
+ALLOWED_HOSTS='["localhost", "127.0.0.1", "0.0.0.0", "__EXTERNAL_IP__"]'
+CORS_ORIGINS='["http://__EXTERNAL_IP__:3000"]'
 
 # --------------------------------
 # Email Configuration (optional)
@@ -93,7 +93,7 @@ NEXT_PUBLIC_API_URL=http://__EXTERNAL_IP__:8000
 NEXT_PUBLIC_APP_ENV=production
 NEXT_PUBLIC_APP_NAME=DriveRev
 NEXT_PUBLIC_DEFAULT_LOCALE=ja
-NEXT_PUBLIC_SUPPORTED_LOCALES=["ja", "en"]
+NEXT_PUBLIC_SUPPORTED_LOCALES='["ja", "en"]'
 NEXT_PUBLIC_SHOW_TEST_ACCOUNTS=false
 
 # --------------------------------
