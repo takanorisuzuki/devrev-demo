@@ -144,7 +144,7 @@ jobs:
       always() &&
       !cancelled() &&
       (github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) &&
-      needs.frontend-quality.result == 'success' &&
+      (needs.frontend-quality.result == 'success' || needs.frontend-quality.result == 'skipped') &&
       (needs.detect-changes.outputs.frontend == 'true' || needs.detect-changes.outputs.ci == 'true')
     permissions:
       contents: read
@@ -189,7 +189,7 @@ jobs:
       always() &&
       !cancelled() &&
       (github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) &&
-      needs.backend-quality.result == 'success' &&
+      (needs.backend-quality.result == 'success' || needs.backend-quality.result == 'skipped') &&
       (needs.detect-changes.outputs.backend == 'true' || needs.detect-changes.outputs.ci == 'true')
     permissions:
       contents: read
@@ -476,7 +476,7 @@ jobs:
             # Generate production environment file with current VM IP
             VM_IP="${{ steps.gce-ip.outputs.ip }}"
             echo "🔧 Generating production .env with IP: $VM_IP"
-            
+
             chmod +x scripts/generate-production-env.sh
             DB_PASSWORD="${{ secrets.DB_PASSWORD }}" \
             SECRET_KEY="${{ secrets.SECRET_KEY }}" \
@@ -505,9 +505,9 @@ jobs:
             set -a
             source .env
             set +a
-            
+
             docker compose -f .github/compose.ci.yml -p "$PROJECT" up -d --wait --wait-timeout 240
-            
+
             echo "✅ Deployment complete!"
             echo "🌐 Frontend: http://$VM_IP:3000"
             echo "🔌 Backend API: http://$VM_IP:8000"
