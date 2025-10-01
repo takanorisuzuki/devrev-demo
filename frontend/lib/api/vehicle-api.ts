@@ -1,6 +1,8 @@
 // 車両関連APIクライアント
 // バックエンドAPI統合用
 
+import { apiClient } from "./client";
+
 export interface Vehicle {
   id: string;
   make: string;
@@ -52,8 +54,6 @@ export interface AvailabilitySearchResponse {
   search_period_days: number;
 }
 
-const API_BASE_URL = "http://localhost:8000/api/v1";
-
 // 車両一覧取得
 export async function getVehicles(params?: {
   category?: string;
@@ -65,30 +65,9 @@ export async function getVehicles(params?: {
   skip?: number;
   limit?: number;
 }): Promise<Vehicle[]> {
-  const searchParams = new URLSearchParams();
-
-  if (params?.category) searchParams.set("category", params.category);
-  if (params?.make) searchParams.set("make", params.make);
-  if (params?.fuel_type) searchParams.set("fuel_type", params.fuel_type);
-  if (params?.is_available !== undefined)
-    searchParams.set("is_available", params.is_available.toString());
-  if (params?.min_price !== undefined)
-    searchParams.set("min_price", params.min_price.toString());
-  if (params?.max_price !== undefined)
-    searchParams.set("max_price", params.max_price.toString());
-  if (params?.skip !== undefined)
-    searchParams.set("skip", params.skip.toString());
-  if (params?.limit !== undefined)
-    searchParams.set("limit", params.limit.toString());
-
-  const url = `${API_BASE_URL}/vehicles/?${searchParams.toString()}`;
-
   try {
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    return await response.json();
+    const response = await apiClient.get("/api/v1/vehicles/", { params });
+    return response.data;
   } catch (error) {
     console.error("車両一覧取得エラー:", error);
     throw error;
@@ -99,22 +78,9 @@ export async function getVehicles(params?: {
 export async function searchAvailableVehicles(
   searchRequest: AvailabilitySearchRequest,
 ): Promise<AvailabilitySearchResponse> {
-  const url = `${API_BASE_URL}/vehicles/availability`;
-
   try {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(searchRequest),
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    return await response.json();
+    const response = await apiClient.post("/api/v1/vehicles/availability", searchRequest);
+    return response.data;
   } catch (error) {
     console.error("空車検索エラー:", error);
     throw error;
@@ -123,14 +89,9 @@ export async function searchAvailableVehicles(
 
 // 特定車両の詳細取得
 export async function getVehicleById(vehicleId: string): Promise<Vehicle> {
-  const url = `${API_BASE_URL}/vehicles/${vehicleId}`;
-
   try {
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    return await response.json();
+    const response = await apiClient.get(`/api/v1/vehicles/${vehicleId}`);
+    return response.data;
   } catch (error) {
     console.error("車両詳細取得エラー:", error);
     throw error;
