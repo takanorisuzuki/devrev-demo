@@ -14,8 +14,8 @@ fi
 
 echo "🔧 外部IP: $EXTERNAL_IP で本番環境変数ファイルを生成中..."
 
-# Generate secure passwords if not provided
-GENERATED_DB_PASSWORD="${DB_PASSWORD:-postgres_prod_$(openssl rand -hex 16)}"
+# Generate secure passwords if not provided (fully random, no prefix for maximum entropy)
+GENERATED_DB_PASSWORD="${DB_PASSWORD:-$(openssl rand -hex 16)}"
 GENERATED_SECRET_KEY="${SECRET_KEY:-$(openssl rand -hex 32)}"
 GENERATED_DATE="$(date -u +"%Y-%m-%d %H:%M:%S UTC")"
 
@@ -24,6 +24,9 @@ cat > .env.tpl << 'EOF'
 # ==============================================
 # DriveRev - Production Environment (GCE VM)
 # 自動生成 - __DATE__
+#
+# ⚠️  警告: このファイルには機密情報が含まれています。
+# 絶対にバージョン管理にコミットしないでください。
 # ==============================================
 
 # --------------------------------
@@ -127,6 +130,13 @@ MAINTENANCE_MESSAGE=サイトメンテナンス中です。しばらくお待ち
 # 2. EMAIL設定が必要な場合は適切な値を設定してください
 # ==============================================
 EOF
+
+# Guard against '#' character in secrets (sed delimiter conflict)
+if [[ "$GENERATED_DB_PASSWORD" == *"#"* ]] || [[ "$GENERATED_SECRET_KEY" == *"#"* ]]; then
+  echo "❌ エラー: 機密情報に'#'文字を含めることはできません。sedの区切り文字と競合します。" >&2
+  rm -f .env.tpl
+  exit 1
+fi
 
 # Safely substitute placeholders using sed (prevents command injection)
 # Using '#' as delimiter to avoid conflicts with special characters in passwords/URLs
