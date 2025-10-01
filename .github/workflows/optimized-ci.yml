@@ -453,13 +453,13 @@ jobs:
             rm -rf ~/app
             mkdir -p ~/app
 
-      - name: Copy compose file to VM
+      - name: Copy compose file and scripts to VM
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ steps.gce-ip.outputs.ip }}
           username: ${{ secrets.GCE_USER }}
           key: ${{ secrets.GCE_SSH_KEY }}
-          source: ".github/compose.ci.yml"
+          source: ".github/compose.ci.yml,scripts/generate-production-env.sh"
           target: "~/app"
           strip_components: 0
 
@@ -472,6 +472,18 @@ jobs:
           script: |
             set -euxo pipefail
             cd ~/app
+
+            # Generate production environment file with current VM IP
+            VM_IP="${{ steps.gce-ip.outputs.ip }}"
+            echo "🔧 Generating production .env with IP: $VM_IP"
+            
+            chmod +x scripts/generate-production-env.sh
+            DB_PASSWORD="${{ secrets.DB_PASSWORD }}" \
+            SECRET_KEY="${{ secrets.SECRET_KEY }}" \
+            EMAIL_HOST="${{ secrets.EMAIL_HOST }}" \
+            EMAIL_USER="${{ secrets.EMAIL_USER }}" \
+            EMAIL_PASSWORD="${{ secrets.EMAIL_PASSWORD }}" \
+            ./scripts/generate-production-env.sh "$VM_IP"
 
             # Pull images from GHCR
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
@@ -488,8 +500,12 @@ jobs:
             # Stop existing deployment
             docker compose -f .github/compose.ci.yml -p "$PROJECT" down --remove-orphans || true
 
-            # Start new deployment
+            # Start new deployment with generated .env
             docker compose -f .github/compose.ci.yml -p "$PROJECT" up -d --wait --wait-timeout 240
+            
+            echo "✅ Deployment complete!"
+            echo "🌐 Frontend: http://$VM_IP:3000"
+            echo "🔌 Backend API: http://$VM_IP:8000"
 
             echo "=== Deployment Status ==="
             docker compose -f .github/compose.ci.yml -p "$PROJECT" ps
