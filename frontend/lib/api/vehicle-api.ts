@@ -52,7 +52,8 @@ export interface AvailabilitySearchResponse {
   search_period_days: number;
 }
 
-const API_BASE_URL = "http://localhost:8000/api/v1";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_PATH = `${API_BASE_URL}/api/v1`;
 
 // 車両一覧取得
 export async function getVehicles(params?: {
@@ -81,7 +82,7 @@ export async function getVehicles(params?: {
   if (params?.limit !== undefined)
     searchParams.set("limit", params.limit.toString());
 
-  const url = `${API_BASE_URL}/vehicles/?${searchParams.toString()}`;
+  const url = `${API_PATH}/vehicles/?${searchParams.toString()}`;
 
   try {
     const response = await fetch(url);
@@ -99,7 +100,7 @@ export async function getVehicles(params?: {
 export async function searchAvailableVehicles(
   searchRequest: AvailabilitySearchRequest,
 ): Promise<AvailabilitySearchResponse> {
-  const url = `${API_BASE_URL}/vehicles/availability`;
+  const url = `${API_PATH}/vehicles/availability`;
 
   try {
     const response = await fetch(url, {
@@ -123,7 +124,7 @@ export async function searchAvailableVehicles(
 
 // 特定車両の詳細取得
 export async function getVehicleById(vehicleId: string): Promise<Vehicle> {
-  const url = `${API_BASE_URL}/vehicles/${vehicleId}`;
+  const url = `${API_PATH}/vehicles/${vehicleId}`;
 
   try {
     const response = await fetch(url);
