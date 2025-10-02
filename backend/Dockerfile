@@ -44,7 +44,8 @@ RUN chmod +x entrypoint.sh
 EXPOSE 8000
 
 # ヘルスチェック
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+# start-period を延長: entrypoint.sh でのDB待機、マイグレーション、シード実行を考慮
+HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
 # アプリケーション実行（entrypoint.shでマイグレーションとシード実行）

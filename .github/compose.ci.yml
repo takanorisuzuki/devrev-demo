@@ -32,7 +32,16 @@ services:
     ports:
       - "8000:8000"
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:${POSTGRES_PASSWORD:-postgres123}@postgres:5432/driverev_db}
+      # Individual DB connection settings (required by entrypoint.sh)
+      DB_HOST: ${DB_HOST:-postgres}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_NAME: ${DB_NAME:-driverev_db}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-${POSTGRES_PASSWORD:-postgres123}}
+      # DATABASE_URL: Dynamically constructed from DB_* variables
+      # Ensures consistency with individual DB connection settings
+      DATABASE_URL: ${DATABASE_URL:-postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-${POSTGRES_PASSWORD:-postgres123}}@${DB_HOST:-postgres}:${DB_PORT:-5432}/${DB_NAME:-driverev_db}}
+      # Application settings
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       SECRET_KEY: ${SECRET_KEY:-test-secret-key}
       ENVIRONMENT: ${ENVIRONMENT:-production}
