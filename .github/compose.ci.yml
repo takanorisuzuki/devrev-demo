@@ -7,7 +7,7 @@ services:
     environment:
       POSTGRES_DB: ${DB_NAME:-driverev_db}
       POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-${POSTGRES_PASSWORD:-postgres123}}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres123}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -33,14 +33,17 @@ services:
       - "8000:8000"
     environment:
       # Individual DB connection settings (required by entrypoint.sh)
+      # Note: These are loaded from .env file in production
       DB_HOST: ${DB_HOST:-postgres}
       DB_PORT: ${DB_PORT:-5432}
       DB_NAME: ${DB_NAME:-driverev_db}
       DB_USER: ${DB_USER:-postgres}
-      DB_PASSWORD: ${DB_PASSWORD:-${POSTGRES_PASSWORD:-postgres123}}
-      # DATABASE_URL: Dynamically constructed from DB_* variables
-      # Ensures consistency with individual DB connection settings
-      DATABASE_URL: ${DATABASE_URL:-postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-${POSTGRES_PASSWORD:-postgres123}}@${DB_HOST:-postgres}:${DB_PORT:-5432}/${DB_NAME:-driverev_db}}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres123}
+      # DATABASE_URL: Loaded from environment (.env file)
+      # Note: Simple variable expansion only - Docker Compose doesn't support complex nesting
+      # Production: .env sets this value via generate-production-env.sh
+      # CI: Defaults match individual DB_* variables above
+      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres123@postgres:5432/driverev_db}
       # Application settings
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       SECRET_KEY: ${SECRET_KEY:-test-secret-key}
