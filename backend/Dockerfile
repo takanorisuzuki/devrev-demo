@@ -37,6 +37,9 @@ WORKDIR /app
 # Copy application code (last to maximize cache efficiency)
 COPY . .
 
+# Make entrypoint script executable
+RUN chmod +x entrypoint.sh
+
 # ポート8000を露出
 EXPOSE 8000
 
@@ -44,5 +47,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
-# アプリケーション実行
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+# アプリケーション実行（entrypoint.shでマイグレーションとシード実行）
+CMD ["./entrypoint.sh"]
