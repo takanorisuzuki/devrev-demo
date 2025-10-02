@@ -504,14 +504,14 @@ jobs:
 
             # Pull images from GHCR
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            
+
             # Try to pull images for current commit, fallback to latest main branch images
             BACKEND_IMAGE="ghcr.io/${{ github.repository_owner }}/driverev-backend"
             FRONTEND_IMAGE="ghcr.io/${{ github.repository_owner }}/driverev-frontend"
             CURRENT_SHA="${{ github.sha }}"
-            
+
             echo "🔍 Attempting to pull images for commit: $CURRENT_SHA"
-            
+
             # Pull backend image (current commit or latest)
             if docker pull "$BACKEND_IMAGE:$CURRENT_SHA" 2>/dev/null; then
               echo "✅ Found backend image for commit $CURRENT_SHA"
@@ -521,7 +521,7 @@ jobs:
               docker pull "$BACKEND_IMAGE:latest" || docker pull "$BACKEND_IMAGE:main"
               docker tag "$BACKEND_IMAGE:latest" driverev-backend:test 2>/dev/null || docker tag "$BACKEND_IMAGE:main" driverev-backend:test
             fi
-            
+
             # Build frontend image locally with dynamic IP
             # This ensures NEXT_PUBLIC_API_URL is correctly embedded in the JavaScript bundle
             echo "🔨 Building frontend image with production API URL: http://$VM_IP:8000"
