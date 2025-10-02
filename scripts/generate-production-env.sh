@@ -14,10 +14,25 @@ fi
 
 echo "🔧 外部IP: $EXTERNAL_IP で本番環境変数ファイルを生成中..."
 
-# Generate secure passwords if not provided (fully random, no prefix for maximum entropy)
-GENERATED_DB_PASSWORD="${DB_PASSWORD:-$(openssl rand -hex 16)}"
-GENERATED_SECRET_KEY="${SECRET_KEY:-$(openssl rand -hex 32)}"
+# Validate required secrets from GitHub Secrets
+if [ -z "${DB_PASSWORD:-}" ]; then
+  echo "❌ エラー: DB_PASSWORD が設定されていません"
+  echo "GitHub Secrets で DB_PASSWORD を設定してください"
+  exit 1
+fi
+
+if [ -z "${SECRET_KEY:-}" ]; then
+  echo "❌ エラー: SECRET_KEY が設定されていません"
+  echo "GitHub Secrets で SECRET_KEY を設定してください"
+  exit 1
+fi
+
+# Use secrets from environment (no fallback to random generation for production)
+GENERATED_DB_PASSWORD="${DB_PASSWORD}"
+GENERATED_SECRET_KEY="${SECRET_KEY}"
 GENERATED_DATE="$(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+
+echo "✅ GitHub Secrets からDB_PASSWORDとSECRET_KEYを読み込みました"
 
 # Use template file with sed for safe substitution (prevents command injection)
 cat > .env.tpl << 'EOF'
