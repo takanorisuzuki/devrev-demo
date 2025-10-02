@@ -155,11 +155,16 @@ if [[ "$DB_PASSWORD" == *"#"* ]] || [[ "$SECRET_KEY" == *"#"* ]]; then
   exit 1
 fi
 
+# Escape special sed characters ('&', '\') in secrets to prevent substitution errors
+# The '#' delimiter is already checked for separately
+safe_db_password=$(printf '%s' "$DB_PASSWORD" | sed 's/[&\\]/\\&/g')
+safe_secret_key=$(printf '%s' "$SECRET_KEY" | sed 's/[&\\]/\\&/g')
+
 # Safely substitute placeholders using sed (prevents command injection)
 # Using '#' as delimiter to avoid conflicts with special characters in passwords/URLs
 sed -e "s#__DATE__#${GENERATED_DATE}#g" \
-    -e "s#__DB_PASSWORD__#${DB_PASSWORD}#g" \
-    -e "s#__SECRET_KEY__#${SECRET_KEY}#g" \
+    -e "s#__DB_PASSWORD__#${safe_db_password}#g" \
+    -e "s#__SECRET_KEY__#${safe_secret_key}#g" \
     -e "s#__EXTERNAL_IP__#${EXTERNAL_IP}#g" \
     .env.tpl > .env
 
