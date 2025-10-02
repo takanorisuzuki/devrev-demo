@@ -1,0 +1,117 @@
+name: Workflow Name Validation
+
+# ブランチ保護ルールとワークフロー名の一致を検証
+# Push/PR時に自動実行され、不一致があればCIを失敗させる
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/*.yml"
+      - ".github/workflows/*.yaml"
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - ".github/workflows/*.yml"
+      - ".github/workflows/*.yaml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate-workflow-names:
+    name: Validate Workflow Names
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Extract workflow names
+        id: extract-names
+        run: |
+          echo "🔍 ワークフローファイルから name フィールドを抽出中..."
+
+          WORKFLOW_NAMES=()
+          for file in .github/workflows/*.yml .github/workflows/*.yaml; do
+            if [[ -f "$file" ]]; then
+              # yq がない場合は grep で抽出
+              if command -v yq &> /dev/null; then
+                name=$(yq eval '.name' "$file" 2>/dev/null || echo "")
+              else
+                name=$(grep -E '^name:' "$file" | head -1 | sed 's/name:[[:space:]]*//' | sed 's/^["'"'"']//' | sed 's/["'"'"']$//' || echo "")
+              fi
+              
+              if [[ -n "$name" && "$name" != "null" ]]; then
+                echo "  ✓ $file → '$name'"
+                WORKFLOW_NAMES+=("$name")
+              fi
+            fi
+          done
+
+          # JSON配列として保存
+          printf '%s\n' "${WORKFLOW_NAMES[@]}" | jq -R . | jq -s . > /tmp/workflow_names.json
+          echo "✅ ワークフロー名を /tmp/workflow_names.json に保存しました"
+
+      - name: Check branch protection rules
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "🔒 ブランチ保護ルールを確認中..."
+
+          ERRORS=0
+
+          # main と develop の保護ルールをチェック
+          for branch in main develop; do
+            echo ""
+            echo "📋 ブランチ: $branch"
+            
+            # ブランチ保護ルールを取得
+            PROTECTION=$(gh api "repos/${{ github.repository }}/branches/$branch/protection" 2>/dev/null || echo "{}")
+            
+            if [[ "$PROTECTION" == "{}" ]]; then
+              echo "  ⚠️  保護ルールが設定されていません（スキップ）"
+              continue
+            fi
+            
+            # 必須ステータスチェックを抽出
+            REQUIRED_CHECKS=$(echo "$PROTECTION" | jq -r '.required_status_checks.contexts[]? // empty' 2>/dev/null)
+            
+            if [[ -z "$REQUIRED_CHECKS" ]]; then
+              echo "  ✓ 必須ステータスチェックなし"
+              continue
+            fi
+            
+            echo "  必須ステータスチェック:"
+            while IFS= read -r check; do
+              echo "    - $check"
+              
+              # ワークフロー名と一致するか確認
+              WORKFLOW_NAMES=$(cat /tmp/workflow_names.json)
+              MATCH=$(echo "$WORKFLOW_NAMES" | jq --arg check "$check" 'map(select(. == $check)) | length')
+              
+              if [[ "$MATCH" -eq 0 ]]; then
+                echo "      ❌ エラー: このステータスチェック名に一致するワークフローが存在しません！"
+                echo ""
+                echo "📝 利用可能なワークフロー名:"
+                echo "$WORKFLOW_NAMES" | jq -r '.[]' | sed 's/^/      - /'
+                echo ""
+                echo "💡 修正方法:"
+                echo "   1. ワークフローファイルの 'name:' フィールドを '$check' に変更"
+                echo "   2. または、ブランチ保護ルールの必須チェック名を変更"
+                echo ""
+                ERRORS=$((ERRORS + 1))
+              else
+                echo "      ✓ 一致するワークフローが存在します"
+              fi
+            done <<< "$REQUIRED_CHECKS"
+          done
+
+          echo ""
+          if [[ $ERRORS -gt 0 ]]; then
+            echo "❌ 検証失敗: $ERRORS 個の不一致が見つかりました"
+            exit 1
+          else
+            echo "✅ すべてのワークフロー名がブランチ保護ルールと一致しています"
+          fi
