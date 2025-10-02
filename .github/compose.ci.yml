@@ -38,9 +38,11 @@ services:
       DB_NAME: ${DB_NAME:-driverev_db}
       DB_USER: ${DB_USER:-postgres}
       DB_PASSWORD: ${DB_PASSWORD:-${POSTGRES_PASSWORD:-postgres123}}
-      # DATABASE_URL: Dynamically constructed from DB_* variables
-      # Ensures consistency with individual DB connection settings
-      DATABASE_URL: ${DATABASE_URL:-postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-${POSTGRES_PASSWORD:-postgres123}}@${DB_HOST:-postgres}:${DB_PORT:-5432}/${DB_NAME:-driverev_db}}
+      # DATABASE_URL: Loaded from environment (.env file)
+      # Note: Complex variable expansion doesn't work in Docker Compose.
+      # Production: .env sets this value via generate-production-env.sh
+      # CI: Defaults to postgres123 password for testing
+      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres123@postgres:5432/driverev_db}
       # Application settings
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       SECRET_KEY: ${SECRET_KEY:-test-secret-key}
