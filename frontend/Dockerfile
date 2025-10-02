@@ -20,6 +20,22 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
+# Build-time arguments for Next.js public environment variables
+# These will be embedded into the JavaScript bundle during build
+ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_APP_ENV=production
+ARG NEXT_PUBLIC_APP_NAME=DriveRev
+ARG NEXT_PUBLIC_DEFAULT_LOCALE=ja
+ARG NEXT_PUBLIC_SUPPORTED_LOCALES='["ja", "en"]'
+
+# Set environment variables for build (Next.js reads these during build)
+# Combining ENV instructions reduces image layers and improves build efficiency
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL} \
+    NEXT_PUBLIC_APP_ENV=${NEXT_PUBLIC_APP_ENV} \
+    NEXT_PUBLIC_APP_NAME=${NEXT_PUBLIC_APP_NAME} \
+    NEXT_PUBLIC_DEFAULT_LOCALE=${NEXT_PUBLIC_DEFAULT_LOCALE} \
+    NEXT_PUBLIC_SUPPORTED_LOCALES=${NEXT_PUBLIC_SUPPORTED_LOCALES}
+
 # Build application (disable telemetry)
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production

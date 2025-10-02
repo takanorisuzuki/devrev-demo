@@ -315,10 +315,18 @@ jobs:
           push: false
           load: true
           tags: driverev-frontend:test
+          build-args: |
+            NEXT_PUBLIC_API_URL=http://localhost:8000
+            NEXT_PUBLIC_APP_ENV=production
+            NEXT_PUBLIC_APP_NAME=DriveRev
+            NEXT_PUBLIC_DEFAULT_LOCALE=ja
+            NEXT_PUBLIC_SUPPORTED_LOCALES=["ja", "en"]
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       # Frontend: GHCR push (main only)
+      # Note: This image uses localhost:8000 as API URL placeholder
+      # Actual production deployment rebuilds with dynamic IP in deploy job
       - name: Push frontend image to GHCR
         if: github.ref == 'refs/heads/main'
         uses: docker/build-push-action@v5
@@ -328,6 +336,12 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository_owner }}/driverev-frontend:${{ github.sha }}
             ghcr.io/${{ github.repository_owner }}/driverev-frontend:latest
+          build-args: |
+            NEXT_PUBLIC_API_URL=http://localhost:8000
+            NEXT_PUBLIC_APP_ENV=production
+            NEXT_PUBLIC_APP_NAME=DriveRev
+            NEXT_PUBLIC_DEFAULT_LOCALE=ja
+            NEXT_PUBLIC_SUPPORTED_LOCALES=["ja", "en"]
           cache-from: type=gha
 
       - name: Start services with Docker Compose
@@ -462,7 +476,7 @@ jobs:
           host: ${{ steps.gce-ip.outputs.ip }}
           username: ${{ secrets.GCE_USER }}
           key: ${{ secrets.GCE_SSH_KEY }}
-          source: ".github/compose.ci.yml,scripts/generate-production-env.sh"
+          source: ".github/compose.ci.yml,scripts/generate-production-env.sh,frontend/"
           target: "~/app"
           strip_components: 0
 
@@ -490,14 +504,14 @@ jobs:
 
             # Pull images from GHCR
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            
+
             # Try to pull images for current commit, fallback to latest main branch images
             BACKEND_IMAGE="ghcr.io/${{ github.repository_owner }}/driverev-backend"
             FRONTEND_IMAGE="ghcr.io/${{ github.repository_owner }}/driverev-frontend"
             CURRENT_SHA="${{ github.sha }}"
-            
+
             echo "🔍 Attempting to pull images for commit: $CURRENT_SHA"
-            
+
             # Pull backend image (current commit or latest)
             if docker pull "$BACKEND_IMAGE:$CURRENT_SHA" 2>/dev/null; then
               echo "✅ Found backend image for commit $CURRENT_SHA"
@@ -507,16 +521,21 @@ jobs:
               docker pull "$BACKEND_IMAGE:latest" || docker pull "$BACKEND_IMAGE:main"
               docker tag "$BACKEND_IMAGE:latest" driverev-backend:test 2>/dev/null || docker tag "$BACKEND_IMAGE:main" driverev-backend:test
             fi
-            
-            # Pull frontend image (current commit or latest)
-            if docker pull "$FRONTEND_IMAGE:$CURRENT_SHA" 2>/dev/null; then
-              echo "✅ Found frontend image for commit $CURRENT_SHA"
-              docker tag "$FRONTEND_IMAGE:$CURRENT_SHA" driverev-frontend:test
-            else
-              echo "⚠️  Frontend image for $CURRENT_SHA not found, using latest from main"
-              docker pull "$FRONTEND_IMAGE:latest" || docker pull "$FRONTEND_IMAGE:main"
-              docker tag "$FRONTEND_IMAGE:latest" driverev-frontend:test 2>/dev/null || docker tag "$FRONTEND_IMAGE:main" driverev-frontend:test
-            fi
+
+            # Build frontend image locally with dynamic IP
+            # This ensures NEXT_PUBLIC_API_URL is correctly embedded in the JavaScript bundle
+            echo "🔨 Building frontend image with production API URL: http://$VM_IP:8000"
+            cd ~/app/frontend
+            docker build \
+              --build-arg NEXT_PUBLIC_API_URL="http://$VM_IP:8000" \
+              --build-arg NEXT_PUBLIC_APP_ENV="production" \
+              --build-arg NEXT_PUBLIC_APP_NAME="DriveRev" \
+              --build-arg NEXT_PUBLIC_DEFAULT_LOCALE="ja" \
+              --build-arg NEXT_PUBLIC_SUPPORTED_LOCALES='["ja", "en"]' \
+              -t driverev-frontend:test \
+              .
+            cd ~/app
+            echo "✅ Frontend image built successfully with dynamic API URL"
 
             # Deploy to production
             PROJECT="devrev-production"
