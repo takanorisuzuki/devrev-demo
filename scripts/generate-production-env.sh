@@ -15,21 +15,23 @@ fi
 echo "🔧 外部IP: $EXTERNAL_IP で本番環境変数ファイルを生成中..."
 
 # Validate required secrets from GitHub Secrets
+missing_secrets=()
 if [ -z "${DB_PASSWORD:-}" ]; then
-  echo "❌ エラー: DB_PASSWORD が設定されていません"
-  echo "GitHub Secrets で DB_PASSWORD を設定してください"
-  exit 1
+  missing_secrets+=("DB_PASSWORD")
 fi
-
 if [ -z "${SECRET_KEY:-}" ]; then
-  echo "❌ エラー: SECRET_KEY が設定されていません"
-  echo "GitHub Secrets で SECRET_KEY を設定してください"
+  missing_secrets+=("SECRET_KEY")
+fi
+
+if [ ${#missing_secrets[@]} -gt 0 ]; then
+  echo "❌ エラー: 以下の必須シークレットが設定されていません:" >&2
+  for secret in "${missing_secrets[@]}"; do
+    echo "  - $secret" >&2
+  done
+  echo "GitHub Secrets でこれらを設定してください。" >&2
   exit 1
 fi
 
-# Use secrets from environment (no fallback to random generation for production)
-GENERATED_DB_PASSWORD="${DB_PASSWORD}"
-GENERATED_SECRET_KEY="${SECRET_KEY}"
 GENERATED_DATE="$(date -u +"%Y-%m-%d %H:%M:%S UTC")"
 
 echo "✅ GitHub Secrets からDB_PASSWORDとSECRET_KEYを読み込みました"
@@ -147,7 +149,7 @@ MAINTENANCE_MESSAGE=サイトメンテナンス中です。しばらくお待ち
 EOF
 
 # Guard against '#' character in secrets (sed delimiter conflict)
-if [[ "$GENERATED_DB_PASSWORD" == *"#"* ]] || [[ "$GENERATED_SECRET_KEY" == *"#"* ]]; then
+if [[ "$DB_PASSWORD" == *"#"* ]] || [[ "$SECRET_KEY" == *"#"* ]]; then
   echo "❌ エラー: 機密情報に'#'文字を含めることはできません。sedの区切り文字と競合します。" >&2
   rm -f .env.tpl
   exit 1
@@ -156,8 +158,8 @@ fi
 # Safely substitute placeholders using sed (prevents command injection)
 # Using '#' as delimiter to avoid conflicts with special characters in passwords/URLs
 sed -e "s#__DATE__#${GENERATED_DATE}#g" \
-    -e "s#__DB_PASSWORD__#${GENERATED_DB_PASSWORD}#g" \
-    -e "s#__SECRET_KEY__#${GENERATED_SECRET_KEY}#g" \
+    -e "s#__DB_PASSWORD__#${DB_PASSWORD}#g" \
+    -e "s#__SECRET_KEY__#${SECRET_KEY}#g" \
     -e "s#__EXTERNAL_IP__#${EXTERNAL_IP}#g" \
     .env.tpl > .env
 
