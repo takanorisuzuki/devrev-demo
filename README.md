@@ -1,5 +1,9 @@
 # 🚗 DriveRev - レンタカーサービス デモ
 
+[![CI/CD Pipeline](https://github.com/takanorisuzuki/devrev-demo/actions/workflows/optimized-ci.yml/badge.svg)](https://github.com/takanorisuzuki/devrev-demo/actions/workflows/optimized-ci.yml)
+[![codecov](https://codecov.io/gh/takanorisuzuki/devrev-demo/branch/main/graph/badge.svg)](https://codecov.io/gh/takanorisuzuki/devrev-demo)
+[![Security Scan](https://github.com/takanorisuzuki/devrev-demo/actions/workflows/security.yml/badge.svg)](https://github.com/takanorisuzuki/devrev-demo/actions/workflows/security.yml)
+
 DriveRev は日本のレンタカーサービスのデモアプリケーションです。本格的なフルスタック Web アプリケーションの例として作成されました。
 
 ## 🚀 クイックスタート

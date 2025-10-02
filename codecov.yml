@@ -1,0 +1,42 @@
+# Codecov設定ファイル
+# https://docs.codecov.com/docs/codecov-yaml
+
+coverage:
+  status:
+    project:
+      default:
+        target: 70%
+        threshold: 5%
+    patch:
+      default:
+        target: 70%
+        threshold: 5%
+
+  precision: 2
+  round: down
+  range: "60...100"
+
+comment:
+  layout: "reach, diff, flags, files"
+  behavior: default
+  require_changes: false
+
+flags:
+  backend:
+    paths:
+      - backend/
+    carryforward: true
+  
+  frontend:
+    paths:
+      - frontend/
+    carryforward: true
+
+ignore:
+  - "backend/tests/"
+  - "backend/alembic/"
+  - "frontend/__tests__/"
+  - "frontend/coverage/"
+  - "**/__pycache__/"
+  - "**/node_modules/"
+
