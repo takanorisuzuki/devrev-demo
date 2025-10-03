@@ -21,8 +21,9 @@ on:
 env:
   NODE_VERSION: "20"
   PYTHON_VERSION: "3.12"
-  POSTGRES_PASSWORD: postgres123
-  SECRET_KEY: test-secret-key
+  # Security: Test credentials for CI environment only (not used in production)
+  CI_POSTGRES_PASSWORD: postgres123
+  CI_SECRET_KEY: test-secret-key
   FORCE_CACHE_REFRESH: "true"
 
 jobs:
@@ -198,7 +199,7 @@ jobs:
       postgres:
         image: postgres:15-alpine
         env:
-          POSTGRES_PASSWORD: ${{ env.POSTGRES_PASSWORD }}
+          POSTGRES_PASSWORD: ${{ env.CI_POSTGRES_PASSWORD }}
           POSTGRES_DB: driverev_test_db
         options: >-
           --health-cmd pg_isready
@@ -238,9 +239,9 @@ jobs:
       - name: Run tests
         working-directory: ./backend
         env:
-          DATABASE_URL: postgresql://postgres:${{ env.POSTGRES_PASSWORD }}@localhost:5432/driverev_test_db
+          DATABASE_URL: postgresql://postgres:${{ env.CI_POSTGRES_PASSWORD }}@localhost:5432/driverev_test_db
           REDIS_URL: redis://localhost:6379/0
-          SECRET_KEY: ${{ env.SECRET_KEY }}
+          SECRET_KEY: ${{ env.CI_SECRET_KEY }}
           ENVIRONMENT: test
         run: |
           pytest --cov=app --cov-report=xml --cov-report=html
@@ -419,6 +420,7 @@ jobs:
       (needs.docker-integration.result == 'success' || needs.docker-integration.result == 'skipped')
     permissions:
       contents: read
+      packages: write # GHCR push用
 
     steps:
       - name: Checkout code
@@ -458,6 +460,36 @@ jobs:
           echo "ip=$IP" >> $GITHUB_OUTPUT
           echo "Using production VM IP: $IP"
 
+      # Setup Docker Buildx for multi-platform builds
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Login to GHCR
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Build frontend image with dynamic production API URL
+      - name: Build production frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/driverev-frontend:${{ github.sha }}-prod
+            ghcr.io/${{ github.repository_owner }}/driverev-frontend:latest-prod
+          build-args: |
+            NEXT_PUBLIC_API_URL=http://${{ steps.gce-ip.outputs.ip }}:8000
+            NEXT_PUBLIC_APP_ENV=production
+            NEXT_PUBLIC_APP_NAME=DriveRev
+            NEXT_PUBLIC_DEFAULT_LOCALE=ja
+            NEXT_PUBLIC_SUPPORTED_LOCALES=["ja", "en"]
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
       # Prepare production app directory
       - name: Prepare production app directory
         uses: appleboy/ssh-action@v0.1.10
@@ -476,9 +508,32 @@ jobs:
           host: ${{ steps.gce-ip.outputs.ip }}
           username: ${{ secrets.GCE_USER }}
           key: ${{ secrets.GCE_SSH_KEY }}
-          source: ".github/compose.ci.yml,scripts/generate-production-env.sh,frontend/"
+          source: ".github/compose.ci.yml,scripts/generate-production-env.sh"
           target: "~/app"
           strip_components: 0
+
+      # Create secure environment file on VM
+      - name: Create secure environment file
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ steps.gce-ip.outputs.ip }}
+          username: ${{ secrets.GCE_USER }}
+          key: ${{ secrets.GCE_SSH_KEY }}
+          script: |
+            set -euo pipefail
+            cd ~/app
+
+            # Create .env.secrets securely (not exposed in process list or logs)
+            cat > .env.secrets << 'SECRETS_EOF'
+            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            SECRET_KEY=${{ secrets.SECRET_KEY }}
+            EMAIL_HOST=${{ secrets.EMAIL_HOST }}
+            EMAIL_USER=${{ secrets.EMAIL_USER }}
+            EMAIL_PASSWORD=${{ secrets.EMAIL_PASSWORD }}
+            SECRETS_EOF
+
+            chmod 600 .env.secrets
+            echo "✅ Secure environment file created"
 
       - name: Deploy and start services
         uses: appleboy/ssh-action@v0.1.10
@@ -486,88 +541,73 @@ jobs:
           host: ${{ steps.gce-ip.outputs.ip }}
           username: ${{ secrets.GCE_USER }}
           key: ${{ secrets.GCE_SSH_KEY }}
-          command_timeout: 30m
+          command_timeout: 10m
           script: |
-            set -euxo pipefail
+            set -euo pipefail
             cd ~/app
 
-            # Generate production environment file with current VM IP
+            # Load secrets from secure file
+            source .env.secrets
+            export DB_PASSWORD SECRET_KEY EMAIL_HOST EMAIL_USER EMAIL_PASSWORD
+
+            # Generate production environment file
             VM_IP="${{ steps.gce-ip.outputs.ip }}"
             echo "🔧 Generating production .env with IP: $VM_IP"
-
             chmod +x scripts/generate-production-env.sh
-            DB_PASSWORD="${{ secrets.DB_PASSWORD }}" \
-            SECRET_KEY="${{ secrets.SECRET_KEY }}" \
-            EMAIL_HOST="${{ secrets.EMAIL_HOST }}" \
-            EMAIL_USER="${{ secrets.EMAIL_USER }}" \
-            EMAIL_PASSWORD="${{ secrets.EMAIL_PASSWORD }}" \
             ./scripts/generate-production-env.sh "$VM_IP"
 
-            # Pull images from GHCR
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            # Cleanup secrets file immediately after use
+            rm -f .env.secrets
 
-            # Try to pull images for current commit, fallback to latest main branch images
+            # Login to GHCR securely
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin 2>/dev/null
+
+            # Pull images from GHCR
             BACKEND_IMAGE="ghcr.io/${{ github.repository_owner }}/driverev-backend"
             FRONTEND_IMAGE="ghcr.io/${{ github.repository_owner }}/driverev-frontend"
             CURRENT_SHA="${{ github.sha }}"
 
-            echo "🔍 Attempting to pull images for commit: $CURRENT_SHA"
+            echo "🔍 Pulling images for commit: $CURRENT_SHA"
 
-            # Pull backend image (current commit or latest)
+            # Pull backend image
             if docker pull "$BACKEND_IMAGE:$CURRENT_SHA" 2>/dev/null; then
-              echo "✅ Found backend image for commit $CURRENT_SHA"
+              echo "✅ Backend image: $CURRENT_SHA"
               docker tag "$BACKEND_IMAGE:$CURRENT_SHA" driverev-backend:test
             else
-              echo "⚠️  Backend image for $CURRENT_SHA not found, using latest from main"
-              docker pull "$BACKEND_IMAGE:latest" || docker pull "$BACKEND_IMAGE:main"
-              docker tag "$BACKEND_IMAGE:latest" driverev-backend:test 2>/dev/null || docker tag "$BACKEND_IMAGE:main" driverev-backend:test
+              echo "⚠️  Fallback to latest backend image"
+              docker pull "$BACKEND_IMAGE:latest"
+              docker tag "$BACKEND_IMAGE:latest" driverev-backend:test
             fi
 
-            # Build frontend image locally with dynamic IP
-            # This ensures NEXT_PUBLIC_API_URL is correctly embedded in the JavaScript bundle
-            echo "🔨 Building frontend image with production API URL: http://$VM_IP:8000"
-            cd ~/app/frontend
-            docker build \
-              --build-arg NEXT_PUBLIC_API_URL="http://$VM_IP:8000" \
-              --build-arg NEXT_PUBLIC_APP_ENV="production" \
-              --build-arg NEXT_PUBLIC_APP_NAME="DriveRev" \
-              --build-arg NEXT_PUBLIC_DEFAULT_LOCALE="ja" \
-              --build-arg NEXT_PUBLIC_SUPPORTED_LOCALES='["ja", "en"]' \
-              -t driverev-frontend:test \
-              .
-            cd ~/app
-            echo "✅ Frontend image built successfully with dynamic API URL"
+            # Pull frontend image with -prod tag
+            if docker pull "$FRONTEND_IMAGE:$CURRENT_SHA-prod" 2>/dev/null; then
+              echo "✅ Frontend image: $CURRENT_SHA-prod"
+              docker tag "$FRONTEND_IMAGE:$CURRENT_SHA-prod" driverev-frontend:test
+            else
+              echo "⚠️  Fallback to latest-prod frontend image"
+              docker pull "$FRONTEND_IMAGE:latest-prod"
+              docker tag "$FRONTEND_IMAGE:latest-prod" driverev-frontend:test
+            fi
 
             # Deploy to production
             PROJECT="devrev-production"
+            echo "🚀 Starting deployment..."
 
             # Stop existing deployment
             docker compose -f .github/compose.ci.yml -p "$PROJECT" down --remove-orphans || true
 
-            # Start new deployment with generated .env
-            # Export .env variables for docker compose
+            # Start new deployment
             set -a
             source .env
             set +a
-
-            docker compose -f .github/compose.ci.yml -p "$PROJECT" up -d --wait --wait-timeout 240
+            docker compose -f .github/compose.ci.yml -p "$PROJECT" up -d --wait --wait-timeout 180
 
             echo "✅ Deployment complete!"
             echo "🌐 Frontend: http://$VM_IP:3000"
             echo "🔌 Backend API: http://$VM_IP:8000"
 
-            echo "=== Deployment Status ==="
+            # Show status
             docker compose -f .github/compose.ci.yml -p "$PROJECT" ps
-
-            echo "=== Container Health Status ==="
-            docker inspect ${PROJECT}-frontend-1 --format='{{.Name}}: {{.State.Health.Status}}' || echo "Frontend inspection failed"
-            docker inspect ${PROJECT}-backend-1 --format='{{.Name}}: {{.State.Health.Status}}' || echo "Backend inspection failed"
-
-            echo "=== Frontend Logs (last 50 lines) ==="
-            docker compose -f .github/compose.ci.yml -p "$PROJECT" logs frontend --tail 50
-
-            echo "=== Backend Logs (last 30 lines) ==="
-            docker compose -f .github/compose.ci.yml -p "$PROJECT" logs backend --tail 30
 
             echo "Production deployment completed successfully"
 
