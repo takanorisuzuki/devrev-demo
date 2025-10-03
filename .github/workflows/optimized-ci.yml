@@ -522,7 +522,7 @@ jobs:
           script: |
             set -euo pipefail
             cd ~/app
-            
+
             # Create .env.secrets securely (not exposed in process list or logs)
             cat > .env.secrets << 'SECRETS_EOF'
             DB_PASSWORD=${{ secrets.DB_PASSWORD }}
@@ -531,7 +531,7 @@ jobs:
             EMAIL_USER=${{ secrets.EMAIL_USER }}
             EMAIL_PASSWORD=${{ secrets.EMAIL_PASSWORD }}
             SECRETS_EOF
-            
+
             chmod 600 .env.secrets
             echo "✅ Secure environment file created"
 
@@ -608,7 +608,7 @@ jobs:
 
             # Show status
             docker compose -f .github/compose.ci.yml -p "$PROJECT" ps
-            
+
             echo "Production deployment completed successfully"
 
   # 品質レポート生成
