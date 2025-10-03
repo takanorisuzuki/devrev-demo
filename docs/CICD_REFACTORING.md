@@ -45,6 +45,10 @@ echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io
 
 **影響**: MEDIUM - GHCRへの不正アクセス
 
+**ベストプラクティス**:
+- **GitHub Actions側**: 公式の`docker/login-action`を使用（最も安全）
+- **VM/SSH環境**: `--password-stdin`を明示的に使用し、標準エラーを`/dev/null`にリダイレクト
+
 ---
 
 ### ⚡ 効率性の問題
@@ -207,6 +211,80 @@ command_timeout: 30m
    - 環境変数ファイルとして一括生成
    - コマンドラインに露出しない
    - ログに記録されない
+
+---
+
+## 🔐 セキュリティベストプラクティス（実装指針）
+
+### GITHUB_TOKENの安全な取り扱い
+
+#### GitHub Actions環境（推奨方法）
+
+**✅ ベストプラクティス: 公式`docker/login-action`を使用**
+
+```yaml
+# 最も安全な実装方法
+- name: Log in to GitHub Container Registry
+  uses: docker/login-action@v3
+  with:
+    registry: ghcr.io
+    username: ${{ github.actor }}
+    password: ${{ secrets.GITHUB_TOKEN }}
+```
+
+**メリット:**
+- トークンがプロセスリストに表示されない
+- シェル履歴に記録されない
+- GitHub公式のメンテナンスとセキュリティアップデート
+- エラーハンドリングが組み込まれている
+
+#### VM/SSH環境（手動実装が必要な場合）
+
+**✅ ベストプラクティス: `--password-stdin`の明示的使用**
+
+```bash
+# セキュアな実装
+echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin 2>/dev/null
+```
+
+**セキュリティポイント:**
+- `--password-stdin`: トークンがプロセスリストに表示されない
+- `2>/dev/null`: ログイン成功/失敗のメッセージをログに記録しない
+- パイプ経由: シェル履歴に残らない
+
+#### 機密情報の環境変数渡し
+
+**❌ 危険な方法:**
+```bash
+# プロセスリストやログに露出
+DB_PASSWORD="${{ secrets.DB_PASSWORD }}" \
+SECRET_KEY="${{ secrets.SECRET_KEY }}" \
+./script.sh
+```
+
+**✅ 安全な方法:**
+```bash
+# ファイル経由で安全に転送
+cat > .env.secrets << 'EOF'
+DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+SECRET_KEY=${{ secrets.SECRET_KEY }}
+EOF
+chmod 600 .env.secrets
+
+# 使用後即削除
+source .env.secrets
+export DB_PASSWORD SECRET_KEY
+rm -f .env.secrets
+```
+
+### 実装チェックリスト
+
+- [ ] GitHub Actions側は`docker/login-action`を使用
+- [ ] VM側のログインは`--password-stdin`を使用
+- [ ] 機密情報はファイル経由で転送（コマンドライン引数不使用）
+- [ ] 機密ファイルは`chmod 600`で保護
+- [ ] 使用後の機密ファイルは即座に削除
+- [ ] ログ出力に機密情報が含まれないことを確認
 
 ---
 
