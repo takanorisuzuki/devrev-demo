@@ -271,9 +271,14 @@ SECRET_KEY=${{ secrets.SECRET_KEY }}
 EOF
 chmod 600 .env.secrets
 
-# 使用後即削除
+# 環境変数を読み込み、スクリプト実行
 source .env.secrets
 export DB_PASSWORD SECRET_KEY
+
+# シークレットを利用するコマンドを実行
+./generate-production-env.sh
+
+# 使用後にファイルを削除
 rm -f .env.secrets
 ```
 
