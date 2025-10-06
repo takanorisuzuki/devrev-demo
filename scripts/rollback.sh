@@ -16,7 +16,7 @@ if [ -z "$TARGET_VERSION" ]; then
   echo "Example: $0 1.0.0" >&2
   echo "" >&2
   echo "Available versions:" >&2
-  docker images driverev-backend --format "{{.Tag}}" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+' | sort -V -r | head -5
+  docker images driverev-backend --format "{{.Tag}}" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?' | sort -V -r | head -5
   exit 1
 fi
 
