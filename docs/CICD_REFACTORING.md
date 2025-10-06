@@ -566,7 +566,7 @@ backend-build-test:
   name: Backend Tests & Build
 
 # 変更後
-backend-build-test:
+backend-tests:
   name: Backend Tests
   # 注釈追加: Dockerビルドは docker-integration で実行
 ```
