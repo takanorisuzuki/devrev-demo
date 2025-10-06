@@ -20,7 +20,7 @@ cleanup_image() {
   # Get all image IDs with version tags, sorted by creation time (newest first)
   # Filter out 'test', 'latest', and 'security-scan' tags
   local images=$(docker images --format "{{.ID}} {{.Tag}} {{.CreatedAt}}" "$image_name" | \
-    grep -E '^[a-f0-9]+ [0-9]+\.[0-9]+\.[0-9]+' | \
+    grep -E ' [0-9]+\.[0-9]+\.[0-9]+(-[a-z0-9]+)?' | \
     sort -k3 -r | \
     awk '{print $1}')
   
