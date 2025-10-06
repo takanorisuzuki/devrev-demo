@@ -417,7 +417,8 @@ jobs:
       (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
       github.ref == 'refs/heads/main' &&
       (github.event_name == 'push' || !inputs.skip_deploy) &&
-      (needs.docker-integration.result == 'success' || needs.docker-integration.result == 'skipped')
+      (needs.docker-integration.result == 'success') &&
+      (needs.detect-changes.outputs.backend == 'true' || needs.detect-changes.outputs.frontend == 'true' || needs.detect-changes.outputs.docker == 'true')
     permissions:
       contents: read
       packages: write # GHCR push用
@@ -600,7 +601,7 @@ jobs:
             set -a
             source .env
             set +a
-            docker compose -f .github/compose.ci.yml -p "$PROJECT" up -d --wait --wait-timeout 180
+            docker compose -f .github/compose.ci.yml -p "$PROJECT" up -d --wait --wait-timeout 300
 
             echo "✅ Deployment complete!"
             echo "🌐 Frontend: http://$VM_IP:3000"
