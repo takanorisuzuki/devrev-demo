@@ -20,6 +20,14 @@ RUN pip install --upgrade pip \
 # Production stage
 FROM python:3.12.7-slim
 
+# Build metadata arguments with defaults
+ARG BUILD_ID=unknown
+ARG GIT_COMMIT=unknown
+
+# Add metadata labels for version tracking
+LABEL build_id="$BUILD_ID"
+LABEL git_commit="$GIT_COMMIT"
+
 # Install runtime dependencies only
 RUN apt-get update && apt-get install -y \
     curl \
@@ -42,6 +50,11 @@ RUN chmod +x entrypoint.sh
 
 # ポート8000を露出
 EXPOSE 8000
+
+# Create build metadata file for version verification
+RUN echo "Build ID: $BUILD_ID" > /app/build-info.txt && \
+    echo "Git Commit: $GIT_COMMIT" >> /app/build-info.txt && \
+    echo "Build Date: $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> /app/build-info.txt
 
 # ヘルスチェック
 # start-period を延長: entrypoint.sh でのDB待機、マイグレーション、シード実行を考慮
