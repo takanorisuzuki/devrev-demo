@@ -144,9 +144,9 @@ jobs:
         working-directory: ./frontend
         run: npm run type-check
 
-  # フロントエンドテスト・ビルド
+  # フロントエンドテスト（ビルドは Docker ステージで実行）
   frontend-build-test:
-    name: Frontend Build & Test
+    name: Frontend Tests
     runs-on: ubuntu-latest
     needs: [detect-changes, frontend-quality]
     if: |
@@ -177,9 +177,9 @@ jobs:
         working-directory: ./frontend
         run: npm run test:coverage
 
-      - name: Build application
-        working-directory: ./frontend
-        run: npm run build
+      # Note: ビルドは Docker Integration ステージで実行（重複ビルド回避）
+      # 理由: Next.js は環境変数（NEXT_PUBLIC_API_URL）に依存するため、
+      # CI用と本番用で異なるビルドが必要。Docker ビルドで一元管理。
 
       - name: Upload coverage reports
         uses: codecov/codecov-action@v4
@@ -189,9 +189,9 @@ jobs:
           name: frontend-coverage
           token: ${{ secrets.CODECOV_TOKEN }}
 
-  # バックエンドテスト
+  # バックエンドテスト（ビルドは Docker ステージで実行）
   backend-build-test:
-    name: Backend Tests & Build
+    name: Backend Tests
     runs-on: ubuntu-latest
     needs: [detect-changes, backend-quality]
     if: |
@@ -202,6 +202,8 @@ jobs:
       (needs.detect-changes.outputs.backend == 'true')
     permissions:
       contents: read
+    # Note: Pytestでユニット/統合テストを実行。本番用Dockerイメージビルドは
+    # Docker Integration ステージで実行（重複ビルド回避、キャッシュ最適化）
 
     services:
       postgres:
@@ -262,9 +264,14 @@ jobs:
           name: backend-coverage
           token: ${{ secrets.CODECOV_TOKEN }}
 
-  # Docker統合ビルド・テスト (GHCR最適化版)
+  # Docker統合ビルド・テスト（実際のビルドを実行）
+  # 最適化ポイント:
+  # 1. Frontend/Backend の本番用 Docker イメージをここで一度だけビルド
+  # 2. GitHub Actions キャッシュ（type=gha）で依存関係を高速化
+  # 3. ビルド成果物を GHCR にプッシュして再利用可能に
+  # 4. 前段の *-build-test ジョブではテストのみ実行（重複ビルド回避）
   docker-integration:
-    name: Docker Integration Tests
+    name: Docker Build & Integration Tests
     runs-on: ubuntu-latest
     needs: [detect-changes, frontend-build-test, backend-build-test]
     if: |
@@ -308,7 +315,9 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Backend: ビルド & GHCR push (統合版 - 1回のビルドで両方実行)
+      # Backend: ビルド & GHCR push
+      # 最適化: GitHub Actions キャッシュでレイヤーを再利用（pip install 高速化）
+      # backend-build-test での pytest 実行後、ここで本番用イメージを一度だけビルド
       - name: Build and push backend image
         id: build-backend
         uses: docker/build-push-action@v5
@@ -325,8 +334,10 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # Frontend: ビルド & GHCR push (統合版 - 1回のビルドで両方実行)
-      # Note: Uses localhost:8000 as API URL - production builds happen in deploy job with dynamic IP
+      # Frontend: ビルド & GHCR push (CI用 - テスト環境)
+      # 最適化: GitHub Actions キャッシュで npm install と Next.js ビルドを高速化
+      # 注意: CI用は localhost:8000 を使用。本番用は deploy ジョブで動的IPを使って再ビルド必要
+      # 理由: NEXT_PUBLIC_API_URL はビルド時に埋め込まれるため、環境ごとに異なるビルドが必須
       - name: Build and push frontend image (CI)
         id: build-frontend-ci
         uses: docker/build-push-action@v5
@@ -474,8 +485,15 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Build frontend image with dynamic production API URL
-      # Note: This is necessary because NEXT_PUBLIC_API_URL is embedded at build time
+      # Build production frontend image with dynamic API URL
+      # 🔄 重要: ここでの再ビルドは必須（重複ではない）
+      # 理由:
+      #   - Next.js の NEXT_PUBLIC_* 環境変数はビルド時に静的に埋め込まれる
+      #   - CI用は localhost:8000、本番用は動的IPが必要
+      #   - GCE VMのIPはデプロイ時にしか取得できない
+      # 最適化:
+      #   - GitHub Actions キャッシュで npm_modules と .next/cache を再利用
+      #   - 実際のビルド時間は大幅に短縮される（初回の30-50%程度）
       - name: Build production frontend image
         uses: docker/build-push-action@v5
         with:

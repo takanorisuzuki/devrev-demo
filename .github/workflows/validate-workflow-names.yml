@@ -1,6 +1,6 @@
 name: Workflow Name Validation
 
-# ブランチ保護ルールとワークフロー名の一致を検証
+# ブランチ保護ルールとワークフロー"ジョブ名"の一致を検証
 # Push/PR時に自動実行され、不一致があればCIを失敗させる
 
 on:
@@ -28,39 +28,50 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Extract workflow names
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Extract job names from workflows
         id: extract-names
         run: |
-          echo "🔍 ワークフローファイルから name フィールドを抽出中..."
+          echo "🔍 ワークフローファイルからジョブ名を抽出中..."
 
-          WORKFLOW_NAMES=()
+          JOB_NAMES=()
           for file in .github/workflows/*.yml .github/workflows/*.yaml; do
-            if [[ -f "$file" ]]; then
-              # yq がない場合は grep で抽出
-              if command -v yq &> /dev/null; then
-                name=$(yq eval '.name' "$file" 2>/dev/null || echo "")
-              else
-                name=$(grep -E '^name:' "$file" | head -1 | sed 's/name:[[:space:]]*//' | sed 's/^["'"'"']//' | sed 's/["'"'"']$//' || echo "")
-              fi
+            if [[ -f "$file" && ! "$file" =~ \.disabled$ ]]; then
+              echo "📄 ファイル: $file"
               
-              if [[ -n "$name" && "$name" != "null" ]]; then
-                echo "  ✓ $file → '$name'"
-                WORKFLOW_NAMES+=("$name")
+              # 各ジョブの name フィールドを抽出
+              job_names=$(yq eval '.jobs.*.name' "$file" 2>/dev/null | grep -v '^null$' | grep -v '^---$' || echo "")
+              
+              if [[ -n "$job_names" ]]; then
+                while IFS= read -r job_name; do
+                  if [[ -n "$job_name" ]]; then
+                    echo "  ✓ ジョブ: '$job_name'"
+                    JOB_NAMES+=("$job_name")
+                  fi
+                done <<< "$job_names"
               fi
             fi
           done
 
           # JSON配列として保存
-          printf '%s\n' "${WORKFLOW_NAMES[@]}" | jq -R . | jq -s . > /tmp/workflow_names.json
-          echo "✅ ワークフロー名を /tmp/workflow_names.json に保存しました"
+          printf '%s\n' "${JOB_NAMES[@]}" | jq -R . | jq -s . > /tmp/job_names.json
+          echo ""
+          echo "✅ 抽出されたジョブ名:"
+          cat /tmp/job_names.json | jq -r '.[]' | sed 's/^/  - /'
 
       - name: Check branch protection rules
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          echo ""
           echo "🔒 ブランチ保護ルールを確認中..."
 
           ERRORS=0
+          WARNINGS=0
 
           # main と develop の保護ルールをチェック
           for branch in main develop; do
@@ -84,26 +95,19 @@ jobs:
             fi
             
             echo "  必須ステータスチェック:"
+            JOB_NAMES=$(cat /tmp/job_names.json)
+            
             while IFS= read -r check; do
               echo "    - $check"
               
-              # ワークフロー名と一致するか確認
-              WORKFLOW_NAMES=$(cat /tmp/workflow_names.json)
-              MATCH=$(echo "$WORKFLOW_NAMES" | jq --arg check "$check" 'map(select(. == $check)) | length')
+              # ジョブ名と一致するか確認
+              MATCH=$(echo "$JOB_NAMES" | jq --arg check "$check" 'map(select(. == $check)) | length')
               
               if [[ "$MATCH" -eq 0 ]]; then
-                echo "      ❌ エラー: このステータスチェック名に一致するワークフローが存在しません！"
-                echo ""
-                echo "📝 利用可能なワークフロー名:"
-                echo "$WORKFLOW_NAMES" | jq -r '.[]' | sed 's/^/      - /'
-                echo ""
-                echo "💡 修正方法:"
-                echo "   1. ワークフローファイルの 'name:' フィールドを '$check' に変更"
-                echo "   2. または、ブランチ保護ルールの必須チェック名を変更"
-                echo ""
+                echo "      ❌ エラー: このステータスチェック名に一致するジョブが存在しません！"
                 ERRORS=$((ERRORS + 1))
               else
-                echo "      ✓ 一致するワークフローが存在します"
+                echo "      ✓ 一致するジョブが存在します"
               fi
             done <<< "$REQUIRED_CHECKS"
           done
@@ -111,7 +115,15 @@ jobs:
           echo ""
           if [[ $ERRORS -gt 0 ]]; then
             echo "❌ 検証失敗: $ERRORS 個の不一致が見つかりました"
+            echo ""
+            echo "📝 利用可能なジョブ名:"
+            cat /tmp/job_names.json | jq -r '.[]' | sed 's/^/  - /'
+            echo ""
+            echo "💡 修正方法:"
+            echo "   1. ワークフローファイルの 'jobs.<job_id>.name' を必須チェック名に変更"
+            echo "   2. または、ブランチ保護ルールの必須チェック名を実際のジョブ名に変更"
+            echo ""
             exit 1
           else
-            echo "✅ すべてのワークフロー名がブランチ保護ルールと一致しています"
+            echo "✅ すべてのジョブ名がブランチ保護ルールと一致しています"
           fi
