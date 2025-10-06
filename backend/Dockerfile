@@ -20,13 +20,13 @@ RUN pip install --upgrade pip \
 # Production stage
 FROM python:3.12.7-slim
 
-# Build metadata arguments
-ARG BUILD_ID
-ARG GIT_COMMIT
+# Build metadata arguments with defaults
+ARG BUILD_ID=unknown
+ARG GIT_COMMIT=unknown
 
 # Add metadata labels for version tracking
-LABEL build_id="${BUILD_ID:-unknown}"
-LABEL git_commit="${GIT_COMMIT:-unknown}"
+LABEL build_id="$BUILD_ID"
+LABEL git_commit="$GIT_COMMIT"
 
 # Install runtime dependencies only
 RUN apt-get update && apt-get install -y \

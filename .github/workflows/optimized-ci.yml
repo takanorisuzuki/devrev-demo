@@ -654,19 +654,19 @@ jobs:
 
             # Check if deployment is needed by comparing VM and GHCR versions
             echo "🔍 Checking if deployment is needed..."
-            
+
             # Get currently running container versions on VM
             CURRENT_BACKEND_VERSION=$(docker inspect driverev-production-backend-1 --format='{{index .Config.Labels "build_id"}}' 2>/dev/null || echo "none")
             CURRENT_FRONTEND_VERSION=$(docker inspect driverev-production-frontend-1 --format='{{index .Config.Labels "build_id"}}' 2>/dev/null || echo "none")
-            
+
             # Get target versions from GHCR
             TARGET_BACKEND_VERSION="${{ needs.docker-integration.outputs.backend_version_with_sha }}"
             TARGET_FRONTEND_VERSION="${{ needs.docker-integration.outputs.frontend_version_with_sha }}"
-            
+
             echo "📊 Version Comparison:"
             echo "  Backend:  VM=$CURRENT_BACKEND_VERSION  GHCR=$TARGET_BACKEND_VERSION"
             echo "  Frontend: VM=$CURRENT_FRONTEND_VERSION GHCR=$TARGET_FRONTEND_VERSION"
-            
+
             # Check if deployment is needed
             if [ "$CURRENT_BACKEND_VERSION" = "$TARGET_BACKEND_VERSION" ] && [ "$CURRENT_FRONTEND_VERSION" = "$TARGET_FRONTEND_VERSION" ]; then
               echo "✅ VM versions match GHCR versions - deployment not needed"
