@@ -548,7 +548,7 @@ frontend-build-test:
     - npm run build  # ❌ 削除（重複）
 
 # 変更後
-frontend-build-test:
+frontend-tests:
   name: Frontend Tests
   steps:
     - npm ci
