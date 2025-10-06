@@ -287,6 +287,8 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
       version_with_sha: ${{ steps.version.outputs.version_with_sha }}
+      backend_version_with_sha: ${{ steps.version.outputs.backend_version_with_sha }}
+      frontend_version_with_sha: ${{ steps.version.outputs.frontend_version_with_sha }}
 
     steps:
       - name: Checkout code
@@ -299,10 +301,25 @@ jobs:
           chmod +x scripts/get-version.sh
           VERSION=$(./scripts/get-version.sh)
           VERSION_WITH_SHA=$(./scripts/get-version.sh --with-sha)
+          
+          # Get component-specific SHAs for accurate change tracking
+          # This ensures we only rebuild when the actual component changes
+          BACKEND_SHA=$(git log -1 --format=%H -- backend/ || echo "none")
+          FRONTEND_SHA=$(git log -1 --format=%H -- frontend/ || echo "none")
+          
+          # Create component-specific version tags
+          BACKEND_VERSION_WITH_SHA="${VERSION}-${BACKEND_SHA:0:7}"
+          FRONTEND_VERSION_WITH_SHA="${VERSION}-${FRONTEND_SHA:0:7}"
+          
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "version_with_sha=$VERSION_WITH_SHA" >> $GITHUB_OUTPUT
+          echo "backend_version_with_sha=$BACKEND_VERSION_WITH_SHA" >> $GITHUB_OUTPUT
+          echo "frontend_version_with_sha=$FRONTEND_VERSION_WITH_SHA" >> $GITHUB_OUTPUT
+          
           echo "📌 Version: $VERSION"
           echo "📌 Version with SHA: $VERSION_WITH_SHA"
+          echo "📌 Backend Version: $BACKEND_VERSION_WITH_SHA"
+          echo "📌 Frontend Version: $FRONTEND_VERSION_WITH_SHA"
 
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -316,36 +333,39 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       # Check if images already exist in GHCR (avoid unnecessary rebuilds)
+      # Uses component-specific versions to detect if container content has changed
       - name: Check existing images in GHCR
         if: github.ref == 'refs/heads/main'
         id: check-images
         run: |
-          VERSION_WITH_SHA="${{ steps.version.outputs.version_with_sha }}"
+          BACKEND_VERSION="${{ steps.version.outputs.backend_version_with_sha }}"
+          FRONTEND_VERSION="${{ steps.version.outputs.frontend_version_with_sha }}"
           
-          # Check backend image
-          if docker manifest inspect ${{ env.GHCR_REGISTRY }}/${{ github.repository_owner }}/driverev-backend:$VERSION_WITH_SHA >/dev/null 2>&1; then
+          # Check backend image (using backend-specific SHA)
+          if docker manifest inspect ${{ env.GHCR_REGISTRY }}/${{ github.repository_owner }}/driverev-backend:$BACKEND_VERSION >/dev/null 2>&1; then
             echo "backend_exists=true" >> $GITHUB_OUTPUT
-            echo "✅ Backend image $VERSION_WITH_SHA already exists in GHCR"
+            echo "✅ Backend image $BACKEND_VERSION already exists in GHCR (content unchanged)"
           else
             echo "backend_exists=false" >> $GITHUB_OUTPUT
-            echo "🔨 Backend image $VERSION_WITH_SHA needs to be built"
+            echo "🔨 Backend image $BACKEND_VERSION needs to be built (content changed)"
           fi
           
-          # Check frontend CI image
-          if docker manifest inspect ${{ env.GHCR_REGISTRY }}/${{ github.repository_owner }}/driverev-frontend:$VERSION_WITH_SHA >/dev/null 2>&1; then
+          # Check frontend CI image (using frontend-specific SHA)
+          if docker manifest inspect ${{ env.GHCR_REGISTRY }}/${{ github.repository_owner }}/driverev-frontend:$FRONTEND_VERSION >/dev/null 2>&1; then
             echo "frontend_exists=true" >> $GITHUB_OUTPUT
-            echo "✅ Frontend image $VERSION_WITH_SHA already exists in GHCR"
+            echo "✅ Frontend image $FRONTEND_VERSION already exists in GHCR (content unchanged)"
           else
             echo "frontend_exists=false" >> $GITHUB_OUTPUT
-            echo "🔨 Frontend image $VERSION_WITH_SHA needs to be built"
+            echo "🔨 Frontend image $FRONTEND_VERSION needs to be built (content changed)"
           fi
 
       # Backend: ビルド & GHCR push
       # 最適化: GitHub Actions キャッシュでレイヤーを再利用（pip install 高速化）
       # backend-build-test での pytest 実行後、ここで本番用イメージを一度だけビルド
       # 条件: 
-      #   - PRビルド: バックエンドまたはDockerfileが変更された場合
-      #   - mainビルド: イメージがGHCRに存在しない場合のみ（無駄なビルドを防止）
+      #   - PRビルド: backend/に変更がある場合のみビルド
+      #   - mainビルド: GHCRにbackend-specific versionのイメージがない場合のみビルド
+      #     （backend/の内容が変わった場合、または前回ビルド失敗した場合）
       - name: Build and push backend image
         id: build-backend
         if: |
@@ -359,7 +379,7 @@ jobs:
           tags: |
             ${{ github.ref != 'refs/heads/main' && 'driverev-backend:test' || '' }}
             ${{ github.ref == 'refs/heads/main' && format('{0}/{1}/driverev-backend:{2}', env.GHCR_REGISTRY, github.repository_owner, steps.version.outputs.version) || '' }}
-            ${{ github.ref == 'refs/heads/main' && format('{0}/{1}/driverev-backend:{2}', env.GHCR_REGISTRY, github.repository_owner, steps.version.outputs.version_with_sha) || '' }}
+            ${{ github.ref == 'refs/heads/main' && format('{0}/{1}/driverev-backend:{2}', env.GHCR_REGISTRY, github.repository_owner, steps.version.outputs.backend_version_with_sha) || '' }}
             ${{ github.ref == 'refs/heads/main' && format('{0}/{1}/driverev-backend:{2}', env.GHCR_REGISTRY, github.repository_owner, github.sha) || '' }}
             ${{ github.ref == 'refs/heads/main' && format('{0}/{1}/driverev-backend:latest', env.GHCR_REGISTRY, github.repository_owner) || '' }}
           build-args: |
@@ -373,8 +393,9 @@ jobs:
       # 注意: CI用は localhost:8000 を使用。本番用は deploy ジョブで動的IPを使って再ビルド必要
       # 理由: NEXT_PUBLIC_API_URL はビルド時に埋め込まれるため、環境ごとに異なるビルドが必須
       # 条件:
-      #   - PRビルド: フロントエンドまたはDockerfileが変更された場合
-      #   - mainビルド: イメージがGHCRに存在しない場合のみ（無駄なビルドを防止）
+      #   - PRビルド: frontend/に変更がある場合のみビルド
+      #   - mainビルド: GHCRにfrontend-specific versionのイメージがない場合のみビルド
+      #     （frontend/の内容が変わった場合、または前回ビルド失敗した場合）
       - name: Build and push frontend image (CI)
         id: build-frontend-ci
         if: |
@@ -388,7 +409,7 @@ jobs:
           tags: |
             ${{ github.ref != 'refs/heads/main' && 'driverev-frontend:test' || '' }}
             ${{ github.ref == 'refs/heads/main' && format('{0}/{1}/driverev-frontend:{2}', env.GHCR_REGISTRY, github.repository_owner, steps.version.outputs.version) || '' }}
-            ${{ github.ref == 'refs/heads/main' && format('{0}/{1}/driverev-frontend:{2}', env.GHCR_REGISTRY, github.repository_owner, steps.version.outputs.version_with_sha) || '' }}
+            ${{ github.ref == 'refs/heads/main' && format('{0}/{1}/driverev-frontend:{2}', env.GHCR_REGISTRY, github.repository_owner, steps.version.outputs.frontend_version_with_sha) || '' }}
             ${{ github.ref == 'refs/heads/main' && format('{0}/{1}/driverev-frontend:{2}', env.GHCR_REGISTRY, github.repository_owner, github.sha) || '' }}
             ${{ github.ref == 'refs/heads/main' && format('{0}/{1}/driverev-frontend:latest', env.GHCR_REGISTRY, github.repository_owner) || '' }}
           build-args: |
@@ -545,7 +566,7 @@ jobs:
           push: true
           tags: |
             ${{ env.GHCR_REGISTRY }}/${{ github.repository_owner }}/driverev-frontend:${{ needs.docker-integration.outputs.version }}-prod
-            ${{ env.GHCR_REGISTRY }}/${{ github.repository_owner }}/driverev-frontend:${{ needs.docker-integration.outputs.version_with_sha }}-prod
+            ${{ env.GHCR_REGISTRY }}/${{ github.repository_owner }}/driverev-frontend:${{ needs.docker-integration.outputs.frontend_version_with_sha }}-prod
             ${{ env.GHCR_REGISTRY }}/${{ github.repository_owner }}/driverev-frontend:${{ github.sha }}-prod
             ${{ env.GHCR_REGISTRY }}/${{ github.repository_owner }}/driverev-frontend:latest-prod
           build-args: |
