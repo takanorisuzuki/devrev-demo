@@ -424,7 +424,7 @@ jobs:
         if: needs.detect-changes.outputs.backend == 'true' || needs.detect-changes.outputs.docker == 'true'
         run: |
           PROJECT=devrev-${{ github.run_id }}
-          docker compose -f .github/compose.ci.yml -p "$PROJECT" up -d --wait --wait-timeout 240 backend
+          docker compose -f .github/compose.ci.yml -p "$PROJECT" up -d --no-pull --wait --wait-timeout 240 backend
 
       - name: Run integration tests
         if: needs.detect-changes.outputs.backend == 'true' || needs.detect-changes.outputs.docker == 'true'
