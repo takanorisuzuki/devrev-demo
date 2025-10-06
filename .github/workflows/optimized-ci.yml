@@ -301,21 +301,21 @@ jobs:
           chmod +x scripts/get-version.sh
           VERSION=$(./scripts/get-version.sh)
           VERSION_WITH_SHA=$(./scripts/get-version.sh --with-sha)
-          
+
           # Get component-specific SHAs for accurate change tracking
           # This ensures we only rebuild when the actual component changes
           BACKEND_SHA=$(git log -1 --format=%H -- backend/ || echo "none")
           FRONTEND_SHA=$(git log -1 --format=%H -- frontend/ || echo "none")
-          
+
           # Create component-specific version tags
           BACKEND_VERSION_WITH_SHA="${VERSION}-${BACKEND_SHA:0:7}"
           FRONTEND_VERSION_WITH_SHA="${VERSION}-${FRONTEND_SHA:0:7}"
-          
+
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "version_with_sha=$VERSION_WITH_SHA" >> $GITHUB_OUTPUT
           echo "backend_version_with_sha=$BACKEND_VERSION_WITH_SHA" >> $GITHUB_OUTPUT
           echo "frontend_version_with_sha=$FRONTEND_VERSION_WITH_SHA" >> $GITHUB_OUTPUT
-          
+
           echo "📌 Version: $VERSION"
           echo "📌 Version with SHA: $VERSION_WITH_SHA"
           echo "📌 Backend Version: $BACKEND_VERSION_WITH_SHA"
@@ -340,7 +340,7 @@ jobs:
         run: |
           BACKEND_VERSION="${{ steps.version.outputs.backend_version_with_sha }}"
           FRONTEND_VERSION="${{ steps.version.outputs.frontend_version_with_sha }}"
-          
+
           # Check backend image (using backend-specific SHA)
           if docker manifest inspect ${{ env.GHCR_REGISTRY }}/${{ github.repository_owner }}/driverev-backend:$BACKEND_VERSION >/dev/null 2>&1; then
             echo "backend_exists=true" >> $GITHUB_OUTPUT
@@ -349,7 +349,7 @@ jobs:
             echo "backend_exists=false" >> $GITHUB_OUTPUT
             echo "🔨 Backend image $BACKEND_VERSION needs to be built (content changed)"
           fi
-          
+
           # Check frontend CI image (using frontend-specific SHA)
           if docker manifest inspect ${{ env.GHCR_REGISTRY }}/${{ github.repository_owner }}/driverev-frontend:$FRONTEND_VERSION >/dev/null 2>&1; then
             echo "frontend_exists=true" >> $GITHUB_OUTPUT
@@ -362,7 +362,7 @@ jobs:
       # Backend: ビルド & GHCR push
       # 最適化: GitHub Actions キャッシュでレイヤーを再利用（pip install 高速化）
       # backend-build-test での pytest 実行後、ここで本番用イメージを一度だけビルド
-      # 条件: 
+      # 条件:
       #   - PRビルド: backend/に変更がある場合のみビルド
       #   - mainビルド: GHCRにbackend-specific versionのイメージがない場合のみビルド
       #     （backend/の内容が変わった場合、または前回ビルド失敗した場合）
@@ -484,6 +484,8 @@ jobs:
             bandit-report.json
 
   # デプロイメント（条件分岐：develop→staging, main→production）
+  # mainブランチpush時は常に実行（前回デプロイ失敗のリカバリー含む）
+  # 既存イメージがGHCRに存在すればデプロイ可能（変更検知不要）
   deploy:
     name: Deploy Application
     runs-on: ubuntu-latest
@@ -494,8 +496,7 @@ jobs:
       (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
       github.ref == 'refs/heads/main' &&
       (github.event_name == 'push' || !inputs.skip_deploy) &&
-      (needs.docker-integration.result == 'success') &&
-      (needs.detect-changes.outputs.backend == 'true' || needs.detect-changes.outputs.frontend == 'true' || needs.detect-changes.outputs.docker == 'true')
+      (needs.docker-integration.result == 'success')
     permissions:
       contents: read
       packages: write # GHCR push用
@@ -650,53 +651,64 @@ jobs:
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin 2>/dev/null
 
             # Pull images from GHCR with version tagging
+            # Uses component-specific versions for accurate tracking
             BACKEND_IMAGE="ghcr.io/${{ github.repository_owner }}/driverev-backend"
             FRONTEND_IMAGE="ghcr.io/${{ github.repository_owner }}/driverev-frontend"
             VERSION="${{ needs.docker-integration.outputs.version }}"
-            VERSION_WITH_SHA="${{ needs.docker-integration.outputs.version_with_sha }}"
+            BACKEND_VERSION_WITH_SHA="${{ needs.docker-integration.outputs.backend_version_with_sha }}"
+            FRONTEND_VERSION_WITH_SHA="${{ needs.docker-integration.outputs.frontend_version_with_sha }}"
             CURRENT_SHA="${{ github.sha }}"
 
-            echo "🔍 Pulling images for version: $VERSION"
-            echo "📌 Version with SHA: $VERSION_WITH_SHA"
+            echo "🔍 Pulling images for deployment"
+            echo "📌 Base Version: $VERSION"
+            echo "📌 Backend Version: $BACKEND_VERSION_WITH_SHA"
+            echo "📌 Frontend Version: $FRONTEND_VERSION_WITH_SHA"
 
-            # Pull and tag backend image (priority: version-sha > version > sha > latest)
-            if docker pull "$BACKEND_IMAGE:$VERSION_WITH_SHA" 2>/dev/null; then
-              echo "✅ Backend image: $VERSION_WITH_SHA"
-              docker tag "$BACKEND_IMAGE:$VERSION_WITH_SHA" "driverev-backend:$VERSION"
-              docker tag "$BACKEND_IMAGE:$VERSION_WITH_SHA" "driverev-backend:test"
+            # Pull and tag backend image
+            # Priority: component-specific SHA > base version > global SHA > latest
+            # Handles cases: build success, GHCR push failure, previous deploy failure
+            if docker pull "$BACKEND_IMAGE:$BACKEND_VERSION_WITH_SHA" 2>/dev/null; then
+              echo "✅ Backend image: $BACKEND_VERSION_WITH_SHA (component-specific)"
+              docker tag "$BACKEND_IMAGE:$BACKEND_VERSION_WITH_SHA" "driverev-backend:$VERSION"
+              docker tag "$BACKEND_IMAGE:$BACKEND_VERSION_WITH_SHA" "driverev-backend:test"
             elif docker pull "$BACKEND_IMAGE:$VERSION" 2>/dev/null; then
-              echo "✅ Backend image: $VERSION"
+              echo "✅ Backend image: $VERSION (base version)"
               docker tag "$BACKEND_IMAGE:$VERSION" "driverev-backend:$VERSION"
               docker tag "$BACKEND_IMAGE:$VERSION" "driverev-backend:test"
             elif docker pull "$BACKEND_IMAGE:$CURRENT_SHA" 2>/dev/null; then
-              echo "⚠️  Using SHA-tagged backend image: $CURRENT_SHA"
+              echo "⚠️  Backend image: $CURRENT_SHA (global SHA fallback)"
               docker tag "$BACKEND_IMAGE:$CURRENT_SHA" "driverev-backend:$VERSION"
               docker tag "$BACKEND_IMAGE:$CURRENT_SHA" "driverev-backend:test"
-            else
-              echo "⚠️  Fallback to latest backend image"
-              docker pull "$BACKEND_IMAGE:latest"
+            elif docker pull "$BACKEND_IMAGE:latest" 2>/dev/null; then
+              echo "⚠️  Backend image: latest (emergency fallback)"
               docker tag "$BACKEND_IMAGE:latest" "driverev-backend:$VERSION"
               docker tag "$BACKEND_IMAGE:latest" "driverev-backend:test"
+            else
+              echo "❌ No backend image found in GHCR - deployment cannot proceed"
+              exit 1
             fi
 
-            # Pull and tag frontend image (prod version)
-            if docker pull "$FRONTEND_IMAGE:$VERSION_WITH_SHA-prod" 2>/dev/null; then
-              echo "✅ Frontend image: $VERSION_WITH_SHA-prod"
-              docker tag "$FRONTEND_IMAGE:$VERSION_WITH_SHA-prod" "driverev-frontend:$VERSION"
-              docker tag "$FRONTEND_IMAGE:$VERSION_WITH_SHA-prod" "driverev-frontend:test"
+            # Pull and tag frontend image (prod version with dynamic API URL)
+            # Priority: component-specific SHA-prod > base version-prod > global SHA-prod > latest-prod
+            if docker pull "$FRONTEND_IMAGE:$FRONTEND_VERSION_WITH_SHA-prod" 2>/dev/null; then
+              echo "✅ Frontend image: $FRONTEND_VERSION_WITH_SHA-prod (component-specific)"
+              docker tag "$FRONTEND_IMAGE:$FRONTEND_VERSION_WITH_SHA-prod" "driverev-frontend:$VERSION"
+              docker tag "$FRONTEND_IMAGE:$FRONTEND_VERSION_WITH_SHA-prod" "driverev-frontend:test"
             elif docker pull "$FRONTEND_IMAGE:$VERSION-prod" 2>/dev/null; then
-              echo "✅ Frontend image: $VERSION-prod"
+              echo "✅ Frontend image: $VERSION-prod (base version)"
               docker tag "$FRONTEND_IMAGE:$VERSION-prod" "driverev-frontend:$VERSION"
               docker tag "$FRONTEND_IMAGE:$VERSION-prod" "driverev-frontend:test"
             elif docker pull "$FRONTEND_IMAGE:$CURRENT_SHA-prod" 2>/dev/null; then
-              echo "⚠️  Using SHA-tagged frontend image: $CURRENT_SHA-prod"
+              echo "⚠️  Frontend image: $CURRENT_SHA-prod (global SHA fallback)"
               docker tag "$FRONTEND_IMAGE:$CURRENT_SHA-prod" "driverev-frontend:$VERSION"
               docker tag "$FRONTEND_IMAGE:$CURRENT_SHA-prod" "driverev-frontend:test"
-            else
-              echo "⚠️  Fallback to latest-prod frontend image"
-              docker pull "$FRONTEND_IMAGE:latest-prod"
+            elif docker pull "$FRONTEND_IMAGE:latest-prod" 2>/dev/null; then
+              echo "⚠️  Frontend image: latest-prod (emergency fallback)"
               docker tag "$FRONTEND_IMAGE:latest-prod" "driverev-frontend:$VERSION"
               docker tag "$FRONTEND_IMAGE:latest-prod" "driverev-frontend:test"
+            else
+              echo "❌ No frontend image found in GHCR - deployment cannot proceed"
+              exit 1
             fi
 
             # Deploy to production
