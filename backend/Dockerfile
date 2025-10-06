@@ -52,8 +52,8 @@ RUN chmod +x entrypoint.sh
 EXPOSE 8000
 
 # Create build metadata file for version verification
-RUN echo "Build ID: ${BUILD_ID:-unknown}" > /app/build-info.txt && \
-    echo "Git Commit: ${GIT_COMMIT:-unknown}" >> /app/build-info.txt && \
+RUN echo "Build ID: $BUILD_ID" > /app/build-info.txt && \
+    echo "Git Commit: $GIT_COMMIT" >> /app/build-info.txt && \
     echo "Build Date: $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> /app/build-info.txt
 
 # ヘルスチェック
