@@ -25,6 +25,14 @@ env:
   CI_POSTGRES_PASSWORD: postgres123
   CI_SECRET_KEY: test-secret-key
   FORCE_CACHE_REFRESH: "true"
+  # Docker image configuration
+  GHCR_REGISTRY: ghcr.io
+  # Frontend build args (DRY: defined once, used everywhere)
+  FRONTEND_BUILD_ARGS: |
+    NEXT_PUBLIC_APP_ENV=production
+    NEXT_PUBLIC_APP_NAME=DriveRev
+    NEXT_PUBLIC_DEFAULT_LOCALE=ja
+    NEXT_PUBLIC_SUPPORTED_LOCALES=["ja", "en"]
 
 jobs:
   # 変更検知 - どのコンポーネントが変更されたかを判定
@@ -269,10 +277,25 @@ jobs:
     permissions:
       contents: read
       packages: write # GHCR push用
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      version_with_sha: ${{ steps.version.outputs.version_with_sha }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
+
+      # Get semantic version for image tagging
+      - name: Get version
+        id: version
+        run: |
+          chmod +x scripts/get-version.sh
+          VERSION=$(./scripts/get-version.sh)
+          VERSION_WITH_SHA=$(./scripts/get-version.sh --with-sha)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "version_with_sha=$VERSION_WITH_SHA" >> $GITHUB_OUTPUT
+          echo "📌 Version: $VERSION"
+          echo "📌 Version with SHA: $VERSION_WITH_SHA"
 
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -281,69 +304,47 @@ jobs:
         if: github.ref == 'refs/heads/main'
         uses: docker/login-action@v3
         with:
-          registry: ghcr.io
+          registry: ${{ env.GHCR_REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Backend: ビルド (integration test用)
-      - name: Build backend image for testing
+      # Backend: ビルド & GHCR push (統合版 - 1回のビルドで両方実行)
+      - name: Build and push backend image
+        id: build-backend
         uses: docker/build-push-action@v5
         with:
           context: ./backend
-          push: false
-          load: true
-          tags: driverev-backend:test
+          push: ${{ github.ref == 'refs/heads/main' }}
+          load: ${{ github.ref != 'refs/heads/main' }}
+          tags: |
+            driverev-backend:test
+            ${{ github.ref == 'refs/heads/main' && format('{0}/{1}/driverev-backend:{2}', env.GHCR_REGISTRY, github.repository_owner, steps.version.outputs.version) || '' }}
+            ${{ github.ref == 'refs/heads/main' && format('{0}/{1}/driverev-backend:{2}', env.GHCR_REGISTRY, github.repository_owner, steps.version.outputs.version_with_sha) || '' }}
+            ${{ github.ref == 'refs/heads/main' && format('{0}/{1}/driverev-backend:{2}', env.GHCR_REGISTRY, github.repository_owner, github.sha) || '' }}
+            ${{ github.ref == 'refs/heads/main' && format('{0}/{1}/driverev-backend:latest', env.GHCR_REGISTRY, github.repository_owner) || '' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # Backend: GHCR push (main only)
-      - name: Push backend image to GHCR
-        if: github.ref == 'refs/heads/main'
-        uses: docker/build-push-action@v5
-        with:
-          context: ./backend
-          push: true
-          tags: |
-            ghcr.io/${{ github.repository_owner }}/driverev-backend:${{ github.sha }}
-            ghcr.io/${{ github.repository_owner }}/driverev-backend:latest
-          cache-from: type=gha
-
-      # Frontend: ビルド (integration test用)
-      - name: Build frontend image for testing
+      # Frontend: ビルド & GHCR push (統合版 - 1回のビルドで両方実行)
+      # Note: Uses localhost:8000 as API URL - production builds happen in deploy job with dynamic IP
+      - name: Build and push frontend image (CI)
+        id: build-frontend-ci
         uses: docker/build-push-action@v5
         with:
           context: ./frontend
-          push: false
-          load: true
-          tags: driverev-frontend:test
+          push: ${{ github.ref == 'refs/heads/main' }}
+          load: ${{ github.ref != 'refs/heads/main' }}
+          tags: |
+            driverev-frontend:test
+            ${{ github.ref == 'refs/heads/main' && format('{0}/{1}/driverev-frontend:{2}', env.GHCR_REGISTRY, github.repository_owner, steps.version.outputs.version) || '' }}
+            ${{ github.ref == 'refs/heads/main' && format('{0}/{1}/driverev-frontend:{2}', env.GHCR_REGISTRY, github.repository_owner, steps.version.outputs.version_with_sha) || '' }}
+            ${{ github.ref == 'refs/heads/main' && format('{0}/{1}/driverev-frontend:{2}', env.GHCR_REGISTRY, github.repository_owner, github.sha) || '' }}
+            ${{ github.ref == 'refs/heads/main' && format('{0}/{1}/driverev-frontend:latest', env.GHCR_REGISTRY, github.repository_owner) || '' }}
           build-args: |
             NEXT_PUBLIC_API_URL=http://localhost:8000
-            NEXT_PUBLIC_APP_ENV=production
-            NEXT_PUBLIC_APP_NAME=DriveRev
-            NEXT_PUBLIC_DEFAULT_LOCALE=ja
-            NEXT_PUBLIC_SUPPORTED_LOCALES=["ja", "en"]
+            ${{ env.FRONTEND_BUILD_ARGS }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-      # Frontend: GHCR push (main only)
-      # Note: This image uses localhost:8000 as API URL placeholder
-      # Actual production deployment rebuilds with dynamic IP in deploy job
-      - name: Push frontend image to GHCR
-        if: github.ref == 'refs/heads/main'
-        uses: docker/build-push-action@v5
-        with:
-          context: ./frontend
-          push: true
-          tags: |
-            ghcr.io/${{ github.repository_owner }}/driverev-frontend:${{ github.sha }}
-            ghcr.io/${{ github.repository_owner }}/driverev-frontend:latest
-          build-args: |
-            NEXT_PUBLIC_API_URL=http://localhost:8000
-            NEXT_PUBLIC_APP_ENV=production
-            NEXT_PUBLIC_APP_NAME=DriveRev
-            NEXT_PUBLIC_DEFAULT_LOCALE=ja
-            NEXT_PUBLIC_SUPPORTED_LOCALES=["ja", "en"]
-          cache-from: type=gha
 
       - name: Start services with Docker Compose
         run: |
@@ -474,20 +475,20 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       # Build frontend image with dynamic production API URL
+      # Note: This is necessary because NEXT_PUBLIC_API_URL is embedded at build time
       - name: Build production frontend image
         uses: docker/build-push-action@v5
         with:
           context: ./frontend
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/driverev-frontend:${{ github.sha }}-prod
-            ghcr.io/${{ github.repository_owner }}/driverev-frontend:latest-prod
+            ${{ env.GHCR_REGISTRY }}/${{ github.repository_owner }}/driverev-frontend:${{ needs.docker-integration.outputs.version }}-prod
+            ${{ env.GHCR_REGISTRY }}/${{ github.repository_owner }}/driverev-frontend:${{ needs.docker-integration.outputs.version_with_sha }}-prod
+            ${{ env.GHCR_REGISTRY }}/${{ github.repository_owner }}/driverev-frontend:${{ github.sha }}-prod
+            ${{ env.GHCR_REGISTRY }}/${{ github.repository_owner }}/driverev-frontend:latest-prod
           build-args: |
             NEXT_PUBLIC_API_URL=http://${{ steps.gce-ip.outputs.ip }}:8000
-            NEXT_PUBLIC_APP_ENV=production
-            NEXT_PUBLIC_APP_NAME=DriveRev
-            NEXT_PUBLIC_DEFAULT_LOCALE=ja
-            NEXT_PUBLIC_SUPPORTED_LOCALES=["ja", "en"]
+            ${{ env.FRONTEND_BUILD_ARGS }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -509,7 +510,7 @@ jobs:
           host: ${{ steps.gce-ip.outputs.ip }}
           username: ${{ secrets.GCE_USER }}
           key: ${{ secrets.GCE_SSH_KEY }}
-          source: ".github/compose.ci.yml,scripts/generate-production-env.sh"
+          source: ".github/compose.ci.yml,scripts/generate-production-env.sh,scripts/cleanup-old-images.sh,scripts/rollback.sh"
           target: "~/app"
           strip_components: 0
 
@@ -563,31 +564,54 @@ jobs:
             # Login to GHCR securely
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin 2>/dev/null
 
-            # Pull images from GHCR
+            # Pull images from GHCR with version tagging
             BACKEND_IMAGE="ghcr.io/${{ github.repository_owner }}/driverev-backend"
             FRONTEND_IMAGE="ghcr.io/${{ github.repository_owner }}/driverev-frontend"
+            VERSION="${{ needs.docker-integration.outputs.version }}"
+            VERSION_WITH_SHA="${{ needs.docker-integration.outputs.version_with_sha }}"
             CURRENT_SHA="${{ github.sha }}"
 
-            echo "🔍 Pulling images for commit: $CURRENT_SHA"
+            echo "🔍 Pulling images for version: $VERSION"
+            echo "📌 Version with SHA: $VERSION_WITH_SHA"
 
-            # Pull backend image
-            if docker pull "$BACKEND_IMAGE:$CURRENT_SHA" 2>/dev/null; then
-              echo "✅ Backend image: $CURRENT_SHA"
-              docker tag "$BACKEND_IMAGE:$CURRENT_SHA" driverev-backend:test
+            # Pull and tag backend image (priority: version-sha > version > sha > latest)
+            if docker pull "$BACKEND_IMAGE:$VERSION_WITH_SHA" 2>/dev/null; then
+              echo "✅ Backend image: $VERSION_WITH_SHA"
+              docker tag "$BACKEND_IMAGE:$VERSION_WITH_SHA" "driverev-backend:$VERSION"
+              docker tag "$BACKEND_IMAGE:$VERSION_WITH_SHA" "driverev-backend:test"
+            elif docker pull "$BACKEND_IMAGE:$VERSION" 2>/dev/null; then
+              echo "✅ Backend image: $VERSION"
+              docker tag "$BACKEND_IMAGE:$VERSION" "driverev-backend:$VERSION"
+              docker tag "$BACKEND_IMAGE:$VERSION" "driverev-backend:test"
+            elif docker pull "$BACKEND_IMAGE:$CURRENT_SHA" 2>/dev/null; then
+              echo "⚠️  Using SHA-tagged backend image: $CURRENT_SHA"
+              docker tag "$BACKEND_IMAGE:$CURRENT_SHA" "driverev-backend:$VERSION"
+              docker tag "$BACKEND_IMAGE:$CURRENT_SHA" "driverev-backend:test"
             else
               echo "⚠️  Fallback to latest backend image"
               docker pull "$BACKEND_IMAGE:latest"
-              docker tag "$BACKEND_IMAGE:latest" driverev-backend:test
+              docker tag "$BACKEND_IMAGE:latest" "driverev-backend:$VERSION"
+              docker tag "$BACKEND_IMAGE:latest" "driverev-backend:test"
             fi
 
-            # Pull frontend image with -prod tag
-            if docker pull "$FRONTEND_IMAGE:$CURRENT_SHA-prod" 2>/dev/null; then
-              echo "✅ Frontend image: $CURRENT_SHA-prod"
-              docker tag "$FRONTEND_IMAGE:$CURRENT_SHA-prod" driverev-frontend:test
+            # Pull and tag frontend image (prod version)
+            if docker pull "$FRONTEND_IMAGE:$VERSION_WITH_SHA-prod" 2>/dev/null; then
+              echo "✅ Frontend image: $VERSION_WITH_SHA-prod"
+              docker tag "$FRONTEND_IMAGE:$VERSION_WITH_SHA-prod" "driverev-frontend:$VERSION"
+              docker tag "$FRONTEND_IMAGE:$VERSION_WITH_SHA-prod" "driverev-frontend:test"
+            elif docker pull "$FRONTEND_IMAGE:$VERSION-prod" 2>/dev/null; then
+              echo "✅ Frontend image: $VERSION-prod"
+              docker tag "$FRONTEND_IMAGE:$VERSION-prod" "driverev-frontend:$VERSION"
+              docker tag "$FRONTEND_IMAGE:$VERSION-prod" "driverev-frontend:test"
+            elif docker pull "$FRONTEND_IMAGE:$CURRENT_SHA-prod" 2>/dev/null; then
+              echo "⚠️  Using SHA-tagged frontend image: $CURRENT_SHA-prod"
+              docker tag "$FRONTEND_IMAGE:$CURRENT_SHA-prod" "driverev-frontend:$VERSION"
+              docker tag "$FRONTEND_IMAGE:$CURRENT_SHA-prod" "driverev-frontend:test"
             else
               echo "⚠️  Fallback to latest-prod frontend image"
               docker pull "$FRONTEND_IMAGE:latest-prod"
-              docker tag "$FRONTEND_IMAGE:latest-prod" driverev-frontend:test
+              docker tag "$FRONTEND_IMAGE:latest-prod" "driverev-frontend:$VERSION"
+              docker tag "$FRONTEND_IMAGE:latest-prod" "driverev-frontend:test"
             fi
 
             # Deploy to production
@@ -610,7 +634,13 @@ jobs:
             # Show status
             docker compose -f .github/compose.ci.yml -p "$PROJECT" ps
 
-            echo "Production deployment completed successfully"
+            # Cleanup old images (keep most recent 3 versions)
+            echo "🧹 Cleaning up old Docker images..."
+            chmod +x scripts/cleanup-old-images.sh
+            ./scripts/cleanup-old-images.sh 3 || echo "⚠️  Image cleanup skipped (non-critical)"
+
+            echo "✅ Production deployment completed successfully"
+            echo "📦 Current version: $VERSION"
 
   # 品質レポート生成
   quality-summary:
