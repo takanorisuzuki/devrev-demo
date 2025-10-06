@@ -48,10 +48,7 @@ function LoginPageContent() {
 
     try {
       // バックエンドAPIを使用した実際の認証
-      const loginData = await loginApi({
-        email: form.email,
-        password: form.password,
-      });
+      const loginData = await loginApi(form);
 
       // Zustandストアにログイン情報を保存
       login(loginData);
@@ -72,8 +69,8 @@ function LoginPageContent() {
     try {
       // バックエンドAPIを使用した実際の認証
       const loginData = await loginApi({
-        email: email,
-        password: password,
+        email,
+        password,
       });
 
       // Zustandストアにログイン情報を保存
