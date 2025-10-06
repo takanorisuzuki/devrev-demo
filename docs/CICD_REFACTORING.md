@@ -748,7 +748,8 @@ grep "npm run build" .github/workflows/optimized-ci.yml | wc -l
 | Phase 3 | ファイル転送最適化 | 60MB → 1MB（98%削減） | 2025-10-03 | ✅ 完了 |
 | Phase 4 | タイムアウト最適化 | 30分 → 10分（67%削減） | 2025-10-03 | ✅ 完了 |
 | Phase 5 | DRY 原則適用 | 環境変数の一元管理 | 2025-10-03 | ✅ 完了 |
-| **Phase 6** | **重複ビルド削減** | **ビルド回数削減、15-20%高速化** | **2025-10-06** | **✅ PR #103/#104/#105** |
+| Phase 6 | 重複ビルド削減 | ビルド回数削減、15-20%高速化 | 2025-10-06 | ✅ PR #103/#104/#105 |
+| **Phase 7** | **統合ビルド戦略** | **GHCR中心アーキテクチャ、DRY原則完全適用** | **2025-10-06** | **🚧 設計中** |
 
 ### 累積効果（Phase 1-6 完了時）
 
@@ -761,5 +762,441 @@ grep "npm run build" .github/workflows/optimized-ci.yml | wc -l
 | GitHub Actions コスト | 基準 | 基準 | -20-25% | **20-25%削減** |
 
 \* CI用1回 + 本番用1回（異なる環境変数のため必須）
+
+---
+
+## 🔄 Phase 7: 統合ビルド戦略（GHCR中心アーキテクチャ）（2025-10-06）
+
+### 📊 Phase 6 完了後に発見された重大な問題
+
+#### PR #113 の根本的な問題
+
+**PR #113 の提案内容**:
+```yaml
+# Line 427 in optimized-ci.yml
+docker compose -f .github/compose.ci.yml up -d --no-pull --wait
+```
+
+**問題点**:
+1. ❌ **`--no-pull` は GHCR 戦略と矛盾**
+   - GHCR からイメージを再利用する設計なのに、ローカルビルドに固執
+   - コンテナの中身が同じなら GHCR から Pull すべき
+   
+2. ❌ **DRY 原則違反（重複ビルド）**
+   - Security Scan: Backend/Frontend をビルド（2回）
+   - CI/CD Pipeline: Backend/Frontend をビルド（2回）
+   - **合計4回のビルド** → 10-16分の無駄
+
+3. ❌ **実行順序の問題**
+   - セキュリティスキャンと CI が並行実行
+   - 脆弱性があるイメージでテストを実行してしまう
+   - CI が成功してもセキュリティで失敗する可能性
+
+### 🎯 Phase 7 の目的
+
+**主要目標**:
+1. **Build Once, Use Everywhere**: 各イメージを1回だけビルド、全ステージで再利用
+2. **Security Gate Pattern**: セキュリティスキャン合格後に CI 実行
+3. **Content-Addressed Storage**: SHA256 ダイジェストでコンテンツ管理
+4. **GHCR 中心設計**: すべてのステージで GHCR から Pull
+
+**副次的目標**:
+5. ビルド時間を 50% 削減（10-16分 → 5-8分）
+6. CI/CD 総実行時間を 30-40% 削減
+7. GitHub Actions コスト削減（30-40%）
+
+### 🏗️ 新アーキテクチャ: GHCR中心設計
+
+```
+┌────────────────────────────────────────────────────────────────┐
+│ 1. Build & Push to GHCR (Once)                                 │
+├────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐  │
+│  │ build-and-push (新規ワークフロー)                        │  │
+│  │                                                           │  │
+│  │  Backend:                                                │  │
+│  │    - コンポーネント固有SHA算出                            │  │
+│  │      BACKEND_SHA=$(git log -1 --format=%H -- backend/)   │  │
+│  │    - GHCR存在チェック（docker manifest inspect）         │  │
+│  │    - 存在しない場合のみビルド                             │  │
+│  │    - タグ: backend-sha-${SHA:0:7}                        │  │
+│  │    - GitHub Actions キャッシュ活用                        │  │
+│  │                                                           │  │
+│  │  Frontend (CI用):                                        │  │
+│  │    - コンポーネント固有SHA算出                            │  │
+│  │    - GHCR存在チェック                                    │  │
+│  │    - 存在しない場合のみビルド                             │  │
+│  │    - API_URL: http://localhost:8000                      │  │
+│  │    - タグ: frontend-sha-${SHA:0:7}-ci                    │  │
+│  │                                                           │  │
+│  │  Frontend (Production用):                                │  │
+│  │    - GCE VM IP取得                                       │  │
+│  │    - API_URL: http://$VM_IP:8000                         │  │
+│  │    - タグ: frontend-sha-${SHA:0:7}-prod                  │  │
+│  │    - キャッシュ再利用で30-50%高速化                       │  │
+│  └─────────────────────────────────────────────────────────┘  │
+│                                                                 │
+│  ⏱️ 実行時間: 5-8分（初回）、2-4分（キャッシュヒット時）      │
+└────────────────────────────────────────────────────────────────┘
+                              ↓
+┌────────────────────────────────────────────────────────────────┐
+│ 2. Security Scan (GHCR Pull) 🔐                                │
+├────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐  │
+│  │ docker-security-scan (修正)                              │  │
+│  │                                                           │  │
+│  │  - GHCR ログイン                                         │  │
+│  │  - Backend イメージ Pull                                 │  │
+│  │  - Frontend イメージ Pull                                │  │
+│  │  - Trivy スキャン実行                                    │  │
+│  │  - 脆弱性検出 → FAIL（後続ブロック）                     │  │
+│  └─────────────────────────────────────────────────────────┘  │
+│                                                                 │
+│  ⚠️ ビルド一切なし！GHCR から Pull のみ                        │
+│  ⏱️ 実行時間: 3-5分                                            │
+└────────────────────────────────────────────────────────────────┘
+                              ↓ (Security Pass)
+┌────────────────────────────────────────────────────────────────┐
+│ 3. CI/CD Pipeline (GHCR Pull) ✅                               │
+├────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐  │
+│  │ docker-integration (修正)                                │  │
+│  │                                                           │  │
+│  │  - GHCR ログイン                                         │  │
+│  │  - Backend イメージ Pull                                 │  │
+│  │  - Frontend イメージ Pull (CI用)                         │  │
+│  │  - ローカルタグ付与:                                     │  │
+│  │    docker tag ghcr.io/.../backend:... driverev-backend:test │
+│  │  - docker compose up（--no-pull 不要）                   │  │
+│  │  - 統合テスト実行                                        │  │
+│  └─────────────────────────────────────────────────────────┘  │
+│                                                                 │
+│  ⚠️ ビルド一切なし！GHCR から Pull のみ                        │
+│  ⏱️ 実行時間: 2-3分                                            │
+└────────────────────────────────────────────────────────────────┘
+                              ↓ (CI Pass)
+┌────────────────────────────────────────────────────────────────┐
+│ 4. Deploy (GHCR Pull) 🚀                                       │
+├────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐  │
+│  │ deploy (修正)                                            │  │
+│  │                                                           │  │
+│  │  - GHCR ログイン（VM内）                                 │  │
+│  │  - Backend イメージ Pull                                 │  │
+│  │  - Frontend イメージ Pull (Production用)                 │  │
+│  │  - ローカルタグ付与                                      │  │
+│  │  - docker compose up                                     │  │
+│  │  - ヘルスチェック                                        │  │
+│  └─────────────────────────────────────────────────────────┘  │
+│                                                                 │
+│  ⚠️ ビルド一切なし！GHCR から Pull のみ                        │
+│  ⏱️ 実行時間: 2-3分                                            │
+└────────────────────────────────────────────────────────────────┘
+```
+
+### 🔑 キーポイント
+
+#### 1. **コンポーネント固有 SHA による変更検知**
+
+```bash
+# Backend の内容が変わったかを検知
+BACKEND_SHA=$(git log -1 --format=%H -- backend/)
+BACKEND_TAG="backend-sha-${BACKEND_SHA:0:7}"
+
+# Frontend の内容が変わったかを検知
+FRONTEND_SHA=$(git log -1 --format=%H -- frontend/)
+FRONTEND_TAG="frontend-sha-${FRONTEND_SHA:0:7}"
+
+# GHCR に既に存在するかチェック
+if docker manifest inspect ghcr.io/.../driverev-backend:$BACKEND_TAG >/dev/null 2>&1; then
+  echo "✅ Backend unchanged, skipping build"
+  SKIP_BACKEND_BUILD=true
+fi
+```
+
+**メリット**:
+- コンテンツが同じなら再ビルドしない（真の DRY 原則）
+- frontend/ を変更しても backend/ のビルドはスキップ
+- 前回ビルド失敗時も自動リカバリー（GHCR になければ再ビルド）
+
+#### 2. **Security Gate Pattern**
+
+```yaml
+# security.yml
+docker-security-scan:
+  needs: [build-and-push]  # ビルド完了後に実行
+
+# optimized-ci.yml
+docker-integration:
+  needs: [security-scan]  # セキュリティ合格後に実行
+```
+
+**メリット**:
+- 脆弱性のあるイメージで CI を実行しない
+- 早期フィードバック（セキュリティで失敗したら即座に停止）
+- 開発者の安全意識向上
+
+#### 3. **GHCR Pull の権限管理**
+
+##### GitHub Actions 内（✅ 問題なし）
+
+```yaml
+- name: Login to GHCR
+  uses: docker/login-action@v3
+  with:
+    registry: ghcr.io
+    username: ${{ github.actor }}
+    password: ${{ secrets.GITHUB_TOKEN }}
+```
+
+- `GITHUB_TOKEN` は自動的に `packages: write/read` 権限を持つ
+- Public リポジトリなら認証不要で Pull 可能
+
+##### GCE VM 内（要対処）
+
+```bash
+# デプロイジョブで VM 内から GHCR Pull
+echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin 2>/dev/null
+
+# イメージ Pull
+docker pull ghcr.io/.../driverev-backend:$BACKEND_TAG
+docker pull ghcr.io/.../driverev-frontend:$FRONTEND_TAG-prod
+```
+
+**セキュリティポイント**:
+- SSH 経由で安全に GITHUB_TOKEN を渡す
+- `--password-stdin` でプロセスリストに露出しない
+- `2>/dev/null` でログに記録しない
+
+##### docker compose 内（要対処）
+
+**方法1: 事前 Pull + ローカルタグ** ✅ 推奨
+
+```bash
+# VM内でPull済み、ローカルタグ付与
+docker pull ghcr.io/.../driverev-backend:v1.2.3
+docker tag ghcr.io/.../driverev-backend:v1.2.3 driverev-backend:test
+
+# compose.ci.yml
+services:
+  backend:
+    image: driverev-backend:test  # ローカルタグを使用
+```
+
+**方法2: 直接 GHCR 参照** ⚠️ ログイン必須
+
+```yaml
+# compose.ci.yml
+services:
+  backend:
+    image: ghcr.io/.../driverev-backend:${BACKEND_TAG}
+  # 注意: docker compose 実行前に docker login 必須
+```
+
+### 📝 Phase 7 実装計画
+
+#### Step 1: 新規ワークフロー作成
+
+```yaml
+# .github/workflows/build-and-push.yml (新規)
+name: Build and Push Images
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main, develop]
+
+jobs:
+  build-and-push:
+    name: Build & Push to GHCR
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      backend_tag: ${{ steps.tags.outputs.backend_tag }}
+      frontend_ci_tag: ${{ steps.tags.outputs.frontend_ci_tag }}
+      frontend_prod_tag: ${{ steps.tags.outputs.frontend_prod_tag }}
+      backend_skip: ${{ steps.backend-check.outputs.exists }}
+      frontend_skip: ${{ steps.frontend-check.outputs.exists }}
+```
+
+#### Step 2: security.yml 修正
+
+```yaml
+# ビルドステップを削除
+docker-security-scan:
+  needs: [build-and-push]  # 依存関係追加
+  steps:
+    # ❌ 削除: docker build
+    # ✅ 追加: docker pull
+    - name: Pull images from GHCR
+      run: |
+        docker pull ghcr.io/.../backend:${{ needs.build-and-push.outputs.backend_tag }}
+```
+
+#### Step 3: optimized-ci.yml 修正
+
+```yaml
+docker-integration:
+  needs: [security-scan]  # 依存関係追加
+  steps:
+    # ❌ 削除: docker build
+    # ✅ 追加: docker pull + tag
+    - name: Pull and tag images
+      run: |
+        docker pull ghcr.io/.../backend:${{ needs.build-and-push.outputs.backend_tag }}
+        docker tag ghcr.io/.../backend:... driverev-backend:test
+```
+
+#### Step 4: deploy ジョブ修正
+
+```yaml
+deploy:
+  steps:
+    # Frontend Production ビルドは残す（異なる API_URL）
+    # ただし既に build-and-push で -prod タグビルド済み
+    # → Pull のみで OK
+    - name: Pull production images
+      run: |
+        docker pull ghcr.io/.../backend:${{ needs.build-and-push.outputs.backend_tag }}
+        docker pull ghcr.io/.../frontend:${{ needs.build-and-push.outputs.frontend_prod_tag }}
+```
+
+### ✅ Phase 7 期待効果
+
+| 指標 | Phase 6 完了時 | Phase 7 完了後 | 改善率 |
+|------|--------------|--------------|--------|
+| **ビルド回数** | Frontend: 2回*<br>Backend: 1回 | Frontend: 2回**<br>Backend: 1回 | 変わらず（最適） |
+| **重複ビルド** | Security/CIで重複 | 完全に排除 | **100%削減** |
+| **セキュリティゲート** | ❌ なし | ✅ あり | - |
+| **ビルド時間** | 10-16分 | 5-8分 | **40-50%短縮** |
+| **CI総実行時間*** | 20-25分 | 15-18分 | **25-30%短縮** |
+| **GitHub Actions コスト** | 基準 | -30-40% | **30-40%削減** |
+| **コンテンツアドレッシング** | ❌ なし | ✅ あり | - |
+
+\* 並行実行時間（Security と CI が並行）
+\*\* CI用1回（localhost） + Production用1回（動的IP） - 異なる環境変数のため必須
+\*\*\* 直列実行（Build → Security → CI → Deploy）のため若干長くなるが、安全性と効率性が向上
+
+### 🎯 PR #113 の正しい解決策
+
+**❌ PR #113 の提案（間違い）**:
+```yaml
+docker compose up -d --no-pull
+```
+
+**✅ Phase 7 の解決策（正しい）**:
+```yaml
+# 1. GHCR から Pull
+docker pull ghcr.io/.../driverev-backend:$BACKEND_TAG
+docker pull ghcr.io/.../driverev-frontend:$FRONTEND_TAG
+
+# 2. ローカルタグ付与
+docker tag ghcr.io/.../driverev-backend:$BACKEND_TAG driverev-backend:test
+docker tag ghcr.io/.../driverev-frontend:$FRONTEND_TAG driverev-frontend:test
+
+# 3. docker compose 起動（--no-pull 不要）
+docker compose -f .github/compose.ci.yml up -d --wait
+```
+
+**理由**:
+- GHCR 戦略と一貫性がある
+- コンテンツが同じなら GHCR から再利用（DRY 原則）
+- ビルド重複を完全に排除
+- セキュリティゲートを実現
+
+### 🔍 Phase 7 実装検証項目
+
+- [ ] **build-and-push.yml 作成**: 新規ワークフロー
+- [ ] **コンポーネント固有 SHA**: Backend/Frontend 別々に管理
+- [ ] **GHCR 存在チェック**: `docker manifest inspect`
+- [ ] **security.yml 修正**: ビルド削除、Pull 追加
+- [ ] **optimized-ci.yml 修正**: ビルド削除、Pull + Tag 追加
+- [ ] **deploy 修正**: Production Frontend を Pull（再ビルド削除可能）
+- [ ] **docker compose 修正**: `--no-pull` 削除
+- [ ] **権限テスト**: VM 内 GHCR Pull の動作確認
+- [ ] **セキュリティゲートテスト**: 脆弱性検出時の CI ブロック確認
+- [ ] **パフォーマンス計測**: 実行時間を計測
+
+### 🚨 注意点とトレードオフ
+
+#### ワークフロー実行順序
+
+**Phase 6 まで（並行実行）**:
+```
+┌─────────────┐
+│   Changes   │
+└──────┬──────┘
+       ├──────────────┬──────────────┐
+       ↓              ↓              ↓
+  ┌─────────┐  ┌──────────┐  ┌─────────┐
+  │ Quality │  │ Security │  │  Build  │
+  └─────────┘  └──────────┘  └─────────┘
+     並行実行（高速だが重複ビルド）
+```
+
+**Phase 7（直列実行）**:
+```
+┌─────────────┐
+│   Changes   │
+└──────┬──────┘
+       ↓
+  ┌─────────┐
+  │  Build  │ ← 1回だけビルド
+  └────┬────┘
+       ├──────────────┬──────────────┐
+       ↓              ↓              ↓
+  ┌─────────┐  ┌──────────┐  ┌─────────┐
+  │ Quality │  │ Security │  │   CI    │
+  └─────────┘  └──────────┘  └─────────┘
+     Security → CI の順序保証
+```
+
+**トレードオフ**:
+- ✅ **メリット**: ビルド重複排除、セキュリティゲート
+- ⚠️ **デメリット**: 若干の直列化（ただし総時間は短縮）
+
+#### Frontend の2回ビルド
+
+**Phase 7 でも Frontend は2回ビルド**:
+1. **CI用**: `NEXT_PUBLIC_API_URL=http://localhost:8000`
+2. **Production用**: `NEXT_PUBLIC_API_URL=http://$VM_IP:8000`
+
+**理由**:
+- Next.js の `NEXT_PUBLIC_*` はビルド時に静的埋め込み
+- 実行時に変更不可能
+- **これは重複ではなく必須要件**
+
+**最適化**:
+- GitHub Actions キャッシュで30-50%高速化
+- 実質的なビルド時間は大幅短縮
+
+### 📊 Phase 7 実装ステータス
+
+**作成日**: 2025-10-06  
+**PR**: TBD（refactor/unified-build-ghcr-strategy ブランチ）  
+**ステータス**: 🚧 設計完了、実装開始予定
+
+---
+
+## 📈 全Phase 累積効果（Phase 1-7 完了時）
+
+| 指標 | 初期値 | Phase 6完了 | Phase 7完了 | 総改善率 |
+|------|-------|------------|------------|---------|
+| デプロイ時間 | 15-20分 | 2-3分 | 2-3分 | **85-90%削減** |
+| ビルド時間 | 10-16分 | 10-16分 | 5-8分 | **50-60%削減** |
+| CI 総実行時間 | 30-35分 | 20-25分 | 15-18分 | **50-60%削減** |
+| ビルド回数（重複） | Frontend: 3回<br>Backend: 3回* | Frontend: 2回<br>Backend: 1回 | Frontend: 2回<br>Backend: 1回 | **50-67%削減** |
+| 重複ビルド | あり（Security/CI） | あり（Security/CI） | ✅ なし | **100%排除** |
+| セキュリティゲート | ❌ なし | ❌ なし | ✅ あり | - |
+| GitHub Actions コスト | 基準 | -20-25% | -40-50% | **40-50%削減** |
+
+\* Security.yml での重複を含む
 
 ---
