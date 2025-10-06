@@ -328,7 +328,7 @@ jobs:
           push: ${{ github.ref == 'refs/heads/main' }}
           load: ${{ github.ref != 'refs/heads/main' }}
           tags: |
-            driverev-backend:test
+            ${{ github.ref != 'refs/heads/main' && 'driverev-backend:test' || '' }}
             ${{ github.ref == 'refs/heads/main' && format('{0}/{1}/driverev-backend:{2}', env.GHCR_REGISTRY, github.repository_owner, steps.version.outputs.version) || '' }}
             ${{ github.ref == 'refs/heads/main' && format('{0}/{1}/driverev-backend:{2}', env.GHCR_REGISTRY, github.repository_owner, steps.version.outputs.version_with_sha) || '' }}
             ${{ github.ref == 'refs/heads/main' && format('{0}/{1}/driverev-backend:{2}', env.GHCR_REGISTRY, github.repository_owner, github.sha) || '' }}
@@ -350,7 +350,7 @@ jobs:
           push: ${{ github.ref == 'refs/heads/main' }}
           load: ${{ github.ref != 'refs/heads/main' }}
           tags: |
-            driverev-frontend:test
+            ${{ github.ref != 'refs/heads/main' && 'driverev-frontend:test' || '' }}
             ${{ github.ref == 'refs/heads/main' && format('{0}/{1}/driverev-frontend:{2}', env.GHCR_REGISTRY, github.repository_owner, steps.version.outputs.version) || '' }}
             ${{ github.ref == 'refs/heads/main' && format('{0}/{1}/driverev-frontend:{2}', env.GHCR_REGISTRY, github.repository_owner, steps.version.outputs.version_with_sha) || '' }}
             ${{ github.ref == 'refs/heads/main' && format('{0}/{1}/driverev-frontend:{2}', env.GHCR_REGISTRY, github.repository_owner, github.sha) || '' }}
