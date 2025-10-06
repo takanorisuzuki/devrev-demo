@@ -995,7 +995,7 @@ if: |
 | `deploy` | ✅ Yes | コンテナ関連の変更（backend, frontend, docker）があった場合のみデプロイを実行 |
 | `codeql-analysis` | ❌ No | コード解析はセキュリティの観点から、pushやscheduleをトリガーとして定期的に実行 |
 
-**実測効果（推定）**:
+**効果の試算**:
 
 ```
 # 年間200回のmainブランチへのpush（PRマージ）があり、うち50%はDockerfileの変更がないと仮定
