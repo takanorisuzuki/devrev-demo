@@ -45,9 +45,9 @@ FROM node:22.20.0-alpine AS runner
 RUN apk add --no-cache curl
 WORKDIR /app
 
-ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
-ENV HOSTNAME=0.0.0.0
+ENV NODE_ENV=production \
+    NEXT_TELEMETRY_DISABLED=1 \
+    HOSTNAME=0.0.0.0
 
 # Install only production dependencies for minimal image size
 COPY package.json package-lock.json* ./
