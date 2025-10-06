@@ -10,8 +10,8 @@
 
 ```yaml
 env:
-  POSTGRES_PASSWORD: postgres123 # ❌ GitHubに公開される
-  SECRET_KEY: test-secret-key # ❌ GitHubに公開される
+  POSTGRES_PASSWORD: postgres123  # ❌ GitHubに公開される
+  SECRET_KEY: test-secret-key     # ❌ GitHubに公開される
 ```
 
 **リスク**: これらの値は CI 環境でのみ使用されるべきですが、リポジトリが公開されている場合、誰でも閲覧可能
