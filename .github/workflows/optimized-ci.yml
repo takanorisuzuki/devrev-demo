@@ -264,7 +264,7 @@ jobs:
       !cancelled() &&
       (needs.frontend-build-test.result == 'success' || needs.frontend-build-test.result == 'skipped') &&
       (needs.backend-build-test.result == 'success' || needs.backend-build-test.result == 'skipped') &&
-      (needs.detect-changes.outputs.backend == 'true' || needs.detect-changes.outputs.frontend == 'true' || needs.detect-changes.outputs.docker == 'true' || needs.detect-changes.outputs.ci == 'true') &&
+      (needs.detect-changes.outputs.backend == 'true' || needs.detect-changes.outputs.frontend == 'true' || needs.detect-changes.outputs.docker == 'true') &&
       (github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main'))
     permissions:
       contents: read
