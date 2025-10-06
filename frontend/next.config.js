@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Enable standalone output for Docker optimization
+  // Build: 2025-10-06 - Force rebuild to include login API fix from PR#105
   output: 'standalone',
   experimental: {
     scrollRestoration: true,
