@@ -12,10 +12,6 @@ on:
       # セキュリティリスクのあるファイル変更時のみ実行
       - "backend/**"
       - "frontend/**"
-      - "backend/requirements.txt"
-      - "frontend/package*.json"
-      - "backend/Dockerfile"
-      - "frontend/Dockerfile"
       - ".github/workflows/**" # ワークフロー変更もセキュリティスキャン対象（悪意のある変更検出）
       # ドキュメントのみの変更は除外（セキュリティリスクなし）
       - "!**/*.md"
@@ -51,8 +47,7 @@ jobs:
         with:
           filters: |
             docker:
-              - 'backend/Dockerfile'
-              - 'frontend/Dockerfile'
+              - '**/Dockerfile'
             dependencies:
               - 'backend/requirements.txt'
               - 'frontend/package*.json'
