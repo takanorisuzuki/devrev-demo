@@ -318,8 +318,10 @@ jobs:
       # Backend: ビルド & GHCR push
       # 最適化: GitHub Actions キャッシュでレイヤーを再利用（pip install 高速化）
       # backend-build-test での pytest 実行後、ここで本番用イメージを一度だけビルド
+      # 条件: バックエンドまたはDockerfileが変更された場合のみビルド
       - name: Build and push backend image
         id: build-backend
+        if: needs.detect-changes.outputs.backend == 'true' || needs.detect-changes.outputs.docker == 'true'
         uses: docker/build-push-action@v5
         with:
           context: ./backend
@@ -338,8 +340,10 @@ jobs:
       # 最適化: GitHub Actions キャッシュで npm install と Next.js ビルドを高速化
       # 注意: CI用は localhost:8000 を使用。本番用は deploy ジョブで動的IPを使って再ビルド必要
       # 理由: NEXT_PUBLIC_API_URL はビルド時に埋め込まれるため、環境ごとに異なるビルドが必須
+      # 条件: フロントエンドまたはDockerfileが変更された場合のみビルド
       - name: Build and push frontend image (CI)
         id: build-frontend-ci
+        if: needs.detect-changes.outputs.frontend == 'true' || needs.detect-changes.outputs.docker == 'true'
         uses: docker/build-push-action@v5
         with:
           context: ./frontend
@@ -358,18 +362,20 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Start services with Docker Compose
+        if: needs.detect-changes.outputs.backend == 'true' || needs.detect-changes.outputs.docker == 'true'
         run: |
           PROJECT=devrev-${{ github.run_id }}
           docker compose -f .github/compose.ci.yml -p "$PROJECT" up -d --wait --wait-timeout 240 backend
 
       - name: Run integration tests
+        if: needs.detect-changes.outputs.backend == 'true' || needs.detect-changes.outputs.docker == 'true'
         run: |
           PROJECT=devrev-${{ github.run_id }}
           docker compose -f .github/compose.ci.yml -p "$PROJECT" exec backend curl -fsS http://localhost:8000/health
           echo "Backend health check passed"
 
       - name: Cleanup
-        if: always()
+        if: always() && (needs.detect-changes.outputs.backend == 'true' || needs.detect-changes.outputs.docker == 'true')
         run: |
           PROJECT=devrev-${{ github.run_id }}
           docker compose -f .github/compose.ci.yml -p "$PROJECT" down
