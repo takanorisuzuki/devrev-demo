@@ -315,13 +315,42 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Check if images already exist in GHCR (avoid unnecessary rebuilds)
+      - name: Check existing images in GHCR
+        if: github.ref == 'refs/heads/main'
+        id: check-images
+        run: |
+          VERSION_WITH_SHA="${{ steps.version.outputs.version_with_sha }}"
+          
+          # Check backend image
+          if docker manifest inspect ${{ env.GHCR_REGISTRY }}/${{ github.repository_owner }}/driverev-backend:$VERSION_WITH_SHA >/dev/null 2>&1; then
+            echo "backend_exists=true" >> $GITHUB_OUTPUT
+            echo "✅ Backend image $VERSION_WITH_SHA already exists in GHCR"
+          else
+            echo "backend_exists=false" >> $GITHUB_OUTPUT
+            echo "🔨 Backend image $VERSION_WITH_SHA needs to be built"
+          fi
+          
+          # Check frontend CI image
+          if docker manifest inspect ${{ env.GHCR_REGISTRY }}/${{ github.repository_owner }}/driverev-frontend:$VERSION_WITH_SHA >/dev/null 2>&1; then
+            echo "frontend_exists=true" >> $GITHUB_OUTPUT
+            echo "✅ Frontend image $VERSION_WITH_SHA already exists in GHCR"
+          else
+            echo "frontend_exists=false" >> $GITHUB_OUTPUT
+            echo "🔨 Frontend image $VERSION_WITH_SHA needs to be built"
+          fi
+
       # Backend: ビルド & GHCR push
       # 最適化: GitHub Actions キャッシュでレイヤーを再利用（pip install 高速化）
       # backend-build-test での pytest 実行後、ここで本番用イメージを一度だけビルド
-      # 条件: バックエンドまたはDockerfileが変更された場合、またはmainブランチpush時は常にビルド
+      # 条件: 
+      #   - PRビルド: バックエンドまたはDockerfileが変更された場合
+      #   - mainビルド: イメージがGHCRに存在しない場合のみ（無駄なビルドを防止）
       - name: Build and push backend image
         id: build-backend
-        if: needs.detect-changes.outputs.backend == 'true' || needs.detect-changes.outputs.docker == 'true' || (github.ref == 'refs/heads/main' && github.event_name == 'push')
+        if: |
+          (github.ref != 'refs/heads/main' && (needs.detect-changes.outputs.backend == 'true' || needs.detect-changes.outputs.docker == 'true')) ||
+          (github.ref == 'refs/heads/main' && steps.check-images.outputs.backend_exists != 'true')
         uses: docker/build-push-action@v5
         with:
           context: ./backend
@@ -343,10 +372,14 @@ jobs:
       # 最適化: GitHub Actions キャッシュで npm install と Next.js ビルドを高速化
       # 注意: CI用は localhost:8000 を使用。本番用は deploy ジョブで動的IPを使って再ビルド必要
       # 理由: NEXT_PUBLIC_API_URL はビルド時に埋め込まれるため、環境ごとに異なるビルドが必須
-      # 条件: フロントエンドまたはDockerfileが変更された場合、またはmainブランチpush時は常にビルド
+      # 条件:
+      #   - PRビルド: フロントエンドまたはDockerfileが変更された場合
+      #   - mainビルド: イメージがGHCRに存在しない場合のみ（無駄なビルドを防止）
       - name: Build and push frontend image (CI)
         id: build-frontend-ci
-        if: needs.detect-changes.outputs.frontend == 'true' || needs.detect-changes.outputs.docker == 'true' || (github.ref == 'refs/heads/main' && github.event_name == 'push')
+        if: |
+          (github.ref != 'refs/heads/main' && (needs.detect-changes.outputs.frontend == 'true' || needs.detect-changes.outputs.docker == 'true')) ||
+          (github.ref == 'refs/heads/main' && steps.check-images.outputs.frontend_exists != 'true')
         uses: docker/build-push-action@v5
         with:
           context: ./frontend
@@ -676,16 +709,16 @@ jobs:
             echo "Expected Git Commit: $CURRENT_SHA"
             echo "Expected Build ID: $VERSION_WITH_SHA"
             echo ""
-            
+
             # Check backend version
             echo "Backend build info:"
             docker compose -p "$PROJECT" -f .github/compose.ci.yml exec -T backend cat /app/build-info.txt 2>/dev/null || echo "⚠️  Backend build-info.txt not found"
-            
+
             # Check frontend version
             echo ""
             echo "Frontend build info:"
             docker compose -p "$PROJECT" -f .github/compose.ci.yml exec -T frontend cat /app/build-info.txt 2>/dev/null || echo "⚠️  Frontend build-info.txt not found"
-            
+
             echo ""
             echo "✅ Production deployment completed successfully"
             echo "📦 Current version: $VERSION"
