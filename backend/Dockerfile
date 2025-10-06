@@ -24,6 +24,10 @@ FROM python:3.12.7-slim
 ARG BUILD_ID
 ARG GIT_COMMIT
 
+# Add metadata labels for version tracking
+LABEL build_id="${BUILD_ID:-unknown}"
+LABEL git_commit="${GIT_COMMIT:-unknown}"
+
 # Install runtime dependencies only
 RUN apt-get update && apt-get install -y \
     curl \

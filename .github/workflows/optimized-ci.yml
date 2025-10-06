@@ -484,8 +484,10 @@ jobs:
             bandit-report.json
 
   # デプロイメント（条件分岐：develop→staging, main→production）
-  # mainブランチpush時は常に実行（前回デプロイ失敗のリカバリー含む）
-  # 既存イメージがGHCRに存在すればデプロイ可能（変更検知不要）
+  # 条件: docker-integrationが成功した場合は常に実行
+  # デプロイジョブ内でVM上のバージョンとGHCR上のバージョンを比較し、
+  # 同じならスキップ、違ったらデプロイ実行
+  # これにより、変更なし+前回デプロイ失敗のリカバリーも対応
   deploy:
     name: Deploy Application
     runs-on: ubuntu-latest
@@ -649,6 +651,30 @@ jobs:
 
             # Login to GHCR securely
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin 2>/dev/null
+
+            # Check if deployment is needed by comparing VM and GHCR versions
+            echo "🔍 Checking if deployment is needed..."
+            
+            # Get currently running container versions on VM
+            CURRENT_BACKEND_VERSION=$(docker inspect driverev-production-backend-1 --format='{{index .Config.Labels "build_id"}}' 2>/dev/null || echo "none")
+            CURRENT_FRONTEND_VERSION=$(docker inspect driverev-production-frontend-1 --format='{{index .Config.Labels "build_id"}}' 2>/dev/null || echo "none")
+            
+            # Get target versions from GHCR
+            TARGET_BACKEND_VERSION="${{ needs.docker-integration.outputs.backend_version_with_sha }}"
+            TARGET_FRONTEND_VERSION="${{ needs.docker-integration.outputs.frontend_version_with_sha }}"
+            
+            echo "📊 Version Comparison:"
+            echo "  Backend:  VM=$CURRENT_BACKEND_VERSION  GHCR=$TARGET_BACKEND_VERSION"
+            echo "  Frontend: VM=$CURRENT_FRONTEND_VERSION GHCR=$TARGET_FRONTEND_VERSION"
+            
+            # Check if deployment is needed
+            if [ "$CURRENT_BACKEND_VERSION" = "$TARGET_BACKEND_VERSION" ] && [ "$CURRENT_FRONTEND_VERSION" = "$TARGET_FRONTEND_VERSION" ]; then
+              echo "✅ VM versions match GHCR versions - deployment not needed"
+              echo "🎉 System is already up to date!"
+              exit 0
+            else
+              echo "🚀 Versions differ - proceeding with deployment"
+            fi
 
             # Pull images from GHCR with version tagging
             # Uses component-specific versions for accurate tracking

@@ -56,6 +56,10 @@ ENV NODE_ENV=production \
 # Copy build metadata for version verification
 ARG BUILD_ID
 ARG GIT_COMMIT
+
+# Add metadata labels for version tracking
+LABEL build_id="${BUILD_ID:-unknown}"
+LABEL git_commit="${GIT_COMMIT:-unknown}"
 RUN echo "Build ID: ${BUILD_ID:-unknown}" > /app/build-info.txt && \
     echo "Git Commit: ${GIT_COMMIT:-unknown}" >> /app/build-info.txt && \
     echo "Build Date: $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> /app/build-info.txt
