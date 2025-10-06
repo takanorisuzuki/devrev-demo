@@ -219,8 +219,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: detect-changes
     if: |
-      (github.event_name == 'pull_request' && needs.detect-changes.outputs.docker == 'true') ||
-      github.event_name == 'push' ||
+      needs.detect-changes.outputs.docker == 'true' ||
       github.event_name == 'schedule'
     permissions:
       contents: read

@@ -940,21 +940,69 @@ jobs:
   docker-security-scan:
     needs: detect-changes
     if: |
-      (github.event_name == 'pull_request' && needs.detect-changes.outputs.docker == 'true') ||
-      github.event_name == 'push' ||
+      needs.detect-changes.outputs.docker == 'true' ||
       github.event_name == 'schedule'
 ```
 
 #### **効果**
 
-| シナリオ                   | Before | After    |
-| -------------------------- | ------ | -------- |
-| Dockerfile 変更時          | 実行   | 実行     |
-| ワークフロー設定のみ変更時 | 実行 ⚠️ | スキップ ✅ |
-| ドキュメントのみ変更時     | スキップ | スキップ |
-| push/schedule 実行時       | 実行   | 実行     |
+| シナリオ                     | Before   | After       |
+| ---------------------------- | -------- | ----------- |
+| Dockerfile 変更時（PR/push） | 実行     | 実行        |
+| Dockerfile 変更なし（PR）    | スキップ | スキップ    |
+| Dockerfile 変更なし（push）  | 実行 ⚠️  | スキップ ✅ |
+| 週次 schedule 実行           | 実行     | 実行        |
 
-**削減効果**: 不要なコンテナビルド時間（約 5-10 分）を削減
+**削減効果**: 
+- Dockerfile変更なしの場合、コンテナビルドを完全スキップ（約5-10分削減）
+- PR時もpush時も同じロジックで動作（一貫性向上）
+- 定期スキャンは継続（セキュリティ維持）
+
+#### **アーキテクチャ判断：なぜこの条件式が最適か**
+
+**問題**:
+- 初期実装: `github.event_name == 'push'`が無条件でtrue
+- 結果: mainへのpush時に常にコンテナビルド（変更がなくても）
+
+**選択肢の検討**:
+
+| アプローチ | 条件式 | メリット | デメリット |
+|-----------|--------|---------|-----------|
+| ❌ **完全スキップ** | PR時のみ | 最大の時間削減 | Gatekeeper原則崩壊、セキュリティリスク |
+| ✅ **変更検知** | `outputs.docker == 'true'` | セキュリティ維持、効率化達成 | - |
+| ⚠️ **イベント別** | `push` OR `schedule` | シンプル | 不要な実行が発生 |
+
+**採用した設計**:
+
+```yaml
+if: |
+  needs.detect-changes.outputs.docker == 'true' ||  # Dockerfile変更時（PR/push共通）
+  github.event_name == 'schedule'                   # 定期スキャン
+```
+
+**設計の根拠**:
+
+1. **一貫性**: PR時もpush時も同じロジック（イベントタイプではなく変更内容で判断）
+2. **効率性**: Dockerfile変更がない場合は確実にスキップ
+3. **安全性**: 定期スキャンで新規脆弱性を検出
+4. **ゲートキーパー原則**: 必須チェック（Backend Tests, Code Quality）は維持
+
+**他ワークフローとの整合性**:
+
+| ワークフロー | 同じ条件式を使用 | 理由 |
+|-------------|---------------|------|
+| `docker-integration` | ✅ Yes | コンテナビルドは変更時のみ |
+| `deploy` | ✅ Yes | デプロイも変更時のみ |
+| `codeql-analysis` | ❌ No | コード解析は常に実行（セキュリティ） |
+
+**実測効果（推定）**:
+
+```
+# 年間200PR、うち50%がDockerfile変更なしと仮定
+- Before: 200PR × 10分 = 2,000分
+- After: 100PR × 10分 = 1,000分
+- 削減: 1,000分/年（16.7時間）
+```
 
 ---
 
