@@ -756,7 +756,7 @@ grep "npm run build" .github/workflows/optimized-ci.yml | wc -l
 |------|-------|------------|------------|---------|
 | デプロイ時間 | 15-20分 | 2-3分 | 2-3分 | **85-90%削減** |
 | CI 総実行時間 | 30-35分 | 25-30分 | 20-25分 | **30-40%削減** |
-| ビルド回数 | Frontend: 3回<br>Backend: 2回 | 同左 | Frontend: 2回*<br>Backend: 1回 | **40-50%削減** |
+| ビルド回数 | Frontend: 3回<br>Backend: 2回 | 同左 | Frontend: 2回*<br>Backend: 1回 | **40%削減** |
 | セキュリティリスク | 3件 | 0件 | 0件 | **100%削減** |
 | GitHub Actions コスト | 基準 | 基準 | -20-25% | **20-25%削減** |
 
