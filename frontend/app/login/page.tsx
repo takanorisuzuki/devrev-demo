@@ -4,6 +4,7 @@ import React, { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Car, LogIn, User, Lock } from "lucide-react";
 import { useAuthStore } from "@/lib/stores/auth";
+import { loginApi } from "@/lib/api/auth";
 
 function LoginPageContent() {
   const router = useRouter();
@@ -47,23 +48,10 @@ function LoginPageContent() {
 
     try {
       // バックエンドAPIを使用した実際の認証
-      const response = await fetch("http://localhost:8000/api/v1/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: form.email,
-          password: form.password,
-        }),
+      const loginData = await loginApi({
+        email: form.email,
+        password: form.password,
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || "ログインに失敗しました");
-      }
-
-      const loginData = await response.json();
 
       // Zustandストアにログイン情報を保存
       login(loginData);
@@ -83,23 +71,10 @@ function LoginPageContent() {
 
     try {
       // バックエンドAPIを使用した実際の認証
-      const response = await fetch("http://localhost:8000/api/v1/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: email,
-          password: password,
-        }),
+      const loginData = await loginApi({
+        email: email,
+        password: password,
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || "ログインに失敗しました");
-      }
-
-      const loginData = await response.json();
 
       // Zustandストアにログイン情報を保存
       login(loginData);
