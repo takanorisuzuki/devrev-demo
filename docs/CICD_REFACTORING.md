@@ -714,7 +714,7 @@ git diff main feature/optimize-ci-duplicate-builds \
 grep "name: Frontend" .github/workflows/optimized-ci.yml
 # 結果: Frontend Tests ✅
 
-grep "name: Backend" .github/workflows/optimized-ci.yml  
+grep "name: Backend" .github/workflows/optimized-ci.yml
 # 結果: Backend Tests ✅
 
 grep "name: Docker" .github/workflows/optimized-ci.yml
