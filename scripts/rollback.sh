@@ -55,8 +55,8 @@ echo "  - $FRONTEND_IMAGE"
 
 # Tag rollback images as 'test' (expected by compose file)
 echo "🏷️  Tagging images for deployment..."
-docker tag "$BACKEND_IMAGE" driverev-backend:test
-docker tag "$FRONTEND_IMAGE" driverev-frontend:test
+export BACKEND_IMAGE_TAG="${TARGET_VERSION}"
+export FRONTEND_IMAGE_TAG="${TARGET_VERSION}"
 
 # Load environment variables
 if [ -f "$PROJECT_ROOT/.env" ]; then
