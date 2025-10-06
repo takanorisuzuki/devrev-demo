@@ -43,8 +43,8 @@ cleanup_image() {
     echo "  ✅ No old images to delete (found ${count} version(s))"
   else
     echo "  🗑️  Deleting ${#to_delete[@]} old image(s)..."
-    for image_id in "${to_delete[@]}"; do
-      docker rmi "$image_id" 2>/dev/null || echo "  ⚠️  Failed to delete image: $image_id"
+    for image_id in $(printf "%s\n" "${to_delete[@]}" | sort -u); do
+      docker rmi "$image_id" || echo "  ⚠️  Failed to delete image: $image_id (might be in use or already removed)"
     done
     echo "  ✅ Cleanup complete"
   fi
