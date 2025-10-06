@@ -49,6 +49,7 @@ alwaysApply: true
 このプロジェクトでは **スカッシュマージ運用** を採用しているため、ブランチ間の差分確認には特別な注意が必要。
 
 **誤った確認方法（使用禁止）**:
+
 ```bash
 # ❌ コミット数での比較 - スカッシュマージでは意味がない
 git rev-list --left-right --count origin/main...origin/develop
@@ -60,6 +61,7 @@ git log --oneline origin/main..origin/develop
 ```
 
 **正しい確認方法（必須）**:
+
 ```bash
 # ✅ 実際のファイル差分を確認
 git diff --name-only origin/main origin/develop
@@ -74,12 +76,14 @@ git diff origin/main origin/develop -- path/to/file
 ```
 
 **理由**:
+
 - スカッシュマージでは feature ブランチの複数コミットが 1 つにまとめられて main にマージされる
 - develop には開発履歴の全コミットが残るが、main には統合済みのスカッシュコミットのみ
 - コミット数だけで「119 コミット遅れている」と判断するのは完全に誤り
 - 実際のファイル差分が 2 ファイルのみという場合もある
 
 **実例**:
+
 ```bash
 # コミット数の確認（誤解を招く）
 $ git rev-list --left-right --count origin/main...origin/develop
@@ -93,6 +97,7 @@ docs/CI_ANALYSIS_2025.md
 ```
 
 **判断基準**:
+
 - **実ファイル差分が少ない** → 実質的な遅れは小さい、必要に応じて PR 作成
 - **実ファイル差分が多い** → 大規模な変更がある、計画的な PR 作成が必要
 
@@ -228,7 +233,7 @@ fi
     # 承認ステップを削除し、直接 auto-merge を有効化
     gh pr merge --auto --squash "$PR_URL"
   env:
-    GH_TOKEN: ${{secrets.GITHUB_TOKEN}}  # または GITHUB_TOKEN
+    GH_TOKEN: ${{secrets.GITHUB_TOKEN}} # または GITHUB_TOKEN
 ```
 
 #### トラブルシューティングのコマンド
@@ -307,9 +312,10 @@ gh run rerun [実行ID]  # 特定ワークフローの再実行
 ```
 
 **判断基準**
-- `mergeStateStatus: BEHIND` → ステップ2a（ブランチ更新）
-- `statusCheck: FAILURE` → ステップ4（管理者権限）または問題修正
-- `reviewDecision: REVIEW_REQUIRED` → ステップ2b（手動承認）
+
+- `mergeStateStatus: BEHIND` → ステップ 2a（ブランチ更新）
+- `statusCheck: FAILURE` → ステップ 4（管理者権限）または問題修正
+- `reviewDecision: REVIEW_REQUIRED` → ステップ 2b（手動承認）
 
 ### 🎯 次回への教訓
 

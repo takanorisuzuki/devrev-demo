@@ -635,16 +635,17 @@ services:
 
 以下の分析に基づき、セキュリティワークフロー（`security.yml`）の包括的最適化を完了しました。
 
-### ✅ 実装した改善（6 項目）
+### ✅ 実装した改善（7 項目）
 
-| #   | 改善項目                            | 影響             | ステータス |
-| --- | ----------------------------------- | ---------------- | ---------- |
-| 1   | トップレベル `permissions: {}` 追加 | セキュリティ強化 | ✅ 完了    |
-| 2   | 全ジョブへの明示的権限設定          | セキュリティ強化 | ✅ 完了    |
-| 3   | PR トリガー最適化 + paths フィルタ  | 効率化 50%       | ✅ 完了    |
-| 4   | Codecov 不要アップロード削除        | ログクリーン化   | ✅ 完了    |
-| 5   | secret-scan 依存関係修正            | 整合性確保       | ✅ 完了    |
-| 6   | セキュリティレポート生成改善        | 可視性向上       | ✅ 完了    |
+| #   | 改善項目                                 | 影響             | ステータス |
+| --- | ---------------------------------------- | ---------------- | ---------- |
+| 1   | トップレベル `permissions: {}` 追加      | セキュリティ強化 | ✅ 完了    |
+| 2   | 全ジョブへの明示的権限設定               | セキュリティ強化 | ✅ 完了    |
+| 3   | PR トリガー最適化 + paths フィルタ       | 効率化 50%       | ✅ 完了    |
+| 4   | Codecov 不要アップロード削除             | ログクリーン化   | ✅ 完了    |
+| 5   | secret-scan 依存関係修正                 | 整合性確保       | ✅ 完了    |
+| 6   | セキュリティレポート生成改善             | 可視性向上       | ✅ 完了    |
+| 7   | 変更検知による不要なコンテナビルド削減 | 効率化           | ✅ 完了    |
 
 ### 🔒 セキュリティアーキテクチャの改善
 
@@ -907,6 +908,59 @@ security-report:
 - [ ] DAST（動的解析）の導入検討
 - [ ] セキュリティダッシュボード構築
 - [ ] コンプライアンス対応の自動化
+
+### 🎯 追加最適化: 変更検知による不要なコンテナビルド削減
+
+#### **問題点**
+
+PR #93で判明した問題：
+- ワークフロー設定（`.github/workflows/**`）の変更でセキュリティスキャン全体がトリガー
+- Dockerfile が変更されていないのに Podman Security Scan が実行
+- 不要なコンテナビルド（backend + frontend）が発生
+- 実行時間とリソースの無駄
+
+#### **解決策**
+
+`optimized-ci.yml` と同様に変更検知を導入：
+
+```yaml
+jobs:
+  # 変更検知ジョブを追加
+  detect-changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      docker: ${{ steps.filter.outputs.docker }}
+    steps:
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            docker:
+              - 'backend/Dockerfile'
+              - 'frontend/Dockerfile'
+
+  # docker-security-scan に条件追加
+  docker-security-scan:
+    needs: detect-changes
+    if: |
+      (github.event_name == 'pull_request' && needs.detect-changes.outputs.docker == 'true') ||
+      github.event_name == 'push' ||
+      github.event_name == 'schedule'
+```
+
+#### **効果**
+
+| シナリオ                   | Before | After    |
+| -------------------------- | ------ | -------- |
+| Dockerfile 変更時          | 実行   | 実行     |
+| ワークフロー設定のみ変更時 | 実行 ⚠️ | スキップ ✅ |
+| ドキュメントのみ変更時     | スキップ | スキップ |
+| push/schedule 実行時       | 実行   | 実行     |
+
+**削減効果**: 不要なコンテナビルド時間（約 5-10 分）を削減
+
+---
 
 ### 🤖 Gemini Code Assist レビュー対応
 
