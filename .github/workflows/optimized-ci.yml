@@ -146,7 +146,7 @@ jobs:
       !cancelled() &&
       (github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) &&
       (needs.frontend-quality.result == 'success' || needs.frontend-quality.result == 'skipped') &&
-      (needs.detect-changes.outputs.frontend == 'true' || needs.detect-changes.outputs.ci == 'true')
+      (needs.detect-changes.outputs.frontend == 'true')
     permissions:
       contents: read
 
@@ -191,7 +191,7 @@ jobs:
       !cancelled() &&
       (github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) &&
       (needs.backend-quality.result == 'success' || needs.backend-quality.result == 'skipped') &&
-      (needs.detect-changes.outputs.backend == 'true' || needs.detect-changes.outputs.ci == 'true')
+      (needs.detect-changes.outputs.backend == 'true')
     permissions:
       contents: read
 
