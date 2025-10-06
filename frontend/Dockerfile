@@ -27,6 +27,8 @@ ARG NEXT_PUBLIC_APP_ENV=production
 ARG NEXT_PUBLIC_APP_NAME=DriveRev
 ARG NEXT_PUBLIC_DEFAULT_LOCALE=ja
 ARG NEXT_PUBLIC_SUPPORTED_LOCALES='["ja", "en"]'
+ARG BUILD_ID
+ARG GIT_COMMIT
 
 # Set environment variables for build (Next.js reads these during build)
 # Combining ENV instructions reduces image layers and improves build efficiency
@@ -35,6 +37,8 @@ ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL} \
     NEXT_PUBLIC_APP_NAME=${NEXT_PUBLIC_APP_NAME} \
     NEXT_PUBLIC_DEFAULT_LOCALE=${NEXT_PUBLIC_DEFAULT_LOCALE} \
     NEXT_PUBLIC_SUPPORTED_LOCALES=${NEXT_PUBLIC_SUPPORTED_LOCALES} \
+    NEXT_PUBLIC_BUILD_ID=${BUILD_ID:-unknown} \
+    NEXT_PUBLIC_GIT_COMMIT=${GIT_COMMIT:-unknown} \
     NEXT_TELEMETRY_DISABLED=1 \
     NODE_ENV=production
 RUN npm run build
@@ -48,6 +52,17 @@ WORKDIR /app
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
     HOSTNAME=0.0.0.0
+
+# Copy build metadata for version verification
+ARG BUILD_ID=unknown
+ARG GIT_COMMIT=unknown
+
+# Add metadata labels for version tracking
+LABEL build_id="$BUILD_ID"
+LABEL git_commit="$GIT_COMMIT"
+RUN echo "Build ID: $BUILD_ID" > /app/build-info.txt && \
+    echo "Git Commit: $GIT_COMMIT" >> /app/build-info.txt && \
+    echo "Build Date: $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> /app/build-info.txt
 
 # Install only production dependencies for minimal image size
 COPY package.json package-lock.json* ./
