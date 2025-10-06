@@ -47,6 +47,7 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV HOSTNAME=0.0.0.0
 
 # Install only production dependencies for minimal image size
 COPY package.json package-lock.json* ./
