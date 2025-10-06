@@ -42,6 +42,65 @@ alwaysApply: true
 - **セキュリティラベル**: 依存関係更新には "security" ラベル付与
 - **定期実行**: 週次スケジュールでセキュリティ更新を監視
 
+#### スカッシュマージ運用でのブランチ差分確認
+
+**⚠️ CRITICAL: コミット数ではなく実ファイル差分で判断する**
+
+このプロジェクトでは **スカッシュマージ運用** を採用しているため、ブランチ間の差分確認には特別な注意が必要。
+
+**誤った確認方法（使用禁止）**:
+
+```bash
+# ❌ コミット数での比較 - スカッシュマージでは意味がない
+git rev-list --left-right --count origin/main...origin/develop
+# → 例: "1  119" のような結果が出るが、これは誤解を招く
+
+# ❌ 全コミット履歴の表示 - 開発履歴全体が表示される
+git log --oneline origin/main..origin/develop
+# → 開発中の全コミットが表示され、実際の差分と異なる
+```
+
+**正しい確認方法（必須）**:
+
+```bash
+# ✅ 実際のファイル差分を確認
+git diff --name-only origin/main origin/develop
+# → 実際に異なるファイルのみをリスト表示
+
+# ✅ 差分の詳細サイズを確認
+git diff --stat origin/main origin/develop
+# → 変更行数とファイル名を表示
+
+# ✅ 特定ファイルの内容比較
+git diff origin/main origin/develop -- path/to/file
+```
+
+**理由**:
+
+- スカッシュマージでは feature ブランチの複数コミットが 1 つにまとめられて main にマージされる
+- develop には開発履歴の全コミットが残るが、main には統合済みのスカッシュコミットのみ
+- コミット数だけで「119 コミット遅れている」と判断するのは完全に誤り
+- 実際のファイル差分が 2 ファイルのみという場合もある
+
+**実例**:
+
+```bash
+# コミット数の確認（誤解を招く）
+$ git rev-list --left-right --count origin/main...origin/develop
+1   119  # ← developが119コミット進んでいるように見えるが誤解
+
+# 実際のファイル差分（正確）
+$ git diff --name-only origin/main origin/develop
+.github/workflows/security.yml
+docs/CI_ANALYSIS_2025.md
+# ← 実際の差分は2ファイルのみ！
+```
+
+**判断基準**:
+
+- **実ファイル差分が少ない** → 実質的な遅れは小さい、必要に応じて PR 作成
+- **実ファイル差分が多い** → 大規模な変更がある、計画的な PR 作成が必要
+
 #### 緊急時の対応手順
 
 - **段階的解決**: 問題特定 → 一時的設定緩和 → マージ → 完全復旧
@@ -174,7 +233,7 @@ fi
     # 承認ステップを削除し、直接 auto-merge を有効化
     gh pr merge --auto --squash "$PR_URL"
   env:
-    GH_TOKEN: ${{secrets.GITHUB_TOKEN}}  # または GITHUB_TOKEN
+    GH_TOKEN: ${{secrets.GITHUB_TOKEN}} # または GITHUB_TOKEN
 ```
 
 #### トラブルシューティングのコマンド
@@ -253,9 +312,10 @@ gh run rerun [実行ID]  # 特定ワークフローの再実行
 ```
 
 **判断基準**
-- `mergeStateStatus: BEHIND` → ステップ2a（ブランチ更新）
-- `statusCheck: FAILURE` → ステップ4（管理者権限）または問題修正
-- `reviewDecision: REVIEW_REQUIRED` → ステップ2b（手動承認）
+
+- `mergeStateStatus: BEHIND` → ステップ 2a（ブランチ更新）
+- `statusCheck: FAILURE` → ステップ 4（管理者権限）または問題修正
+- `reviewDecision: REVIEW_REQUIRED` → ステップ 2b（手動承認）
 
 ### 🎯 次回への教訓
 
@@ -266,5 +326,6 @@ gh run rerun [実行ID]  # 特定ワークフローの再実行
 5. **検証スクリプト**: 動的検出とフォールバック処理を含む堅牢な実装
 6. **Dependabot エラー**: 権限問題は承認ステップを削除し、直接 auto-merge で解決
 7. **ワークフロー修正**: 本番適用前に develop ブランチで修正を完了させる
+8. **ブランチ差分確認**: スカッシュマージ運用では `git diff --name-only` で実ファイル差分を確認し、コミット数での判断は絶対に行わない
 
 これらのルールに従うことで、今回のような PR の適切な管理とマージが可能になります。
