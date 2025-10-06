@@ -1433,28 +1433,83 @@ docker-integration:
 - `GITHUB_TOKEN` は自動的に `packages: write/read` 権限を持つ
 - Public リポジトリなら認証不要で Pull 可能
 
-#### GCE VM 内（要対処）
+#### GCE VM 内（リポジトリの可視性による）
+
+**Public リポジトリの場合（現在の devrev-demo）**:
 
 ```bash
-# SSH 経由で安全に GITHUB_TOKEN を渡す
-echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin 2>/dev/null
-
-# イメージ Pull
-docker pull ghcr.io/.../driverev-backend:$BACKEND_TAG
-docker pull ghcr.io/.../driverev-frontend:$FRONTEND_TAG-prod
+# ✅ 認証不要！そのまま Pull 可能
+docker pull ghcr.io/takanorisuzuki/driverev-backend:$BACKEND_TAG
+docker pull ghcr.io/takanorisuzuki/driverev-frontend:$FRONTEND_TAG-prod
 
 # ローカルタグ付与（docker compose 用）
-docker tag ghcr.io/.../driverev-backend:$BACKEND_TAG driverev-backend:test
-docker tag ghcr.io/.../driverev-frontend:$FRONTEND_TAG-prod driverev-frontend:test
+docker tag ghcr.io/takanorisuzuki/driverev-backend:$BACKEND_TAG driverev-backend:test
+docker tag ghcr.io/takanorisuzuki/driverev-frontend:$FRONTEND_TAG-prod driverev-frontend:test
 
-# docker compose 起動（--no-pull 不要）
+# docker compose 起動（--no-pull 不要、認証も不要）
 docker compose -f .github/compose.ci.yml up -d --wait
 ```
 
+**理由**: 
+- Public リポジトリの GHCR パッケージは認証なしで Pull 可能
+- `gh` コマンド不要
+- Token 不要
+
+---
+
+**Private リポジトリの場合（将来対応が必要な場合）**:
+
+**認証方法**: Fine-grained Personal Access Token (PAT) を使用
+
+```bash
+# 1. GCP Secret Manager から Read-only Token 取得
+GHCR_PAT=$(gcloud secrets versions access latest --secret="GHCR_PAT_READONLY")
+
+# 2. GHCR にログイン（Read-only Token）
+echo "$GHCR_PAT" | docker login ghcr.io -u takanorisuzuki --password-stdin 2>/dev/null
+
+# 3. イメージ Pull
+docker pull ghcr.io/takanorisuzuki/driverev-backend:$BACKEND_TAG
+docker pull ghcr.io/takanorisuzuki/driverev-frontend:$FRONTEND_TAG-prod
+
+# 4. ログアウト
+docker logout ghcr.io
+
+# 5. ローカルタグ付与
+docker tag ghcr.io/.../driverev-backend:$BACKEND_TAG driverev-backend:test
+docker tag ghcr.io/.../driverev-frontend:$FRONTEND_TAG-prod driverev-frontend:test
+
+# 6. docker compose 起動
+docker compose -f .github/compose.ci.yml up -d --wait
+```
+
+**Token 作成方法**:
+```
+GitHub → Settings → Developer settings 
+→ Personal access tokens → Fine-grained tokens
+→ New token
+  - Name: "gce-vm-ghcr-pull"
+  - Repository: Only select repositories → devrev-demo
+  - Permissions:
+    - Repository → Contents: Read-only
+    - Account → Packages: Read-only
+  - Expiration: 90 days
+```
+
+**Token の保存**:
+```bash
+# GCP Secret Manager に保存
+echo "ghp_xxxxxxxxxxxx" | gcloud secrets create GHCR_PAT_READONLY --data-file=-
+```
+
 **セキュリティポイント**:
-- `--password-stdin` でプロセスリストに露出しない
-- `2>/dev/null` でログに記録しない
-- 事前 Pull + ローカルタグで compose は認証不要
+- ✅ Read-only 権限のみ（`read:packages`）
+- ✅ 特定リポジトリのみアクセス可能
+- ✅ GCP Secret Manager で暗号化保存
+- ✅ `--password-stdin` でプロセスリストに露出しない
+- ✅ `2>/dev/null` でログに記録しない
+- ✅ ログアウトで認証情報をクリア
+- ✅ `gh` コマンド不要
 
 ### 📋 実装チェックリスト
 

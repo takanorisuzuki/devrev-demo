@@ -956,21 +956,76 @@ docker-integration:
 - `GITHUB_TOKEN` は自動的に `packages: write/read` 権限を持つ
 - Public リポジトリなら認証不要で Pull 可能
 
-##### GCE VM 内（要対処）
+##### GCE VM 内（リポジトリの可視性による）
+
+**Public リポジトリの場合（現在）**:
 
 ```bash
-# デプロイジョブで VM 内から GHCR Pull
-echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin 2>/dev/null
+# ✅ 認証不要！そのまま Pull 可能
+docker pull ghcr.io/takanorisuzuki/driverev-backend:$BACKEND_TAG
+docker pull ghcr.io/takanorisuzuki/driverev-frontend:$FRONTEND_TAG-prod
+
+# ローカルタグ付与（docker compose 用）
+docker tag ghcr.io/.../driverev-backend:$BACKEND_TAG driverev-backend:test
+docker tag ghcr.io/.../driverev-frontend:$FRONTEND_TAG-prod driverev-frontend:test
+```
+
+**理由**: Public リポジトリの GHCR パッケージは認証なしで Pull 可能
+
+---
+
+**Private リポジトリの場合（将来対応）**:
+
+**Step 1: Fine-grained Personal Access Token (PAT) の作成**
+
+```
+GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens
+- Token name: "gce-vm-ghcr-pull"
+- Repository access: Only select repositories → devrev-demo
+- Permissions:
+  - Repository permissions → Contents: Read-only
+  - Account permissions → Packages: Read-only
+- Expiration: 90 days（定期更新推奨）
+```
+
+**Step 2: GCP Secret Manager に Token を保存**
+
+```bash
+# ローカルで実行（Token 作成後）
+echo "ghp_xxxxxxxxxxxx" | gcloud secrets create GHCR_PAT_READONLY --data-file=-
+
+# Secret へのアクセス権限を付与（Service Account に）
+gcloud secrets add-iam-policy-binding GHCR_PAT_READONLY \
+  --member="serviceAccount:YOUR_SERVICE_ACCOUNT@PROJECT.iam.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor"
+```
+
+**Step 3: デプロイ時に Secret から Token を取得して使用**
+
+```bash
+# VM 内での実行（デプロイジョブ）
+# GCP Secret Manager から Token 取得
+GHCR_PAT=$(gcloud secrets versions access latest --secret="GHCR_PAT_READONLY")
+
+# GHCR にログイン（Read-only Token）
+echo "$GHCR_PAT" | docker login ghcr.io -u takanorisuzuki --password-stdin 2>/dev/null
 
 # イメージ Pull
-docker pull ghcr.io/.../driverev-backend:$BACKEND_TAG
-docker pull ghcr.io/.../driverev-frontend:$FRONTEND_TAG-prod
+docker pull ghcr.io/takanorisuzuki/driverev-backend:$BACKEND_TAG
+docker pull ghcr.io/takanorisuzuki/driverev-frontend:$FRONTEND_TAG-prod
+
+# ログアウト（セキュリティベストプラクティス）
+docker logout ghcr.io
 ```
 
 **セキュリティポイント**:
-- SSH 経由で安全に GITHUB_TOKEN を渡す
-- `--password-stdin` でプロセスリストに露出しない
-- `2>/dev/null` でログに記録しない
+- ✅ Read-only 権限のみ（`read:packages`）
+- ✅ 特定リポジトリのみアクセス可能
+- ✅ GCP Secret Manager で暗号化保存
+- ✅ Token 有効期限設定（90日推奨）
+- ✅ `--password-stdin` でプロセスリストに露出しない
+- ✅ `2>/dev/null` でログに記録しない
+- ✅ `gh` コマンド不要（Docker のみ）
 
 ##### docker compose 内（要対処）
 
