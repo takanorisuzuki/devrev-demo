@@ -9,17 +9,17 @@ on:
   pull_request:
     branches: [main] # Main へのPRのみで包括的チェック（Develop での重複を回避）
     paths:
-      # コード変更時のみセキュリティスキャン実行
+      # セキュリティリスクのあるファイル変更時のみ実行
       - "backend/**"
       - "frontend/**"
       - "backend/requirements.txt"
       - "frontend/package*.json"
       - "backend/Dockerfile"
       - "frontend/Dockerfile"
-      # ドキュメント・CI設定のみの変更は除外
+      - ".github/workflows/**" # ワークフロー変更もセキュリティスキャン対象（悪意のある変更検出）
+      # ドキュメントのみの変更は除外（セキュリティリスクなし）
       - "!**/*.md"
       - "!docs/**"
-      - "!.github/workflows/**"
   schedule:
     # 毎週月曜日午前3時（JST）に実行
     - cron: "0 18 * * 1"
@@ -289,7 +289,7 @@ jobs:
     if: always()
 
     steps:
-      - name: Generate security report
+      - name: Generate security report (base)
         run: |
           echo "# Security Scan Report" > security-report.md
           echo "Generated on: $(date)" >> security-report.md
@@ -299,12 +299,19 @@ jobs:
           echo "- Code Security Scan: ${{ needs.code-security-scan.result }}" >> security-report.md
           echo "- CodeQL Analysis: ${{ needs.codeql-analysis.result }}" >> security-report.md
           echo "- Podman Security Scan: ${{ needs.docker-security-scan.result }}" >> security-report.md
-          # secret-scan は PR時のみ実行されるため、結果表示も条件付き
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            echo "- Secret Detection: Executed in parallel (check Secret Detection job)" >> security-report.md
-          else
-            echo "- Secret Detection: Skipped (only runs on pull requests)" >> security-report.md
-          fi
+
+      - name: Add secret scan result (PR)
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "- Secret Detection: Executed in parallel (check Secret Detection job)" >> security-report.md
+
+      - name: Add secret scan result (other events)
+        if: github.event_name != 'pull_request'
+        run: |
+          echo "- Secret Detection: Skipped (only runs on pull requests)" >> security-report.md
+
+      - name: Add recommendations
+        run: |
           echo "" >> security-report.md
           echo "## Recommendations" >> security-report.md
           echo "1. Review all security findings" >> security-report.md
