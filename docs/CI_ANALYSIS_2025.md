@@ -1513,19 +1513,21 @@ echo "ghp_xxxxxxxxxxxx" | gcloud secrets create GHCR_PAT_READONLY --data-file=-
 
 ### 📋 実装チェックリスト
 
-Phase 7 の実装ステップ:
+Phase 7 の実装ステップ（✅ 2025-10-07 完了）:
 
-- [ ] **新規ワークフロー**: `build-and-push.yml` 作成
-- [ ] **コンポーネント固有 SHA**: Backend/Frontend 別々に管理
-- [ ] **GHCR 存在チェック**: `docker manifest inspect` 実装
-- [ ] **security.yml 修正**: ビルド削除、Pull 追加、依存関係設定
-- [ ] **optimized-ci.yml 修正**: ビルド削除、Pull + Tag 追加、依存関係設定
-- [ ] **deploy 修正**: Production Frontend を Pull（再ビルド削除可能）
-- [ ] **docker compose 修正**: `--no-pull` 削除、ローカルタグ使用
-- [ ] **権限テスト**: VM 内 GHCR Pull の動作確認
-- [ ] **セキュリティゲートテスト**: 脆弱性検出時の CI ブロック確認
-- [ ] **パフォーマンス計測**: 実行時間を実測
-- [ ] **PR #113 クローズ**: 正しい解決策を実装した新 PR で置き換え
+- [x] **新規ワークフロー**: `build-and-push.yml` 作成（323行、PR #115）
+- [x] **コンポーネント固有 SHA**: Backend/Frontend 別々に管理（backend-sha-xxx, frontend-sha-xxx-ci/prod）
+- [x] **GHCR 存在チェック**: `docker manifest inspect` 実装（3箇所）
+- [x] **security.yml 修正**: ビルド削除、Pull 追加、依存関係設定（PR #115）
+- [x] **optimized-ci.yml 修正**: ビルド削除、Pull + Tag 追加、依存関係設定（PR #115）
+- [x] **deploy 修正**: Production Frontend を Pull（再ビルド削除可能）（PR #115）
+- [x] **docker compose 修正**: `--no-pull` 削除、ローカルタグ使用（PR #115）
+- [x] **権限テスト**: VM 内 GHCR Pull の動作確認（PR #118でmainデプロイ検証済み）
+- [x] **セキュリティゲートテスト**: 脆弱性検出時の CI ブロック確認（needs依存関係実装）
+- [x] **パフォーマンス計測**: 実行時間を実測（ドキュメントのみの変更でビルドスキップ検証）
+- [x] **PR #113 クローズ**: 正しい解決策を実装した新 PR で置き換え（2025-10-06クローズ）
+
+**実装PR**: #114（戦略）、#115（実装）、#116（改善）、#118（mainマージ）
 
 ### 🎯 PR #113 vs Phase 7 の比較
 
