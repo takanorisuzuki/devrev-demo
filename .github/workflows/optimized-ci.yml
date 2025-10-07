@@ -302,6 +302,10 @@ jobs:
         run: |
           echo "⏳ Waiting for build-and-push workflow to complete..."
           
+          # For PRs, use head SHA instead of merge commit SHA
+          TARGET_SHA="${{ github.event.pull_request.head.sha || github.sha }}"
+          echo "🔍 Looking for build-and-push workflow with SHA: $TARGET_SHA"
+          
           # Wait up to 10 minutes for build-and-push workflow
           TIMEOUT=600
           ELAPSED=0
@@ -309,11 +313,13 @@ jobs:
           
           while [ $ELAPSED -lt $TIMEOUT ]; do
             # Get the latest build-and-push workflow run for this commit
+            # Search by branch instead of commit for better reliability
             RUN_STATUS=$(gh run list \
               --workflow=build-and-push.yml \
-              --commit=${{ github.sha }} \
-              --json status,conclusion \
-              --jq '.[0] | "\(.status):\(.conclusion)"' 2>/dev/null || echo "not_found")
+              --branch=${{ github.head_ref || github.ref_name }} \
+              --limit 1 \
+              --json status,conclusion,headSha \
+              --jq '.[0] | select(.headSha == "'$TARGET_SHA'") | "\(.status):\(.conclusion)"' 2>/dev/null || echo "not_found")
             
             if [ "$RUN_STATUS" = "completed:success" ]; then
               echo "✅ build-and-push workflow completed successfully"
