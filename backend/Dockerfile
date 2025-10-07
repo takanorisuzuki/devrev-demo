@@ -1,6 +1,7 @@
 # DriveRev Backend - FastAPI Dockerfile (Multi-stage optimized)
 # Build stage for dependencies
-FROM python:3.12.7-slim as builder
+# Use latest python:3.12-slim to get the most recent Debian 12 base with updated packages
+FROM python:3.12-slim as builder
 
 # Install build dependencies and apply security updates
 RUN apt-get update && apt-get install -y \
@@ -26,7 +27,8 @@ RUN pip install --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
 
 # Production stage
-FROM python:3.12.7-slim
+# Use latest python:3.12-slim to get the most recent Debian 12 base with updated packages
+FROM python:3.12-slim
 
 # Build metadata arguments with defaults
 ARG BUILD_ID=unknown
