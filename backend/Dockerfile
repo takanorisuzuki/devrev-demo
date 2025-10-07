@@ -1,13 +1,18 @@
 # DriveRev Backend - FastAPI Dockerfile (Multi-stage optimized)
 # Build stage for dependencies
-# Use python:3.12-slim-bookworm to ensure Debian 12 (Bookworm) base with security patches
 FROM python:3.12-slim-bookworm as builder
 
-# Install build dependencies and apply all available security updates
+# Install build dependencies and upgrade only security-critical packages
 RUN apt-get update && apt-get install -y \
     build-essential \
     libpq-dev \
-    && apt-get upgrade -y \
+    && apt-get install --only-upgrade -y \
+    libsqlite3-0 \
+    libc-bin \
+    libc6 \
+    libgnutls30 \
+    liblzma5 \
+    perl-base \
     && rm -rf /var/lib/apt/lists/*
 
 # Create virtual environment
@@ -20,7 +25,6 @@ RUN pip install --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
 
 # Production stage
-# Use python:3.12-slim-bookworm to ensure Debian 12 (Bookworm) base with security patches
 FROM python:3.12-slim-bookworm
 
 # Build metadata arguments with defaults
@@ -35,11 +39,17 @@ LABEL org.opencontainers.image.version="$BUILD_ID" \
     org.opencontainers.image.created="$BUILD_DATE" \
     org.opencontainers.image.source="$SOURCE_URL"
 
-# Install runtime dependencies and apply all available security updates
+# Install runtime dependencies and upgrade only security-critical packages
 RUN apt-get update && apt-get install -y \
     curl \
     libpq-dev \
-    && apt-get upgrade -y \
+    && apt-get install --only-upgrade -y \
+    libsqlite3-0 \
+    libc-bin \
+    libc6 \
+    libgnutls30 \
+    liblzma5 \
+    perl-base \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
