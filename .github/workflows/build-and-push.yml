@@ -166,6 +166,8 @@ jobs:
           build-args: |
             BUILD_ID=${{ steps.version.outputs.version }}
             GIT_COMMIT=${{ github.sha }}
+            BUILD_DATE=${{ github.event.head_commit.timestamp || github.event.repository.updated_at }}
+            SOURCE_URL=${{ github.event.repository.html_url }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           labels: |
@@ -210,6 +212,8 @@ jobs:
             NEXT_PUBLIC_API_URL=http://localhost:8000
             BUILD_ID=${{ steps.version.outputs.version }}
             GIT_COMMIT=${{ github.sha }}
+            BUILD_DATE=${{ github.event.head_commit.timestamp || github.event.repository.updated_at }}
+            SOURCE_URL=${{ github.event.repository.html_url }}
             ${{ env.FRONTEND_BUILD_ARGS }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -279,6 +283,8 @@ jobs:
             NEXT_PUBLIC_API_URL=http://${{ steps.gce-ip.outputs.ip }}:8000
             BUILD_ID=${{ steps.version.outputs.version }}
             GIT_COMMIT=${{ github.sha }}
+            BUILD_DATE=${{ github.event.head_commit.timestamp || github.event.repository.updated_at }}
+            SOURCE_URL=${{ github.event.repository.html_url }}
             ${{ env.FRONTEND_BUILD_ARGS }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
