@@ -264,14 +264,14 @@ jobs:
           name: backend-coverage
           token: ${{ secrets.CODECOV_TOKEN }}
 
-  # Docker統合ビルド・テスト（実際のビルドを実行）
-  # 最適化ポイント:
-  # 1. Frontend/Backend の本番用 Docker イメージをここで一度だけビルド
-  # 2. GitHub Actions キャッシュ（type=gha）で依存関係を高速化
-  # 3. ビルド成果物を GHCR にプッシュして再利用可能に
-  # 4. 前段の *-build-test ジョブではテストのみ実行（重複ビルド回避）
+  # Docker統合テスト（GHCR から Pull のみ）
+  # Phase 7 最適化ポイント:
+  # 1. build-and-push ワークフローで既にビルド済み（重複ビルド排除）
+  # 2. GHCR から Pull のみ（ビルド時間ゼロ）
+  # 3. ローカルタグ付与で docker compose と互換性を保つ
+  # 4. 前段の *-build-test ジョブではテストのみ実行
   docker-integration:
-    name: Docker Build & Integration Tests
+    name: Docker Integration Tests (GHCR Pull)
     runs-on: ubuntu-latest
     needs: [detect-changes, frontend-build-test, backend-build-test]
     if: |
@@ -283,7 +283,7 @@ jobs:
       (github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main'))
     permissions:
       contents: read
-      packages: write # GHCR push用
+      packages: read # Phase 7: GHCR Pull 用（write 不要）
     outputs:
       version: ${{ steps.version.outputs.version }}
       version_with_sha: ${{ steps.version.outputs.version_with_sha }}
@@ -321,109 +321,59 @@ jobs:
           echo "📌 Backend Version: $BACKEND_VERSION_WITH_SHA"
           echo "📌 Frontend Version: $FRONTEND_VERSION_WITH_SHA"
 
-      - name: Setup Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
+      # Phase 7: ビルド不要、GHCR から Pull のみ
+      # Note: build-and-push ワークフローで既にビルド済み
       - name: Log in to GitHub Container Registry
-        if: github.ref == 'refs/heads/main'
         uses: docker/login-action@v3
         with:
           registry: ${{ env.GHCR_REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Check if images already exist in GHCR (avoid unnecessary rebuilds)
-      # Uses component-specific versions to detect if container content has changed
-      - name: Check existing images in GHCR
-        if: github.ref == 'refs/heads/main'
-        id: check-images
+      # Backend イメージを GHCR から Pull
+      - name: Pull Backend image from GHCR
+        if: needs.detect-changes.outputs.backend == 'true' || needs.detect-changes.outputs.docker == 'true'
         run: |
-          BACKEND_VERSION="${{ steps.version.outputs.backend_version_with_sha }}"
-          FRONTEND_VERSION="${{ steps.version.outputs.frontend_version_with_sha }}"
-
-          # Check backend image (using backend-specific SHA)
-          if docker manifest inspect ${{ env.GHCR_REGISTRY }}/${{ github.repository_owner }}/driverev-backend:$BACKEND_VERSION >/dev/null 2>&1; then
-            echo "backend_exists=true" >> $GITHUB_OUTPUT
-            echo "✅ Backend image $BACKEND_VERSION already exists in GHCR (content unchanged)"
+          # Public リポジトリなので認証なしでも可能だが、rate limit 回避のためログイン済み
+          # フォールバック: latest -> SHA -> エラー
+          echo "📦 Pulling Backend image from GHCR..."
+          if docker pull ghcr.io/${{ github.repository_owner }}/driverev-backend:latest 2>/dev/null; then
+            echo "✅ Pulled Backend:latest"
+            docker tag ghcr.io/${{ github.repository_owner }}/driverev-backend:latest driverev-backend:test
+          elif docker pull ghcr.io/${{ github.repository_owner }}/driverev-backend:${{ github.sha }} 2>/dev/null; then
+            echo "✅ Pulled Backend:${{ github.sha }}"
+            docker tag ghcr.io/${{ github.repository_owner }}/driverev-backend:${{ github.sha }} driverev-backend:test
           else
-            echo "backend_exists=false" >> $GITHUB_OUTPUT
-            echo "🔨 Backend image $BACKEND_VERSION needs to be built (content changed)"
+            echo "❌ Backend image not found in GHCR"
+            echo "⚠️  Please run build-and-push workflow first, or it may not have been pushed yet"
+            exit 1
           fi
+          echo "🏷️  Tagged as driverev-backend:test for docker compose"
 
-          # Check frontend CI image (using frontend-specific SHA)
-          if docker manifest inspect ${{ env.GHCR_REGISTRY }}/${{ github.repository_owner }}/driverev-frontend:$FRONTEND_VERSION >/dev/null 2>&1; then
-            echo "frontend_exists=true" >> $GITHUB_OUTPUT
-            echo "✅ Frontend image $FRONTEND_VERSION already exists in GHCR (content unchanged)"
+      # Frontend イメージを GHCR から Pull (CI version)
+      - name: Pull Frontend image from GHCR
+        if: needs.detect-changes.outputs.frontend == 'true' || needs.detect-changes.outputs.docker == 'true'
+        run: |
+          echo "📦 Pulling Frontend CI image from GHCR..."
+          if docker pull ghcr.io/${{ github.repository_owner }}/driverev-frontend:latest-ci 2>/dev/null; then
+            echo "✅ Pulled Frontend:latest-ci"
+            docker tag ghcr.io/${{ github.repository_owner }}/driverev-frontend:latest-ci driverev-frontend:test
+          elif docker pull ghcr.io/${{ github.repository_owner }}/driverev-frontend:${{ github.sha }}-ci 2>/dev/null; then
+            echo "✅ Pulled Frontend:${{ github.sha }}-ci"
+            docker tag ghcr.io/${{ github.repository_owner }}/driverev-frontend:${{ github.sha }}-ci driverev-frontend:test
           else
-            echo "frontend_exists=false" >> $GITHUB_OUTPUT
-            echo "🔨 Frontend image $FRONTEND_VERSION needs to be built (content changed)"
+            echo "❌ Frontend image not found in GHCR"
+            echo "⚠️  Please run build-and-push workflow first, or it may not have been pushed yet"
+            exit 1
           fi
+          echo "🏷️  Tagged as driverev-frontend:test for docker compose"
 
-      # Backend: ビルド & GHCR push
-      # 最適化: GitHub Actions キャッシュでレイヤーを再利用（pip install 高速化）
-      # backend-build-test での pytest 実行後、ここで本番用イメージを一度だけビルド
-      # 条件:
-      #   - PRビルド: backend/に変更がある場合のみビルド
-      #   - mainビルド: GHCRにbackend-specific versionのイメージがない場合のみビルド
-      #     （backend/の内容が変わった場合、または前回ビルド失敗した場合）
-      - name: Build and push backend image
-        id: build-backend
-        if: |
-          (github.ref != 'refs/heads/main' && (needs.detect-changes.outputs.backend == 'true' || needs.detect-changes.outputs.docker == 'true')) ||
-          (github.ref == 'refs/heads/main' && steps.check-images.outputs.backend_exists != 'true')
-        uses: docker/build-push-action@v5
-        with:
-          context: ./backend
-          push: ${{ github.ref == 'refs/heads/main' }}
-          load: ${{ github.ref != 'refs/heads/main' }}
-          tags: |
-            ${{ github.ref != 'refs/heads/main' && 'driverev-backend:test' || '' }}
-            ${{ github.ref == 'refs/heads/main' && format('{0}/{1}/driverev-backend:{2}', env.GHCR_REGISTRY, github.repository_owner, steps.version.outputs.version) || '' }}
-            ${{ github.ref == 'refs/heads/main' && format('{0}/{1}/driverev-backend:{2}', env.GHCR_REGISTRY, github.repository_owner, steps.version.outputs.backend_version_with_sha) || '' }}
-            ${{ github.ref == 'refs/heads/main' && format('{0}/{1}/driverev-backend:{2}', env.GHCR_REGISTRY, github.repository_owner, github.sha) || '' }}
-            ${{ github.ref == 'refs/heads/main' && format('{0}/{1}/driverev-backend:latest', env.GHCR_REGISTRY, github.repository_owner) || '' }}
-          build-args: |
-            BUILD_ID=${{ steps.version.outputs.version_with_sha }}
-            GIT_COMMIT=${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      # Frontend: ビルド & GHCR push (CI用 - テスト環境)
-      # 最適化: GitHub Actions キャッシュで npm install と Next.js ビルドを高速化
-      # 注意: CI用は localhost:8000 を使用。本番用は deploy ジョブで動的IPを使って再ビルド必要
-      # 理由: NEXT_PUBLIC_API_URL はビルド時に埋め込まれるため、環境ごとに異なるビルドが必須
-      # 条件:
-      #   - PRビルド: frontend/に変更がある場合のみビルド
-      #   - mainビルド: GHCRにfrontend-specific versionのイメージがない場合のみビルド
-      #     （frontend/の内容が変わった場合、または前回ビルド失敗した場合）
-      - name: Build and push frontend image (CI)
-        id: build-frontend-ci
-        if: |
-          (github.ref != 'refs/heads/main' && (needs.detect-changes.outputs.frontend == 'true' || needs.detect-changes.outputs.docker == 'true')) ||
-          (github.ref == 'refs/heads/main' && steps.check-images.outputs.frontend_exists != 'true')
-        uses: docker/build-push-action@v5
-        with:
-          context: ./frontend
-          push: ${{ github.ref == 'refs/heads/main' }}
-          load: ${{ github.ref != 'refs/heads/main' }}
-          tags: |
-            ${{ github.ref != 'refs/heads/main' && 'driverev-frontend:test' || '' }}
-            ${{ github.ref == 'refs/heads/main' && format('{0}/{1}/driverev-frontend:{2}', env.GHCR_REGISTRY, github.repository_owner, steps.version.outputs.version) || '' }}
-            ${{ github.ref == 'refs/heads/main' && format('{0}/{1}/driverev-frontend:{2}', env.GHCR_REGISTRY, github.repository_owner, steps.version.outputs.frontend_version_with_sha) || '' }}
-            ${{ github.ref == 'refs/heads/main' && format('{0}/{1}/driverev-frontend:{2}', env.GHCR_REGISTRY, github.repository_owner, github.sha) || '' }}
-            ${{ github.ref == 'refs/heads/main' && format('{0}/{1}/driverev-frontend:latest', env.GHCR_REGISTRY, github.repository_owner) || '' }}
-          build-args: |
-            NEXT_PUBLIC_API_URL=http://localhost:8000
-            BUILD_ID=${{ steps.version.outputs.version_with_sha }}
-            GIT_COMMIT=${{ github.sha }}
-            ${{ env.FRONTEND_BUILD_ARGS }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
+      # Phase 7: --no-pull 不要（既に Pull + Tag 済み）
       - name: Start services with Docker Compose
         if: needs.detect-changes.outputs.backend == 'true' || needs.detect-changes.outputs.docker == 'true'
         run: |
           PROJECT=devrev-${{ github.run_id }}
+          # Phase 7: --no-pull 削除（ローカルタグ driverev-backend:test を使用）
           docker compose -f .github/compose.ci.yml -p "$PROJECT" up -d --wait --wait-timeout 240 backend
 
       - name: Run integration tests
@@ -553,32 +503,9 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Build production frontend image with dynamic API URL
-      # 🔄 重要: ここでの再ビルドは必須（重複ではない）
-      # 理由:
-      #   - Next.js の NEXT_PUBLIC_* 環境変数はビルド時に静的に埋め込まれる
-      #   - CI用は localhost:8000、本番用は動的IPが必要
-      #   - GCE VMのIPはデプロイ時にしか取得できない
-      # 最適化:
-      #   - GitHub Actions キャッシュで npm_modules と .next/cache を再利用
-      #   - 実際のビルド時間は大幅に短縮される（初回の30-50%程度）
-      - name: Build production frontend image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./frontend
-          push: true
-          tags: |
-            ${{ env.GHCR_REGISTRY }}/${{ github.repository_owner }}/driverev-frontend:${{ needs.docker-integration.outputs.version }}-prod
-            ${{ env.GHCR_REGISTRY }}/${{ github.repository_owner }}/driverev-frontend:${{ needs.docker-integration.outputs.frontend_version_with_sha }}-prod
-            ${{ env.GHCR_REGISTRY }}/${{ github.repository_owner }}/driverev-frontend:${{ github.sha }}-prod
-            ${{ env.GHCR_REGISTRY }}/${{ github.repository_owner }}/driverev-frontend:latest-prod
-          build-args: |
-            NEXT_PUBLIC_API_URL=http://${{ steps.gce-ip.outputs.ip }}:8000
-            BUILD_ID=${{ needs.docker-integration.outputs.version_with_sha }}
-            GIT_COMMIT=${{ github.sha }}
-            ${{ env.FRONTEND_BUILD_ARGS }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      # Phase 7: Production Frontend は build-and-push ワークフローで既にビルド済み
+      # Note: build-and-push.yml で動的 IP を使ってビルド & GHCR に Push 済み
+      # ここではビルド不要、後で VM 内から GHCR Pull のみ実行
 
       # Prepare production app directory
       - name: Prepare production app directory
@@ -649,8 +576,9 @@ jobs:
             # Cleanup secrets file immediately after use
             rm -f .env.secrets
 
-            # Login to GHCR securely
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin 2>/dev/null
+            # Note: GHCR authentication not required
+            # This is a public repository - GHCR images can be pulled without authentication
+            # Reference: docs/CICD_REFACTORING.md#ghcr-pullの権限管理
 
             # Check if deployment is needed by comparing VM and GHCR versions
             echo "🔍 Checking if deployment is needed..."
