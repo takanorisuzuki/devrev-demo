@@ -584,8 +584,8 @@ jobs:
             echo "🔍 Checking if deployment is needed..."
 
             # Get currently running container versions on VM
-            CURRENT_BACKEND_VERSION=$(docker inspect driverev-production-backend-1 --format='{{index .Config.Labels "build_id"}}' 2>/dev/null || echo "none")
-            CURRENT_FRONTEND_VERSION=$(docker inspect driverev-production-frontend-1 --format='{{index .Config.Labels "build_id"}}' 2>/dev/null || echo "none")
+            CURRENT_BACKEND_VERSION=$(docker inspect driverev-production-backend-1 --format='{{index .Config.Labels "org.opencontainers.image.version"}}' 2>/dev/null || echo "none")
+            CURRENT_FRONTEND_VERSION=$(docker inspect driverev-production-frontend-1 --format='{{index .Config.Labels "org.opencontainers.image.version"}}' 2>/dev/null || echo "none")
 
             # Get target versions from GHCR
             TARGET_BACKEND_VERSION="${{ needs.docker-integration.outputs.backend_version_with_sha }}"

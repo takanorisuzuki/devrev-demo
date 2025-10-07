@@ -57,9 +57,9 @@ ENV NODE_ENV=production \
 ARG BUILD_ID=unknown
 ARG GIT_COMMIT=unknown
 
-# Add metadata labels for version tracking
-LABEL build_id="$BUILD_ID"
-LABEL git_commit="$GIT_COMMIT"
+# Add metadata labels for version tracking (OCI Image Spec compliant)
+LABEL org.opencontainers.image.version="$BUILD_ID" \
+      org.opencontainers.image.revision="$GIT_COMMIT"
 RUN echo "Build ID: $BUILD_ID" > /app/build-info.txt && \
     echo "Git Commit: $GIT_COMMIT" >> /app/build-info.txt && \
     echo "Build Date: $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> /app/build-info.txt

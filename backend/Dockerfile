@@ -24,9 +24,9 @@ FROM python:3.12.7-slim
 ARG BUILD_ID=unknown
 ARG GIT_COMMIT=unknown
 
-# Add metadata labels for version tracking
-LABEL build_id="$BUILD_ID"
-LABEL git_commit="$GIT_COMMIT"
+# Add metadata labels for version tracking (OCI Image Spec compliant)
+LABEL org.opencontainers.image.version="$BUILD_ID" \
+    org.opencontainers.image.revision="$GIT_COMMIT"
 
 # Install runtime dependencies only
 RUN apt-get update && apt-get install -y \
