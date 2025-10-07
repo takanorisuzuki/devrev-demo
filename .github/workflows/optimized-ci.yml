@@ -294,6 +294,54 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
 
+      # Wait for build-and-push workflow to complete
+      # This ensures images are available in GHCR before pulling
+      - name: Wait for build-and-push workflow
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "⏳ Waiting for build-and-push workflow to complete..."
+          
+          # For PRs, use head SHA instead of merge commit SHA
+          TARGET_SHA="${{ github.event.pull_request.head.sha || github.sha }}"
+          echo "🔍 Looking for build-and-push workflow with SHA: $TARGET_SHA"
+          
+          # Wait up to 10 minutes for build-and-push workflow
+          TIMEOUT=600
+          ELAPSED=0
+          INTERVAL=10
+          
+          while [ $ELAPSED -lt $TIMEOUT ]; do
+            # Get the latest build-and-push workflow run for this commit
+            # Search by branch instead of commit for better reliability
+            RUN_STATUS=$(gh run list \
+              --workflow=build-and-push.yml \
+              --branch=${{ github.head_ref || github.ref_name }} \
+              --limit 1 \
+              --json status,conclusion,headSha \
+              --jq '.[0] | select(.headSha == "'$TARGET_SHA'") | "\(.status):\(.conclusion)"' 2>/dev/null || echo "not_found")
+            
+            if [ "$RUN_STATUS" = "completed:success" ]; then
+              echo "✅ build-and-push workflow completed successfully"
+              # Wait additional 10 seconds for GHCR manifest propagation
+              echo "⏳ Waiting 10s for GHCR manifest propagation..."
+              sleep 10
+              break
+            elif [[ "$RUN_STATUS" == completed:* ]]; then
+              echo "❌ build-and-push workflow completed with status: $RUN_STATUS"
+              exit 1
+            else
+              echo "⏳ build-and-push status: $RUN_STATUS (${ELAPSED}s elapsed)"
+              sleep $INTERVAL
+              ELAPSED=$((ELAPSED + INTERVAL))
+            fi
+          done
+          
+          if [ $ELAPSED -ge $TIMEOUT ]; then
+            echo "⚠️  Timeout waiting for build-and-push workflow"
+            echo "Proceeding anyway - images might be available from previous builds"
+          fi
+
       # Get semantic version for image tagging
       - name: Get version
         id: version
@@ -335,17 +383,18 @@ jobs:
         if: needs.detect-changes.outputs.backend == 'true' || needs.detect-changes.outputs.docker == 'true'
         run: |
           # Public リポジトリなので認証なしでも可能だが、rate limit 回避のためログイン済み
-          # フォールバック: latest -> SHA -> エラー
-          echo "📦 Pulling Backend image from GHCR..."
+          # For PRs, use head SHA instead of merge commit SHA
+          TARGET_SHA="${{ github.event.pull_request.head.sha || github.sha }}"
+          echo "📦 Pulling Backend image from GHCR (SHA: $TARGET_SHA)..."
           if docker pull ghcr.io/${{ github.repository_owner }}/driverev-backend:latest 2>/dev/null; then
             echo "✅ Pulled Backend:latest"
             docker tag ghcr.io/${{ github.repository_owner }}/driverev-backend:latest driverev-backend:test
-          elif docker pull ghcr.io/${{ github.repository_owner }}/driverev-backend:${{ github.sha }} 2>/dev/null; then
-            echo "✅ Pulled Backend:${{ github.sha }}"
-            docker tag ghcr.io/${{ github.repository_owner }}/driverev-backend:${{ github.sha }} driverev-backend:test
+          elif docker pull ghcr.io/${{ github.repository_owner }}/driverev-backend:$TARGET_SHA 2>/dev/null; then
+            echo "✅ Pulled Backend:$TARGET_SHA"
+            docker tag ghcr.io/${{ github.repository_owner }}/driverev-backend:$TARGET_SHA driverev-backend:test
           else
             echo "❌ Backend image not found in GHCR"
-            echo "⚠️  Please run build-and-push workflow first, or it may not have been pushed yet"
+            echo "⚠️  Tried tags: latest, $TARGET_SHA"
             exit 1
           fi
           echo "🏷️  Tagged as driverev-backend:test for docker compose"
@@ -354,16 +403,18 @@ jobs:
       - name: Pull Frontend image from GHCR
         if: needs.detect-changes.outputs.frontend == 'true' || needs.detect-changes.outputs.docker == 'true'
         run: |
-          echo "📦 Pulling Frontend CI image from GHCR..."
+          # For PRs, use head SHA instead of merge commit SHA
+          TARGET_SHA="${{ github.event.pull_request.head.sha || github.sha }}"
+          echo "📦 Pulling Frontend CI image from GHCR (SHA: $TARGET_SHA)..."
           if docker pull ghcr.io/${{ github.repository_owner }}/driverev-frontend:latest-ci 2>/dev/null; then
             echo "✅ Pulled Frontend:latest-ci"
             docker tag ghcr.io/${{ github.repository_owner }}/driverev-frontend:latest-ci driverev-frontend:test
-          elif docker pull ghcr.io/${{ github.repository_owner }}/driverev-frontend:${{ github.sha }}-ci 2>/dev/null; then
-            echo "✅ Pulled Frontend:${{ github.sha }}-ci"
-            docker tag ghcr.io/${{ github.repository_owner }}/driverev-frontend:${{ github.sha }}-ci driverev-frontend:test
+          elif docker pull ghcr.io/${{ github.repository_owner }}/driverev-frontend:$TARGET_SHA-ci 2>/dev/null; then
+            echo "✅ Pulled Frontend:$TARGET_SHA-ci"
+            docker tag ghcr.io/${{ github.repository_owner }}/driverev-frontend:$TARGET_SHA-ci driverev-frontend:test
           else
             echo "❌ Frontend image not found in GHCR"
-            echo "⚠️  Please run build-and-push workflow first, or it may not have been pushed yet"
+            echo "⚠️  Tried tags: latest-ci, $TARGET_SHA-ci"
             exit 1
           fi
           echo "🏷️  Tagged as driverev-frontend:test for docker compose"
@@ -584,8 +635,8 @@ jobs:
             echo "🔍 Checking if deployment is needed..."
 
             # Get currently running container versions on VM
-            CURRENT_BACKEND_VERSION=$(docker inspect driverev-production-backend-1 --format='{{index .Config.Labels "build_id"}}' 2>/dev/null || echo "none")
-            CURRENT_FRONTEND_VERSION=$(docker inspect driverev-production-frontend-1 --format='{{index .Config.Labels "build_id"}}' 2>/dev/null || echo "none")
+            CURRENT_BACKEND_VERSION=$(docker inspect driverev-production-backend-1 --format='{{index .Config.Labels "org.opencontainers.image.version"}}' 2>/dev/null || echo "none")
+            CURRENT_FRONTEND_VERSION=$(docker inspect driverev-production-frontend-1 --format='{{index .Config.Labels "org.opencontainers.image.version"}}' 2>/dev/null || echo "none")
 
             # Get target versions from GHCR
             TARGET_BACKEND_VERSION="${{ needs.docker-integration.outputs.backend_version_with_sha }}"

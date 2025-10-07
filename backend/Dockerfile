@@ -23,10 +23,14 @@ FROM python:3.12.7-slim
 # Build metadata arguments with defaults
 ARG BUILD_ID=unknown
 ARG GIT_COMMIT=unknown
+ARG BUILD_DATE
+ARG SOURCE_URL=https://github.com/takanorisuzuki/devrev-demo
 
-# Add metadata labels for version tracking
-LABEL build_id="$BUILD_ID"
-LABEL git_commit="$GIT_COMMIT"
+# Add metadata labels for version tracking (OCI Image Spec compliant)
+LABEL org.opencontainers.image.version="$BUILD_ID" \
+    org.opencontainers.image.revision="$GIT_COMMIT" \
+    org.opencontainers.image.created="$BUILD_DATE" \
+    org.opencontainers.image.source="$SOURCE_URL"
 
 # Install runtime dependencies only
 RUN apt-get update && apt-get install -y \
