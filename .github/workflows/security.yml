@@ -5,9 +5,16 @@ permissions: {}
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
+    paths:
+      # セキュリティリスクのあるファイル変更時のみ実行
+      - "backend/**"
+      - "frontend/**"
+      - ".github/workflows/**"
+      - "!**/*.md"
+      - "!docs/**"
   pull_request:
-    branches: [main] # Main へのPRのみで包括的チェック（Develop での重複を回避）
+    branches: [main] # Main へのPRのみで包括的チェック
     paths:
       # セキュリティリスクのあるファイル変更時のみ実行
       - "backend/**"
@@ -224,11 +231,13 @@ jobs:
       github.event_name == 'schedule'
     permissions:
       contents: read
-      packages: read  # GHCR から Pull するための権限
+      packages: read # GHCR から Pull するための権限
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0  # Full history needed for component-specific SHA calculation
 
       # Login to GHCR (Public リポジトリでも明示的にログイン)
       - name: Log in to GitHub Container Registry
@@ -242,31 +251,64 @@ jobs:
       # Note: build-and-push ワークフローで既にビルド済み
       - name: Pull Backend image from GHCR
         run: |
-          # 最新の Backend イメージを Pull
-          # Public リポジトリなので認証なしでも可能だが、rate limit 回避のためログイン
-          docker pull ghcr.io/${{ github.repository_owner }}/driverev-backend:latest || \
+          # develop→mainのPRではlatestを、それ以外のPRではhead SHAのイメージをPull
+          if [ "${{ github.event.pull_request.base.ref }}" == "main" ]; then
+            IMAGE_TAG="latest"
+          else
+            IMAGE_TAG="${{ github.event.pull_request.head.sha }}"
+          fi
+          docker pull ghcr.io/${{ github.repository_owner }}/driverev-backend:${IMAGE_TAG} || \
           docker pull ghcr.io/${{ github.repository_owner }}/driverev-backend:${{ github.sha }} || \
           echo "⚠️  Backend image not found in GHCR - may need to run build-and-push workflow first"
 
       - name: Pull Frontend image from GHCR
         run: |
-          # 最新の Frontend イメージを Pull (CI version)
-          docker pull ghcr.io/${{ github.repository_owner }}/driverev-frontend:latest-ci || \
+          # develop→mainのPRではlatest-ciを、それ以外のPRではhead SHAのイメージをPull
+          if [ "${{ github.event.pull_request.base.ref }}" == "main" ]; then
+            IMAGE_TAG="latest"
+          else
+            IMAGE_TAG="${{ github.event.pull_request.head.sha }}"
+          fi
+          docker pull ghcr.io/${{ github.repository_owner }}/driverev-frontend:${IMAGE_TAG}-ci || \
           docker pull ghcr.io/${{ github.repository_owner }}/driverev-frontend:${{ github.sha }}-ci || \
           echo "⚠️  Frontend image not found in GHCR - may need to run build-and-push workflow first"
 
       # Trivy スキャン: GHCR イメージを直接スキャン
+      # Build & Pushワークフローと同じcomponent-specific SHAロジックを使用
+      # - push to main: 'latest'をスキャン
+      # - push to develop/PR: component-specific SHAをスキャン（Build & Pushと一致）
+      - name: Set image tag for scanning
+        id: set_tag
+        run: |
+          if [ "${{ github.event_name }}" == "push" ] && [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            # mainブランチはlatestタグをスキャン
+            echo "backend_tag=latest" >> $GITHUB_OUTPUT
+            echo "frontend_tag=latest-ci" >> $GITHUB_OUTPUT
+          else
+            # developブランチ/PRはcomponent-specific SHAをスキャン
+            # Build & Pushワークフローと同じロジック
+            BACKEND_SHA=$(git log -1 --format=%H -- backend/ 2>/dev/null || git rev-parse HEAD)
+            FRONTEND_SHA=$(git log -1 --format=%H -- frontend/ 2>/dev/null || git rev-parse HEAD)
+            
+            echo "backend_tag=${BACKEND_SHA}" >> $GITHUB_OUTPUT
+            echo "frontend_tag=${FRONTEND_SHA}-ci" >> $GITHUB_OUTPUT
+            
+            echo "📌 Backend Tag for Scanning: ${BACKEND_SHA:0:7}"
+            echo "📌 Frontend Tag for Scanning: ${FRONTEND_SHA:0:7}-ci"
+          fi
+
       - name: Run Trivy vulnerability scanner on Backend
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: "ghcr.io/${{ github.repository_owner }}/driverev-backend:latest"
+          image-ref: "ghcr.io/${{ github.repository_owner }}/driverev-backend:${{ steps.set_tag.outputs.backend_tag }}"
           format: "json"
           output: "trivy-backend-results.json"
           scan-type: "image"
           # Security Gate: 脆弱性検出時にジョブを失敗させる
           exit-code: "1"
           severity: "CRITICAL,HIGH"
-        continue-on-error: false  # Phase 7: セキュリティゲートとして機能
+          trivyignores: "backend/.trivyignore"
+        continue-on-error: false # Phase 7: セキュリティゲートとして機能
 
       - name: Upload Trivy scan results (Backend)
         uses: actions/upload-artifact@v4
@@ -278,14 +320,14 @@ jobs:
       - name: Run Trivy vulnerability scanner on Frontend
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: "ghcr.io/${{ github.repository_owner }}/driverev-frontend:latest-ci"
+          image-ref: "ghcr.io/${{ github.repository_owner }}/driverev-frontend:${{ steps.set_tag.outputs.frontend_tag }}"
           format: "json"
           output: "trivy-frontend-results.json"
           scan-type: "image"
           # Security Gate: 脆弱性検出時にジョブを失敗させる
           exit-code: "1"
           severity: "CRITICAL,HIGH"
-        continue-on-error: false  # Phase 7: セキュリティゲートとして機能
+        continue-on-error: false # Phase 7: セキュリティゲートとして機能
 
       - name: Upload Trivy scan results (Frontend)
         uses: actions/upload-artifact@v4

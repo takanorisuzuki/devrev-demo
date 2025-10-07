@@ -1,0 +1,10 @@
+# Trivy vulnerability ignore list
+# Alpine Linux環境で修正版が存在しない、または対応不可能なCVE
+
+# CVE-2024-23342 - python-ecdsa Minerva attack (修正版なし、間接依存)
+# python-joseが依存するecdsaパッケージの脆弱性
+# Fixed Version: なし (upstream未対応)
+# Impact: タイミング攻撃によるECDSA秘密鍵の抽出リスク
+# Mitigation: 本アプリケーションではJWT署名にRS256（RSA）を使用しており、
+#              ECDSAは使用していないため実質的な影響は限定的
+CVE-2024-23342
