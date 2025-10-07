@@ -61,9 +61,9 @@ ARG SOURCE_URL=https://github.com/takanorisuzuki/devrev-demo
 
 # Add metadata labels for version tracking (OCI Image Spec compliant)
 LABEL org.opencontainers.image.version="$BUILD_ID" \
-      org.opencontainers.image.revision="$GIT_COMMIT" \
-      org.opencontainers.image.created="$BUILD_DATE" \
-      org.opencontainers.image.source="$SOURCE_URL"
+    org.opencontainers.image.revision="$GIT_COMMIT" \
+    org.opencontainers.image.created="$BUILD_DATE" \
+    org.opencontainers.image.source="$SOURCE_URL"
 RUN echo "Build ID: $BUILD_ID" > /app/build-info.txt && \
     echo "Git Commit: $GIT_COMMIT" >> /app/build-info.txt && \
     echo "Build Date: $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> /app/build-info.txt
