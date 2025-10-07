@@ -503,32 +503,9 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Build production frontend image with dynamic API URL
-      # 🔄 重要: ここでの再ビルドは必須（重複ではない）
-      # 理由:
-      #   - Next.js の NEXT_PUBLIC_* 環境変数はビルド時に静的に埋め込まれる
-      #   - CI用は localhost:8000、本番用は動的IPが必要
-      #   - GCE VMのIPはデプロイ時にしか取得できない
-      # 最適化:
-      #   - GitHub Actions キャッシュで npm_modules と .next/cache を再利用
-      #   - 実際のビルド時間は大幅に短縮される（初回の30-50%程度）
-      - name: Build production frontend image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./frontend
-          push: true
-          tags: |
-            ${{ env.GHCR_REGISTRY }}/${{ github.repository_owner }}/driverev-frontend:${{ needs.docker-integration.outputs.version }}-prod
-            ${{ env.GHCR_REGISTRY }}/${{ github.repository_owner }}/driverev-frontend:${{ needs.docker-integration.outputs.frontend_version_with_sha }}-prod
-            ${{ env.GHCR_REGISTRY }}/${{ github.repository_owner }}/driverev-frontend:${{ github.sha }}-prod
-            ${{ env.GHCR_REGISTRY }}/${{ github.repository_owner }}/driverev-frontend:latest-prod
-          build-args: |
-            NEXT_PUBLIC_API_URL=http://${{ steps.gce-ip.outputs.ip }}:8000
-            BUILD_ID=${{ needs.docker-integration.outputs.version_with_sha }}
-            GIT_COMMIT=${{ github.sha }}
-            ${{ env.FRONTEND_BUILD_ARGS }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      # Phase 7: Production Frontend は build-and-push ワークフローで既にビルド済み
+      # Note: build-and-push.yml で動的 IP を使ってビルド & GHCR に Push 済み
+      # ここではビルド不要、後で VM 内から GHCR Pull のみ実行
 
       # Prepare production app directory
       - name: Prepare production app directory
