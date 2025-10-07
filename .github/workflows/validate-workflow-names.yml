@@ -90,7 +90,10 @@ jobs:
             REQUIRED_CHECKS=$(echo "$PROTECTION" | jq -r '.required_status_checks.contexts[]? // empty' 2>/dev/null)
             
             if [[ -z "$REQUIRED_CHECKS" ]]; then
-              echo "  ✓ 必須ステータスチェックなし"
+              echo "  ⚠️  警告: 必須ステータスチェックが設定されていません"
+              echo "  💡 本番環境では必須チェックを設定することを推奨します"
+              echo "  📖 参考: https://docs.github.com/ja/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches"
+              WARNINGS=$((WARNINGS + 1))
               continue
             fi
             
@@ -124,6 +127,14 @@ jobs:
             echo "   2. または、ブランチ保護ルールの必須チェック名を実際のジョブ名に変更"
             echo ""
             exit 1
+          elif [[ $WARNINGS -gt 0 ]]; then
+            echo "⚠️  検証完了（警告あり）: $WARNINGS 件の警告が見つかりました"
+            echo ""
+            echo "💡 推奨事項:"
+            echo "   - 本番ブランチ（main/develop）には必須ステータスチェックを設定してください"
+            echo "   - これにより、重要なチェックが完了するまでマージを防止できます"
+            echo ""
+            echo "✅ ジョブ名の不一致はありません"
           else
             echo "✅ すべてのジョブ名がブランチ保護ルールと一致しています"
           fi
