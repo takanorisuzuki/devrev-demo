@@ -224,7 +224,7 @@ jobs:
       github.event_name == 'schedule'
     permissions:
       contents: read
-      packages: read  # GHCR から Pull するための権限
+      packages: read # GHCR から Pull するための権限
 
     steps:
       - name: Checkout code
@@ -265,12 +265,17 @@ jobs:
           echo "⚠️  Frontend image not found in GHCR - may need to run build-and-push workflow first"
 
       # Trivy スキャン: GHCR イメージを直接スキャン
-      # PRの場合は常にhead SHAをスキャン（マージ前の変更を検証）
+      # develop→mainのPRではlatestを、それ以外のPRではhead SHAをスキャン
       - name: Set image tag for scanning
         id: set_tag
         run: |
-          echo "backend_tag=${{ github.event.pull_request.head.sha }}" >> $GITHUB_OUTPUT
-          echo "frontend_tag=${{ github.event.pull_request.head.sha }}-ci" >> $GITHUB_OUTPUT
+          if [ "${{ github.event.pull_request.base.ref }}" == "main" ]; then
+            echo "backend_tag=latest" >> $GITHUB_OUTPUT
+            echo "frontend_tag=latest-ci" >> $GITHUB_OUTPUT
+          else
+            echo "backend_tag=${{ github.event.pull_request.head.sha || 'latest' }}" >> $GITHUB_OUTPUT
+            echo "frontend_tag=${{ github.event.pull_request.head.sha || 'latest' }}-ci" >> $GITHUB_OUTPUT
+          fi
 
       - name: Run Trivy vulnerability scanner on Backend
         uses: aquasecurity/trivy-action@master
@@ -283,7 +288,7 @@ jobs:
           exit-code: "1"
           severity: "CRITICAL,HIGH"
           trivyignores: "backend/.trivyignore"
-        continue-on-error: false  # Phase 7: セキュリティゲートとして機能
+        continue-on-error: false # Phase 7: セキュリティゲートとして機能
 
       - name: Upload Trivy scan results (Backend)
         uses: actions/upload-artifact@v4
@@ -302,7 +307,7 @@ jobs:
           # Security Gate: 脆弱性検出時にジョブを失敗させる
           exit-code: "1"
           severity: "CRITICAL,HIGH"
-        continue-on-error: false  # Phase 7: セキュリティゲートとして機能
+        continue-on-error: false # Phase 7: セキュリティゲートとして機能
 
       - name: Upload Trivy scan results (Frontend)
         uses: actions/upload-artifact@v4
