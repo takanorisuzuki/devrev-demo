@@ -294,6 +294,48 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
 
+      # Wait for build-and-push workflow to complete
+      # This ensures images are available in GHCR before pulling
+      - name: Wait for build-and-push workflow
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "⏳ Waiting for build-and-push workflow to complete..."
+          
+          # Wait up to 10 minutes for build-and-push workflow
+          TIMEOUT=600
+          ELAPSED=0
+          INTERVAL=10
+          
+          while [ $ELAPSED -lt $TIMEOUT ]; do
+            # Get the latest build-and-push workflow run for this commit
+            RUN_STATUS=$(gh run list \
+              --workflow=build-and-push.yml \
+              --commit=${{ github.sha }} \
+              --json status,conclusion \
+              --jq '.[0] | "\(.status):\(.conclusion)"' 2>/dev/null || echo "not_found")
+            
+            if [ "$RUN_STATUS" = "completed:success" ]; then
+              echo "✅ build-and-push workflow completed successfully"
+              # Wait additional 10 seconds for GHCR manifest propagation
+              echo "⏳ Waiting 10s for GHCR manifest propagation..."
+              sleep 10
+              break
+            elif [[ "$RUN_STATUS" == completed:* ]]; then
+              echo "❌ build-and-push workflow completed with status: $RUN_STATUS"
+              exit 1
+            else
+              echo "⏳ build-and-push status: $RUN_STATUS (${ELAPSED}s elapsed)"
+              sleep $INTERVAL
+              ELAPSED=$((ELAPSED + INTERVAL))
+            fi
+          done
+          
+          if [ $ELAPSED -ge $TIMEOUT ]; then
+            echo "⚠️  Timeout waiting for build-and-push workflow"
+            echo "Proceeding anyway - images might be available from previous builds"
+          fi
+
       # Get semantic version for image tagging
       - name: Get version
         id: version
