@@ -1278,11 +1278,11 @@ fi
 | 指標 | 現在（Phase 6） | Phase 7 | 改善率 |
 |------|---------------|---------|--------|
 | Backend ビルド回数 | 2回（Security + CI） | 1回（Build のみ） | **-50%** |
-| Frontend ビルド回数 | 2回（Security + CI） | 1回*（Build のみ） | **-50%** |
+| Frontend ビルド回数 | 2回（Security + CI） | 2回*（Build のみ） | **変わらず（最適）** |
 | 総ビルド時間 | 10-16分 | 5-8分 | **40-50%短縮** |
 | GitHub Actions コスト | 基準 | -30-40% | **30-40%削減** |
 
-\* Frontend は CI用と Production用で2回ビルド必要（異なる環境変数）
+\* Frontend は CI用と Production用で2回ビルド必要（異なる環境変数のため必須）
 
 #### セキュリティの向上
 

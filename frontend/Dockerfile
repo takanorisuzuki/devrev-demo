@@ -56,7 +56,7 @@ ENV NODE_ENV=production \
 # Copy build metadata for version verification
 ARG BUILD_ID=unknown
 ARG GIT_COMMIT=unknown
-ARG BUILD_DATE
+ARG BUILD_DATE=1970-01-01T00:00:00Z
 ARG SOURCE_URL=https://github.com/takanorisuzuki/devrev-demo
 
 # Add metadata labels for version tracking (OCI Image Spec compliant)

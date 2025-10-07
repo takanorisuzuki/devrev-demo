@@ -23,7 +23,7 @@ FROM python:3.12.7-slim
 # Build metadata arguments with defaults
 ARG BUILD_ID=unknown
 ARG GIT_COMMIT=unknown
-ARG BUILD_DATE
+ARG BUILD_DATE=1970-01-01T00:00:00Z
 ARG SOURCE_URL=https://github.com/takanorisuzuki/devrev-demo
 
 # Add metadata labels for version tracking (OCI Image Spec compliant)
