@@ -1407,7 +1407,7 @@ docker-integration:
     - name: Pull and tag images
       run: |
         docker pull ghcr.io/.../backend:${{ needs.build-and-push.outputs.backend_tag }}
-        docker tag ghcr.io/.../backend:... driverev-backend:test
+        docker tag ghcr.io/.../backend:${{ needs.build-and-push.outputs.backend_tag }} driverev-backend:test
     
     - name: Start services
       run: |
@@ -1466,7 +1466,7 @@ docker compose -f .github/compose.ci.yml up -d --wait
 GHCR_PAT=$(gcloud secrets versions access latest --secret="GHCR_PAT_READONLY")
 
 # 2. GHCR にログイン（Read-only Token）
-echo "$GHCR_PAT" | docker login ghcr.io -u takanorisuzuki --password-stdin 2>/dev/null
+echo "$GHCR_PAT" | docker login ghcr.io -u $GITHUB_USERNAME --password-stdin 2>/dev/null
 
 # 3. イメージ Pull
 docker pull ghcr.io/takanorisuzuki/driverev-backend:$BACKEND_TAG

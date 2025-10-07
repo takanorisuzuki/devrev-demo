@@ -1008,7 +1008,7 @@ gcloud secrets add-iam-policy-binding GHCR_PAT_READONLY \
 GHCR_PAT=$(gcloud secrets versions access latest --secret="GHCR_PAT_READONLY")
 
 # GHCR にログイン（Read-only Token）
-echo "$GHCR_PAT" | docker login ghcr.io -u takanorisuzuki --password-stdin 2>/dev/null
+echo "$GHCR_PAT" | docker login ghcr.io -u $GITHUB_USERNAME --password-stdin 2>/dev/null
 
 # イメージ Pull
 docker pull ghcr.io/takanorisuzuki/driverev-backend:$BACKEND_TAG
@@ -1150,11 +1150,11 @@ docker compose up -d --no-pull
 ```yaml
 # 1. GHCR から Pull
 docker pull ghcr.io/.../driverev-backend:$BACKEND_TAG
-docker pull ghcr.io/.../driverev-frontend:$FRONTEND_TAG
+docker pull ghcr.io/.../driverev-frontend:$FRONTEND_TAG-ci
 
 # 2. ローカルタグ付与
 docker tag ghcr.io/.../driverev-backend:$BACKEND_TAG driverev-backend:test
-docker tag ghcr.io/.../driverev-frontend:$FRONTEND_TAG driverev-frontend:test
+docker tag ghcr.io/.../driverev-frontend:$FRONTEND_TAG-ci driverev-frontend:test
 
 # 3. docker compose 起動（--no-pull 不要）
 docker compose -f .github/compose.ci.yml up -d --wait
