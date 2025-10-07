@@ -5,9 +5,16 @@ permissions: {}
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
+    paths:
+      # セキュリティリスクのあるファイル変更時のみ実行
+      - "backend/**"
+      - "frontend/**"
+      - ".github/workflows/**"
+      - "!**/*.md"
+      - "!docs/**"
   pull_request:
-    branches: [main] # Main へのPRのみで包括的チェック（Develop での重複を回避）
+    branches: [main] # Main へのPRのみで包括的チェック
     paths:
       # セキュリティリスクのあるファイル変更時のみ実行
       - "backend/**"
@@ -265,16 +272,21 @@ jobs:
           echo "⚠️  Frontend image not found in GHCR - may need to run build-and-push workflow first"
 
       # Trivy スキャン: GHCR イメージを直接スキャン
-      # develop→mainのPRではlatestを、それ以外のPRではhead SHAをスキャン
+      # - push to main: 'latest'をスキャン
+      # - push to develop: 'github.sha'をスキャン（最新のdevelopイメージ）
+      # - PR to main: 'head.sha'をスキャン（PR変更を検証）
       - name: Set image tag for scanning
         id: set_tag
         run: |
-          if [ "${{ github.event.pull_request.base.ref }}" == "main" ]; then
+          if [ "${{ github.event_name }}" == "push" ] && [ "${{ github.ref }}" == "refs/heads/main" ]; then
             echo "backend_tag=latest" >> $GITHUB_OUTPUT
             echo "frontend_tag=latest-ci" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event_name }}" == "push" ] && [ "${{ github.ref }}" == "refs/heads/develop" ]; then
+            echo "backend_tag=${{ github.sha }}" >> $GITHUB_OUTPUT
+            echo "frontend_tag=${{ github.sha }}-ci" >> $GITHUB_OUTPUT
           else
-            echo "backend_tag=${{ github.event.pull_request.head.sha || 'latest' }}" >> $GITHUB_OUTPUT
-            echo "frontend_tag=${{ github.event.pull_request.head.sha || 'latest' }}-ci" >> $GITHUB_OUTPUT
+            echo "backend_tag=${{ github.event.pull_request.head.sha }}" >> $GITHUB_OUTPUT
+            echo "frontend_tag=${{ github.event.pull_request.head.sha }}-ci" >> $GITHUB_OUTPUT
           fi
 
       - name: Run Trivy vulnerability scanner on Backend
