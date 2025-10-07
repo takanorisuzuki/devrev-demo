@@ -1,7 +1,7 @@
 # DriveRev Backend - FastAPI Dockerfile (Multi-stage optimized)
 # Build stage for dependencies
-# Use latest python:3.12-slim to get the most recent Debian 12 base with updated packages
-FROM python:3.12-slim as builder
+# Use python:3.12-slim-bookworm to ensure Debian 12 (Bookworm) base with security patches
+FROM python:3.12-slim-bookworm as builder
 
 # Install build dependencies and apply security updates
 # Explicitly install specific versions to address CVEs
@@ -28,8 +28,8 @@ RUN pip install --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
 
 # Production stage
-# Use latest python:3.12-slim to get the most recent Debian 12 base with updated packages
-FROM python:3.12-slim
+# Use python:3.12-slim-bookworm to ensure Debian 12 (Bookworm) base with security patches
+FROM python:3.12-slim-bookworm
 
 # Build metadata arguments with defaults
 ARG BUILD_ID=unknown
