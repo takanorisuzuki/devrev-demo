@@ -383,17 +383,18 @@ jobs:
         if: needs.detect-changes.outputs.backend == 'true' || needs.detect-changes.outputs.docker == 'true'
         run: |
           # Public リポジトリなので認証なしでも可能だが、rate limit 回避のためログイン済み
-          # フォールバック: latest -> SHA -> エラー
-          echo "📦 Pulling Backend image from GHCR..."
+          # For PRs, use head SHA instead of merge commit SHA
+          TARGET_SHA="${{ github.event.pull_request.head.sha || github.sha }}"
+          echo "📦 Pulling Backend image from GHCR (SHA: $TARGET_SHA)..."
           if docker pull ghcr.io/${{ github.repository_owner }}/driverev-backend:latest 2>/dev/null; then
             echo "✅ Pulled Backend:latest"
             docker tag ghcr.io/${{ github.repository_owner }}/driverev-backend:latest driverev-backend:test
-          elif docker pull ghcr.io/${{ github.repository_owner }}/driverev-backend:${{ github.sha }} 2>/dev/null; then
-            echo "✅ Pulled Backend:${{ github.sha }}"
-            docker tag ghcr.io/${{ github.repository_owner }}/driverev-backend:${{ github.sha }} driverev-backend:test
+          elif docker pull ghcr.io/${{ github.repository_owner }}/driverev-backend:$TARGET_SHA 2>/dev/null; then
+            echo "✅ Pulled Backend:$TARGET_SHA"
+            docker tag ghcr.io/${{ github.repository_owner }}/driverev-backend:$TARGET_SHA driverev-backend:test
           else
             echo "❌ Backend image not found in GHCR"
-            echo "⚠️  Please run build-and-push workflow first, or it may not have been pushed yet"
+            echo "⚠️  Tried tags: latest, $TARGET_SHA"
             exit 1
           fi
           echo "🏷️  Tagged as driverev-backend:test for docker compose"
@@ -402,16 +403,18 @@ jobs:
       - name: Pull Frontend image from GHCR
         if: needs.detect-changes.outputs.frontend == 'true' || needs.detect-changes.outputs.docker == 'true'
         run: |
-          echo "📦 Pulling Frontend CI image from GHCR..."
+          # For PRs, use head SHA instead of merge commit SHA
+          TARGET_SHA="${{ github.event.pull_request.head.sha || github.sha }}"
+          echo "📦 Pulling Frontend CI image from GHCR (SHA: $TARGET_SHA)..."
           if docker pull ghcr.io/${{ github.repository_owner }}/driverev-frontend:latest-ci 2>/dev/null; then
             echo "✅ Pulled Frontend:latest-ci"
             docker tag ghcr.io/${{ github.repository_owner }}/driverev-frontend:latest-ci driverev-frontend:test
-          elif docker pull ghcr.io/${{ github.repository_owner }}/driverev-frontend:${{ github.sha }}-ci 2>/dev/null; then
-            echo "✅ Pulled Frontend:${{ github.sha }}-ci"
-            docker tag ghcr.io/${{ github.repository_owner }}/driverev-frontend:${{ github.sha }}-ci driverev-frontend:test
+          elif docker pull ghcr.io/${{ github.repository_owner }}/driverev-frontend:$TARGET_SHA-ci 2>/dev/null; then
+            echo "✅ Pulled Frontend:$TARGET_SHA-ci"
+            docker tag ghcr.io/${{ github.repository_owner }}/driverev-frontend:$TARGET_SHA-ci driverev-frontend:test
           else
             echo "❌ Frontend image not found in GHCR"
-            echo "⚠️  Please run build-and-push workflow first, or it may not have been pushed yet"
+            echo "⚠️  Tried tags: latest-ci, $TARGET_SHA-ci"
             exit 1
           fi
           echo "🏷️  Tagged as driverev-frontend:test for docker compose"
