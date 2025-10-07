@@ -266,6 +266,7 @@ jobs:
           # Security Gate: 脆弱性検出時にジョブを失敗させる
           exit-code: "1"
           severity: "CRITICAL,HIGH"
+          trivyignores: "backend/.trivyignore"
         continue-on-error: false  # Phase 7: セキュリティゲートとして機能
 
       - name: Upload Trivy scan results (Backend)

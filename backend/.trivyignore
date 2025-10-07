@@ -1,0 +1,17 @@
+# Trivy vulnerability ignore list
+# 修正版が存在しない、または現在対応不可能なCVE
+
+# CVE-2025-7458 - SQLite integer overflow (修正版なし)
+CVE-2025-7458
+
+# CVE-2023-45853 - zlib integer overflow (修正版なし)
+CVE-2023-45853
+
+# CVE-2023-2953 - openldap null pointer dereference (修正版なし)
+CVE-2023-2953
+
+# CVE-2025-6020 - linux-pam directory traversal (修正版なし)
+CVE-2025-6020
+
+# CVE-2024-23342 - python-ecdsa Minerva attack (修正版なし、間接依存)
+CVE-2024-23342

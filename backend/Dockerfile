@@ -2,10 +2,11 @@
 # Build stage for dependencies
 FROM python:3.12.7-slim as builder
 
-# Install build dependencies
+# Install build dependencies and apply security updates
 RUN apt-get update && apt-get install -y \
     build-essential \
     libpq-dev \
+    && apt-get upgrade -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Create virtual environment
@@ -32,10 +33,11 @@ LABEL org.opencontainers.image.version="$BUILD_ID" \
     org.opencontainers.image.created="$BUILD_DATE" \
     org.opencontainers.image.source="$SOURCE_URL"
 
-# Install runtime dependencies only
+# Install runtime dependencies and apply security updates
 RUN apt-get update && apt-get install -y \
     curl \
     libpq-dev \
+    && apt-get upgrade -y \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
