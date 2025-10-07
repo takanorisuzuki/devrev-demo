@@ -293,6 +293,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0  # Full history needed for component-specific SHA detection
 
       # Wait for build-and-push workflow to complete
       # This ensures images are available in GHCR before pulling
