@@ -213,9 +213,10 @@ jobs:
         with:
           category: "/language:${{matrix.language}}"
 
-  # Podman イメージのセキュリティスキャン
+  # Docker イメージのセキュリティスキャン
+  # Phase 7: GHCR から Pull してスキャン（ビルドなし）
   docker-security-scan:
-    name: Podman Security Scan
+    name: Docker Security Scan (GHCR)
     runs-on: ubuntu-latest
     needs: detect-changes
     if: |
@@ -223,34 +224,49 @@ jobs:
       github.event_name == 'schedule'
     permissions:
       contents: read
+      packages: read  # GHCR から Pull するための権限
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
 
-      - name: Setup Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      # Login to GHCR (Public リポジトリでも明示的にログイン)
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Configure Docker
+      # Phase 7: ビルド不要、GHCR から Pull のみ
+      # Note: build-and-push ワークフローで既にビルド済み
+      - name: Pull Backend image from GHCR
         run: |
-          echo "Docker is already configured in GitHub Actions"
+          # 最新の Backend イメージを Pull
+          # Public リポジトリなので認証なしでも可能だが、rate limit 回避のためログイン
+          docker pull ghcr.io/${{ github.repository_owner }}/driverev-backend:latest || \
+          docker pull ghcr.io/${{ github.repository_owner }}/driverev-backend:${{ github.sha }} || \
+          echo "⚠️  Backend image not found in GHCR - may need to run build-and-push workflow first"
 
-      - name: Build backend image with Docker
+      - name: Pull Frontend image from GHCR
         run: |
-          docker build -t driverev-backend:security-scan ./backend
+          # 最新の Frontend イメージを Pull (CI version)
+          docker pull ghcr.io/${{ github.repository_owner }}/driverev-frontend:latest-ci || \
+          docker pull ghcr.io/${{ github.repository_owner }}/driverev-frontend:${{ github.sha }}-ci || \
+          echo "⚠️  Frontend image not found in GHCR - may need to run build-and-push workflow first"
 
-      - name: Build frontend image with Docker
-        run: |
-          docker build -t driverev-frontend:security-scan ./frontend
-
-      - name: Run Trivy vulnerability scanner on backend
+      # Trivy スキャン: GHCR イメージを直接スキャン
+      - name: Run Trivy vulnerability scanner on Backend
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: "driverev-backend:security-scan"
+          image-ref: "ghcr.io/${{ github.repository_owner }}/driverev-backend:latest"
           format: "json"
           output: "trivy-backend-results.json"
           scan-type: "image"
-        continue-on-error: true
+          # Security Gate: 脆弱性検出時にジョブを失敗させる
+          exit-code: "1"
+          severity: "CRITICAL,HIGH"
+        continue-on-error: false  # Phase 7: セキュリティゲートとして機能
 
       - name: Upload Trivy scan results (Backend)
         uses: actions/upload-artifact@v4
@@ -259,13 +275,17 @@ jobs:
           name: trivy-backend-report
           path: "trivy-backend-results.json"
 
-      - name: Run Trivy vulnerability scanner (Frontend)
+      - name: Run Trivy vulnerability scanner on Frontend
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: "driverev-frontend:security-scan"
+          image-ref: "ghcr.io/${{ github.repository_owner }}/driverev-frontend:latest-ci"
           format: "json"
           output: "trivy-frontend-results.json"
-        continue-on-error: true
+          scan-type: "image"
+          # Security Gate: 脆弱性検出時にジョブを失敗させる
+          exit-code: "1"
+          severity: "CRITICAL,HIGH"
+        continue-on-error: false  # Phase 7: セキュリティゲートとして機能
 
       - name: Upload Trivy scan results (Frontend)
         uses: actions/upload-artifact@v4

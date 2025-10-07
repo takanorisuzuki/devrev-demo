@@ -1,0 +1,323 @@
+name: Build and Push Images
+
+# セキュリティベストプラクティス: デフォルト権限を制限し、各ジョブで明示的に付与
+permissions: {}
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main, develop]
+  workflow_dispatch:
+    inputs:
+      force_build:
+        description: "Force rebuild even if images exist in GHCR"
+        type: boolean
+        default: false
+
+env:
+  GHCR_REGISTRY: ghcr.io
+  FORCE_CACHE_REFRESH: "true"
+  # Frontend build args (DRY: defined once, used everywhere)
+  FRONTEND_BUILD_ARGS: |
+    NEXT_PUBLIC_APP_ENV=production
+    NEXT_PUBLIC_APP_NAME=DriveRev
+    NEXT_PUBLIC_DEFAULT_LOCALE=ja
+    NEXT_PUBLIC_SUPPORTED_LOCALES=["ja", "en"]
+
+jobs:
+  # 変更検知 - どのコンポーネントが変更されたかを判定
+  detect-changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      docker: ${{ steps.filter.outputs.docker }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Check path filters
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+            frontend:
+              - 'frontend/**'
+            docker:
+              - '**/Dockerfile'
+
+  # Build & Push to GHCR (Once)
+  # Phase 7 の中核: 各イメージを1回だけビルドし、全ステージで再利用
+  build-and-push:
+    name: Build & Push to GHCR
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: |
+      (needs.detect-changes.outputs.backend == 'true' || 
+       needs.detect-changes.outputs.frontend == 'true' || 
+       needs.detect-changes.outputs.docker == 'true')
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      backend_tag: ${{ steps.tags.outputs.backend_tag }}
+      frontend_ci_tag: ${{ steps.tags.outputs.frontend_ci_tag }}
+      frontend_prod_tag: ${{ steps.tags.outputs.frontend_prod_tag }}
+      backend_skip: ${{ steps.backend-check.outputs.exists }}
+      frontend_ci_skip: ${{ steps.frontend-ci-check.outputs.exists }}
+      frontend_prod_skip: ${{ steps.frontend-prod-check.outputs.exists }}
+      version: ${{ steps.version.outputs.version }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0  # Full history for accurate component SHA
+
+      # Get semantic version for image tagging
+      - name: Get version
+        id: version
+        run: |
+          if [ -f "scripts/get-version.sh" ]; then
+            chmod +x scripts/get-version.sh
+            VERSION=$(./scripts/get-version.sh)
+          else
+            # Fallback: use git describe
+            VERSION=$(git describe --tags --always --dirty 2>/dev/null || echo "v0.0.0-dev")
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "📌 Version: $VERSION"
+
+      # Generate component-specific tags
+      # コンポーネント固有 SHA による Content-Addressed Storage
+      - name: Generate component-specific tags
+        id: tags
+        run: |
+          # Backend の最新変更 SHA
+          BACKEND_SHA=$(git log -1 --format=%H -- backend/ 2>/dev/null || echo "none")
+          BACKEND_TAG="backend-sha-${BACKEND_SHA:0:7}"
+          
+          # Frontend の最新変更 SHA
+          FRONTEND_SHA=$(git log -1 --format=%H -- frontend/ 2>/dev/null || echo "none")
+          FRONTEND_CI_TAG="frontend-sha-${FRONTEND_SHA:0:7}-ci"
+          FRONTEND_PROD_TAG="frontend-sha-${FRONTEND_SHA:0:7}-prod"
+          
+          echo "backend_tag=$BACKEND_TAG" >> $GITHUB_OUTPUT
+          echo "frontend_ci_tag=$FRONTEND_CI_TAG" >> $GITHUB_OUTPUT
+          echo "frontend_prod_tag=$FRONTEND_PROD_TAG" >> $GITHUB_OUTPUT
+          
+          echo "📌 Backend Tag: $BACKEND_TAG"
+          echo "📌 Frontend CI Tag: $FRONTEND_CI_TAG"
+          echo "📌 Frontend Prod Tag: $FRONTEND_PROD_TAG"
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Login to GHCR (Public リポジトリでも push には認証が必要)
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.GHCR_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Check if Backend image exists in GHCR
+      # Content-Addressed Storage: 同じ内容なら再ビルドしない
+      - name: Check if Backend image exists in GHCR
+        id: backend-check
+        if: needs.detect-changes.outputs.backend == 'true' || needs.detect-changes.outputs.docker == 'true'
+        run: |
+          BACKEND_TAG="${{ steps.tags.outputs.backend_tag }}"
+          IMAGE="${{ env.GHCR_REGISTRY }}/${{ github.repository_owner }}/driverev-backend:$BACKEND_TAG"
+          
+          if [ "${{ github.event.inputs.force_build }}" == "true" ]; then
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "🔨 Force build enabled - will rebuild Backend"
+          elif docker manifest inspect "$IMAGE" >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "✅ Backend image $BACKEND_TAG already exists in GHCR (content unchanged)"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "🔨 Backend image $BACKEND_TAG needs to be built (content changed)"
+          fi
+
+      # Build and push Backend image
+      - name: Build and push Backend image
+        if: |
+          (needs.detect-changes.outputs.backend == 'true' || needs.detect-changes.outputs.docker == 'true') &&
+          steps.backend-check.outputs.exists != 'true'
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: true
+          tags: |
+            ${{ env.GHCR_REGISTRY }}/${{ github.repository_owner }}/driverev-backend:${{ steps.tags.outputs.backend_tag }}
+            ${{ env.GHCR_REGISTRY }}/${{ github.repository_owner }}/driverev-backend:${{ steps.version.outputs.version }}
+            ${{ env.GHCR_REGISTRY }}/${{ github.repository_owner }}/driverev-backend:${{ github.sha }}
+            ${{ github.ref == 'refs/heads/main' && format('{0}/{1}/driverev-backend:latest', env.GHCR_REGISTRY, github.repository_owner) || '' }}
+          build-args: |
+            BUILD_ID=${{ steps.version.outputs.version }}
+            GIT_COMMIT=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          labels: |
+            org.opencontainers.image.source=${{ github.event.repository.html_url }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ steps.version.outputs.version }}
+
+      # Check if Frontend CI image exists in GHCR
+      - name: Check if Frontend CI image exists in GHCR
+        id: frontend-ci-check
+        if: needs.detect-changes.outputs.frontend == 'true' || needs.detect-changes.outputs.docker == 'true'
+        run: |
+          FRONTEND_TAG="${{ steps.tags.outputs.frontend_ci_tag }}"
+          IMAGE="${{ env.GHCR_REGISTRY }}/${{ github.repository_owner }}/driverev-frontend:$FRONTEND_TAG"
+          
+          if [ "${{ github.event.inputs.force_build }}" == "true" ]; then
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "🔨 Force build enabled - will rebuild Frontend CI"
+          elif docker manifest inspect "$IMAGE" >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "✅ Frontend CI image $FRONTEND_TAG already exists in GHCR (content unchanged)"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "🔨 Frontend CI image $FRONTEND_TAG needs to be built (content changed)"
+          fi
+
+      # Build and push Frontend image (CI version - localhost:8000)
+      - name: Build and push Frontend image (CI)
+        if: |
+          (needs.detect-changes.outputs.frontend == 'true' || needs.detect-changes.outputs.docker == 'true') &&
+          steps.frontend-ci-check.outputs.exists != 'true'
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          push: true
+          tags: |
+            ${{ env.GHCR_REGISTRY }}/${{ github.repository_owner }}/driverev-frontend:${{ steps.tags.outputs.frontend_ci_tag }}
+            ${{ env.GHCR_REGISTRY }}/${{ github.repository_owner }}/driverev-frontend:${{ steps.version.outputs.version }}-ci
+            ${{ env.GHCR_REGISTRY }}/${{ github.repository_owner }}/driverev-frontend:${{ github.sha }}-ci
+            ${{ github.ref == 'refs/heads/main' && format('{0}/{1}/driverev-frontend:latest-ci', env.GHCR_REGISTRY, github.repository_owner) || '' }}
+          build-args: |
+            NEXT_PUBLIC_API_URL=http://localhost:8000
+            BUILD_ID=${{ steps.version.outputs.version }}
+            GIT_COMMIT=${{ github.sha }}
+            ${{ env.FRONTEND_BUILD_ARGS }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          labels: |
+            org.opencontainers.image.source=${{ github.event.repository.html_url }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ steps.version.outputs.version }}
+
+      # Get GCE external IP (for Production Frontend build)
+      - name: Get GCE external IP
+        id: gce-ip
+        if: |
+          github.ref == 'refs/heads/main' &&
+          (needs.detect-changes.outputs.frontend == 'true' || needs.detect-changes.outputs.docker == 'true')
+        run: |
+          # Note: GCP authentication is handled by workflow calling context
+          # This step may fail on PRs - that's expected
+          if command -v gcloud >/dev/null 2>&1; then
+            IP=$(gcloud compute instances describe free-vm01 \
+              --zone=us-west1-b \
+              --format='get(networkInterfaces[0].accessConfigs[0].natIP)' 2>/dev/null || echo "localhost")
+          else
+            echo "⚠️  gcloud not available - using localhost for build"
+            IP="localhost"
+          fi
+          echo "ip=$IP" >> $GITHUB_OUTPUT
+          echo "📍 Production VM IP: $IP"
+
+      # Check if Frontend Production image exists in GHCR
+      - name: Check if Frontend Production image exists in GHCR
+        id: frontend-prod-check
+        if: |
+          github.ref == 'refs/heads/main' &&
+          (needs.detect-changes.outputs.frontend == 'true' || needs.detect-changes.outputs.docker == 'true')
+        run: |
+          FRONTEND_TAG="${{ steps.tags.outputs.frontend_prod_tag }}"
+          IMAGE="${{ env.GHCR_REGISTRY }}/${{ github.repository_owner }}/driverev-frontend:$FRONTEND_TAG"
+          
+          if [ "${{ github.event.inputs.force_build }}" == "true" ]; then
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "🔨 Force build enabled - will rebuild Frontend Production"
+          elif docker manifest inspect "$IMAGE" >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "✅ Frontend Production image $FRONTEND_TAG already exists in GHCR"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "🔨 Frontend Production image $FRONTEND_TAG needs to be built"
+          fi
+
+      # Build and push Frontend image (Production version - dynamic IP)
+      # Note: Production Frontend は異なる API_URL が必要なため必須
+      - name: Build and push Frontend image (Production)
+        if: |
+          github.ref == 'refs/heads/main' &&
+          (needs.detect-changes.outputs.frontend == 'true' || needs.detect-changes.outputs.docker == 'true') &&
+          steps.frontend-prod-check.outputs.exists != 'true'
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          push: true
+          tags: |
+            ${{ env.GHCR_REGISTRY }}/${{ github.repository_owner }}/driverev-frontend:${{ steps.tags.outputs.frontend_prod_tag }}
+            ${{ env.GHCR_REGISTRY }}/${{ github.repository_owner }}/driverev-frontend:${{ steps.version.outputs.version }}-prod
+            ${{ env.GHCR_REGISTRY }}/${{ github.repository_owner }}/driverev-frontend:${{ github.sha }}-prod
+            ${{ env.GHCR_REGISTRY }}/${{ github.repository_owner }}/driverev-frontend:latest-prod
+          build-args: |
+            NEXT_PUBLIC_API_URL=http://${{ steps.gce-ip.outputs.ip }}:8000
+            BUILD_ID=${{ steps.version.outputs.version }}
+            GIT_COMMIT=${{ github.sha }}
+            ${{ env.FRONTEND_BUILD_ARGS }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          labels: |
+            org.opencontainers.image.source=${{ github.event.repository.html_url }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ steps.version.outputs.version }}
+
+  # Build summary
+  build-summary:
+    name: Build Summary
+    runs-on: ubuntu-latest
+    needs: [detect-changes, build-and-push]
+    if: always()
+    permissions:
+      contents: read
+
+    steps:
+      - name: Generate build summary
+        run: |
+          echo "# Build Summary" > summary.md
+          echo "Generated on: $(date)" >> summary.md
+          echo "" >> summary.md
+          echo "## Build Results" >> summary.md
+          echo "- Backend Tag: ${{ needs.build-and-push.outputs.backend_tag }}" >> summary.md
+          echo "- Frontend CI Tag: ${{ needs.build-and-push.outputs.frontend_ci_tag }}" >> summary.md
+          echo "- Frontend Prod Tag: ${{ needs.build-and-push.outputs.frontend_prod_tag }}" >> summary.md
+          echo "- Version: ${{ needs.build-and-push.outputs.version }}" >> summary.md
+          echo "" >> summary.md
+          echo "## Build Status" >> summary.md
+          echo "- Backend: ${{ needs.build-and-push.outputs.backend_skip == 'true' && '⏭️ Skipped (exists in GHCR)' || '✅ Built and pushed' }}" >> summary.md
+          echo "- Frontend CI: ${{ needs.build-and-push.outputs.frontend_ci_skip == 'true' && '⏭️ Skipped (exists in GHCR)' || '✅ Built and pushed' }}" >> summary.md
+          echo "- Frontend Prod: ${{ needs.build-and-push.outputs.frontend_prod_skip == 'true' && '⏭️ Skipped (exists in GHCR)' || '✅ Built and pushed' }}" >> summary.md
+          
+          cat summary.md
+
+      - name: Upload build summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-summary-${{ github.sha }}
+          path: summary.md
+
