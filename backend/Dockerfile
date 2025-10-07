@@ -1,19 +1,12 @@
-# DriveRev Backend - FastAPI Dockerfile (Multi-stage optimized)
+# DriveRev Backend - FastAPI Dockerfile (Multi-stage optimized, Alpine Linux)
 # Build stage for dependencies
-FROM python:3.12-slim-bookworm as builder
+FROM python:3.12-alpine as builder
 
-# Install build dependencies and upgrade only security-critical packages
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    libpq-dev \
-    && apt-get install --only-upgrade -y \
-    libsqlite3-0 \
-    libc-bin \
-    libc6 \
-    libgnutls30 \
-    liblzma5 \
-    perl-base \
-    && rm -rf /var/lib/apt/lists/*
+# Install build dependencies (no security updates needed - Alpine is clean)
+RUN apk add --no-cache \
+    build-base \
+    postgresql-dev \
+    libffi-dev
 
 # Create virtual environment
 RUN python -m venv /opt/venv
@@ -25,7 +18,7 @@ RUN pip install --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
 
 # Production stage
-FROM python:3.12-slim-bookworm
+FROM python:3.12-alpine
 
 # Build metadata arguments with defaults
 ARG BUILD_ID=unknown
@@ -39,19 +32,10 @@ LABEL org.opencontainers.image.version="$BUILD_ID" \
     org.opencontainers.image.created="$BUILD_DATE" \
     org.opencontainers.image.source="$SOURCE_URL"
 
-# Install runtime dependencies and upgrade only security-critical packages
-RUN apt-get update && apt-get install -y \
+# Install runtime dependencies (PostgreSQL client library)
+RUN apk add --no-cache \
     curl \
-    libpq-dev \
-    && apt-get install --only-upgrade -y \
-    libsqlite3-0 \
-    libc-bin \
-    libc6 \
-    libgnutls30 \
-    liblzma5 \
-    perl-base \
-    && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean
+    libpq
 
 # Copy virtual environment from builder
 COPY --from=builder /opt/venv /opt/venv
@@ -72,7 +56,7 @@ EXPOSE 8000
 # Create build metadata file for version verification
 RUN echo "Build ID: $BUILD_ID" > /app/build-info.txt && \
     echo "Git Commit: $GIT_COMMIT" >> /app/build-info.txt && \
-    echo "Build Date: $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> /app/build-info.txt
+    echo "Build Date: $(date -u +"%Y-%m-%d %H:%M:%S")" >> /app/build-info.txt
 
 # ヘルスチェック
 # start-period を延長: entrypoint.sh でのDB待機、マイグレーション、シード実行を考慮
