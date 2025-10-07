@@ -3,18 +3,10 @@
 # Use python:3.12-slim-bookworm to ensure Debian 12 (Bookworm) base with security patches
 FROM python:3.12-slim-bookworm as builder
 
-# Install build dependencies and apply security updates
-# Explicitly install specific versions to address CVEs
+# Install build dependencies and apply all available security updates
 RUN apt-get update && apt-get install -y \
     build-essential \
     libpq-dev \
-    &&  apt-get install -y \
-    libsqlite3-0=3.40.1-2+deb12u2 \
-    libc-bin=2.36-9+deb12u11 \
-    libc6=2.36-9+deb12u11 \
-    libgnutls30=3.7.9-2+deb12u5 \
-    liblzma5=5.4.1-1 \
-    perl-base=5.36.0-7+deb12u3 \
     && apt-get upgrade -y \
     && rm -rf /var/lib/apt/lists/*
 
@@ -43,18 +35,10 @@ LABEL org.opencontainers.image.version="$BUILD_ID" \
     org.opencontainers.image.created="$BUILD_DATE" \
     org.opencontainers.image.source="$SOURCE_URL"
 
-# Install runtime dependencies and apply security updates
-# Explicitly install specific versions to address CVEs
+# Install runtime dependencies and apply all available security updates
 RUN apt-get update && apt-get install -y \
     curl \
     libpq-dev \
-    && apt-get install -y \
-    libsqlite3-0=3.40.1-2+deb12u2 \
-    libc-bin=2.36-9+deb12u11 \
-    libc6=2.36-9+deb12u11 \
-    libgnutls30=3.7.9-2+deb12u5 \
-    liblzma5=5.4.1-1 \
-    perl-base=5.36.0-7+deb12u3 \
     && apt-get upgrade -y \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
