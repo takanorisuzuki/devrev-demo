@@ -385,16 +385,26 @@ jobs:
           # Public リポジトリなので認証なしでも可能だが、rate limit 回避のためログイン済み
           # For PRs, use head SHA instead of merge commit SHA
           TARGET_SHA="${{ github.event.pull_request.head.sha || github.sha }}"
-          echo "📦 Pulling Backend image from GHCR (SHA: $TARGET_SHA)..."
+          # Get component-specific SHA for Backend
+          BACKEND_SHA=$(git log -1 --format=%H -- backend/ 2>/dev/null || echo "none")
+          BACKEND_TAG="backend-sha-${BACKEND_SHA:0:7}"
+          
+          echo "📦 Pulling Backend image from GHCR..."
+          echo "   Trying HEAD SHA: $TARGET_SHA"
+          echo "   Trying Component SHA: $BACKEND_TAG"
+          
           if docker pull ghcr.io/${{ github.repository_owner }}/driverev-backend:latest 2>/dev/null; then
             echo "✅ Pulled Backend:latest"
             docker tag ghcr.io/${{ github.repository_owner }}/driverev-backend:latest driverev-backend:test
           elif docker pull ghcr.io/${{ github.repository_owner }}/driverev-backend:$TARGET_SHA 2>/dev/null; then
             echo "✅ Pulled Backend:$TARGET_SHA"
             docker tag ghcr.io/${{ github.repository_owner }}/driverev-backend:$TARGET_SHA driverev-backend:test
+          elif docker pull ghcr.io/${{ github.repository_owner }}/driverev-backend:$BACKEND_TAG 2>/dev/null; then
+            echo "✅ Pulled Backend:$BACKEND_TAG (component-specific)"
+            docker tag ghcr.io/${{ github.repository_owner }}/driverev-backend:$BACKEND_TAG driverev-backend:test
           else
             echo "❌ Backend image not found in GHCR"
-            echo "⚠️  Tried tags: latest, $TARGET_SHA"
+            echo "⚠️  Tried tags: latest, $TARGET_SHA, $BACKEND_TAG"
             exit 1
           fi
           echo "🏷️  Tagged as driverev-backend:test for docker compose"
@@ -405,16 +415,26 @@ jobs:
         run: |
           # For PRs, use head SHA instead of merge commit SHA
           TARGET_SHA="${{ github.event.pull_request.head.sha || github.sha }}"
-          echo "📦 Pulling Frontend CI image from GHCR (SHA: $TARGET_SHA)..."
+          # Get component-specific SHA for Frontend
+          FRONTEND_SHA=$(git log -1 --format=%H -- frontend/ 2>/dev/null || echo "none")
+          FRONTEND_TAG="frontend-sha-${FRONTEND_SHA:0:7}-ci"
+          
+          echo "📦 Pulling Frontend CI image from GHCR..."
+          echo "   Trying HEAD SHA: $TARGET_SHA"
+          echo "   Trying Component SHA: $FRONTEND_TAG"
+          
           if docker pull ghcr.io/${{ github.repository_owner }}/driverev-frontend:latest-ci 2>/dev/null; then
             echo "✅ Pulled Frontend:latest-ci"
             docker tag ghcr.io/${{ github.repository_owner }}/driverev-frontend:latest-ci driverev-frontend:test
           elif docker pull ghcr.io/${{ github.repository_owner }}/driverev-frontend:$TARGET_SHA-ci 2>/dev/null; then
             echo "✅ Pulled Frontend:$TARGET_SHA-ci"
             docker tag ghcr.io/${{ github.repository_owner }}/driverev-frontend:$TARGET_SHA-ci driverev-frontend:test
+          elif docker pull ghcr.io/${{ github.repository_owner }}/driverev-frontend:$FRONTEND_TAG 2>/dev/null; then
+            echo "✅ Pulled Frontend:$FRONTEND_TAG (component-specific)"
+            docker tag ghcr.io/${{ github.repository_owner }}/driverev-frontend:$FRONTEND_TAG driverev-frontend:test
           else
             echo "❌ Frontend image not found in GHCR"
-            echo "⚠️  Tried tags: latest-ci, $TARGET_SHA-ci"
+            echo "⚠️  Tried tags: latest-ci, $TARGET_SHA-ci, $FRONTEND_TAG"
             exit 1
           fi
           echo "🏷️  Tagged as driverev-frontend:test for docker compose"
