@@ -242,26 +242,45 @@ jobs:
       # Note: build-and-push ワークフローで既にビルド済み
       - name: Pull Backend image from GHCR
         run: |
-          # PRコンテキストではhead SHAのイメージを、それ以外ではlatestをPull
-          IMAGE_TAG="${{ github.event.pull_request.head.sha || 'latest' }}"
+          # develop→mainのPRではlatestを、それ以外のPRではhead SHAのイメージをPull
+          if [ "${{ github.event.pull_request.base.ref }}" == "main" ]; then
+            IMAGE_TAG="latest"
+          else
+            IMAGE_TAG="${{ github.event.pull_request.head.sha }}"
+          fi
           docker pull ghcr.io/${{ github.repository_owner }}/driverev-backend:${IMAGE_TAG} || \
           docker pull ghcr.io/${{ github.repository_owner }}/driverev-backend:${{ github.sha }} || \
           echo "⚠️  Backend image not found in GHCR - may need to run build-and-push workflow first"
 
       - name: Pull Frontend image from GHCR
         run: |
-          # PRコンテキストではhead SHAのイメージを、それ以外ではlatestをPull
-          IMAGE_TAG="${{ github.event.pull_request.head.sha || 'latest' }}"
+          # develop→mainのPRではlatest-ciを、それ以外のPRではhead SHAのイメージをPull
+          if [ "${{ github.event.pull_request.base.ref }}" == "main" ]; then
+            IMAGE_TAG="latest"
+          else
+            IMAGE_TAG="${{ github.event.pull_request.head.sha }}"
+          fi
           docker pull ghcr.io/${{ github.repository_owner }}/driverev-frontend:${IMAGE_TAG}-ci || \
           docker pull ghcr.io/${{ github.repository_owner }}/driverev-frontend:${{ github.sha }}-ci || \
           echo "⚠️  Frontend image not found in GHCR - may need to run build-and-push workflow first"
 
       # Trivy スキャン: GHCR イメージを直接スキャン
-      # PRコンテキストではhead SHAのイメージを、それ以外ではlatestをスキャン
+      # develop→mainのPRではlatestを、それ以外のPRではhead SHAをスキャン
+      - name: Set image tag for scanning
+        id: set_tag
+        run: |
+          if [ "${{ github.event.pull_request.base.ref }}" == "main" ]; then
+            echo "backend_tag=latest" >> $GITHUB_OUTPUT
+            echo "frontend_tag=latest-ci" >> $GITHUB_OUTPUT
+          else
+            echo "backend_tag=${{ github.event.pull_request.head.sha || 'latest' }}" >> $GITHUB_OUTPUT
+            echo "frontend_tag=${{ github.event.pull_request.head.sha || 'latest' }}-ci" >> $GITHUB_OUTPUT
+          fi
+
       - name: Run Trivy vulnerability scanner on Backend
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: "ghcr.io/${{ github.repository_owner }}/driverev-backend:${{ github.event.pull_request.head.sha || 'latest' }}"
+          image-ref: "ghcr.io/${{ github.repository_owner }}/driverev-backend:${{ steps.set_tag.outputs.backend_tag }}"
           format: "json"
           output: "trivy-backend-results.json"
           scan-type: "image"
@@ -281,7 +300,7 @@ jobs:
       - name: Run Trivy vulnerability scanner on Frontend
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: "ghcr.io/${{ github.repository_owner }}/driverev-frontend:${{ github.event.pull_request.head.sha || 'latest' }}-ci"
+          image-ref: "ghcr.io/${{ github.repository_owner }}/driverev-frontend:${{ steps.set_tag.outputs.frontend_tag }}"
           format: "json"
           output: "trivy-frontend-results.json"
           scan-type: "image"
