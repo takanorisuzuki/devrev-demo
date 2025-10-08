@@ -736,9 +736,15 @@ jobs:
             # Cleanup secrets file immediately after use
             rm -f .env.secrets
 
-            # Note: GHCR authentication not required
-            # This is a public repository - GHCR images can be pulled without authentication
-            # Reference: docs/CICD_REFACTORING.md#ghcr-pullの権限管理
+            # Login to GHCR to pull images
+            echo "🔐 Logging in to GHCR..."
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin 2>/dev/null
+            if [ $? -eq 0 ]; then
+              echo "✅ Successfully logged in to GHCR"
+            else
+              echo "❌ Failed to login to GHCR"
+              exit 1
+            fi
 
             # Check if deployment is needed by comparing VM and GHCR versions
             echo "🔍 Checking if deployment is needed..."
