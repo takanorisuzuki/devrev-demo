@@ -52,7 +52,7 @@ services:
       APP_NAME: ${APP_NAME:-DriveRev}
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
       REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:-7}
-      CORS_ORIGINS: ${CORS_ORIGINS:-["http://localhost:3000"]}
+      CORS_ORIGINS: ${CORS_ORIGINS:-'["http://localhost:3000"]'}
     depends_on:
       postgres:
         condition: service_healthy
