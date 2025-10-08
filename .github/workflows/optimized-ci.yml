@@ -621,6 +621,37 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Calculate version information (needed when docker-integration is skipped)
+      - name: Calculate version information
+        id: version
+        run: |
+          # Base version from package.json
+          VERSION=$(node -p "require('./frontend/package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          
+          # Git SHAs
+          CURRENT_SHA=$(git rev-parse --short HEAD)
+          echo "current_sha=$CURRENT_SHA" >> $GITHUB_OUTPUT
+          
+          # Component-specific SHAs
+          BACKEND_SHA=$(git log -1 --format=%h -- backend/)
+          FRONTEND_SHA=$(git log -1 --format=%h -- frontend/)
+          echo "backend_sha=$BACKEND_SHA" >> $GITHUB_OUTPUT
+          echo "frontend_sha=$FRONTEND_SHA" >> $GITHUB_OUTPUT
+          
+          # Composite version tags (matching build-and-push.yml format)
+          echo "version_with_sha=${VERSION}-${CURRENT_SHA}" >> $GITHUB_OUTPUT
+          echo "backend_version_with_sha=${VERSION}-${BACKEND_SHA}" >> $GITHUB_OUTPUT
+          echo "frontend_version_with_sha=${VERSION}-${FRONTEND_SHA}" >> $GITHUB_OUTPUT
+          
+          echo "📦 Calculated versions:"
+          echo "  Base: $VERSION"
+          echo "  Current SHA: $CURRENT_SHA"
+          echo "  Backend SHA: $BACKEND_SHA"
+          echo "  Frontend SHA: $FRONTEND_SHA"
+          echo "  Backend version: ${VERSION}-${BACKEND_SHA}"
+          echo "  Frontend version: ${VERSION}-${FRONTEND_SHA}"
+
       # Phase 7: Production Frontend は build-and-push ワークフローで既にビルド済み
       # Note: build-and-push.yml で動的 IP を使ってビルド & GHCR に Push 済み
       # ここではビルド不要、後で VM 内から GHCR Pull のみ実行
@@ -672,11 +703,20 @@ jobs:
 
       - name: Deploy and start services
         uses: appleboy/ssh-action@v0.1.10
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          CURRENT_SHA: ${{ steps.version.outputs.current_sha }}
+          BACKEND_SHA: ${{ steps.version.outputs.backend_sha }}
+          FRONTEND_SHA: ${{ steps.version.outputs.frontend_sha }}
+          VERSION_WITH_SHA: ${{ steps.version.outputs.version_with_sha }}
+          TARGET_BACKEND_VERSION: ${{ steps.version.outputs.backend_version_with_sha }}
+          TARGET_FRONTEND_VERSION: ${{ steps.version.outputs.frontend_version_with_sha }}
         with:
           host: ${{ steps.gce-ip.outputs.ip }}
           username: ${{ secrets.GCE_USER }}
           key: ${{ secrets.GCE_SSH_KEY }}
           command_timeout: 10m
+          envs: VERSION,CURRENT_SHA,BACKEND_SHA,FRONTEND_SHA,VERSION_WITH_SHA,TARGET_BACKEND_VERSION,TARGET_FRONTEND_VERSION
           script: |
             set -euo pipefail
             cd ~/app
@@ -705,10 +745,6 @@ jobs:
             CURRENT_BACKEND_VERSION=$(docker inspect driverev-production-backend-1 --format='{{index .Config.Labels "org.opencontainers.image.version"}}' 2>/dev/null || echo "none")
             CURRENT_FRONTEND_VERSION=$(docker inspect driverev-production-frontend-1 --format='{{index .Config.Labels "org.opencontainers.image.version"}}' 2>/dev/null || echo "none")
 
-            # Get target versions from GHCR
-            TARGET_BACKEND_VERSION="${{ needs.docker-integration.outputs.backend_version_with_sha }}"
-            TARGET_FRONTEND_VERSION="${{ needs.docker-integration.outputs.frontend_version_with_sha }}"
-
             echo "📊 Version Comparison:"
             echo "  Backend:  VM=$CURRENT_BACKEND_VERSION  GHCR=$TARGET_BACKEND_VERSION"
             echo "  Frontend: VM=$CURRENT_FRONTEND_VERSION GHCR=$TARGET_FRONTEND_VERSION"
@@ -724,12 +760,12 @@ jobs:
 
             # Pull images from GHCR with version tagging
             # Uses component-specific versions for accurate tracking
+            # VERSION, BACKEND_VERSION_WITH_SHA (TARGET_BACKEND_VERSION), FRONTEND_VERSION_WITH_SHA (TARGET_FRONTEND_VERSION)
+            # are already set as environment variables from the deploy job
             BACKEND_IMAGE="ghcr.io/${{ github.repository_owner }}/driverev-backend"
             FRONTEND_IMAGE="ghcr.io/${{ github.repository_owner }}/driverev-frontend"
-            VERSION="${{ needs.docker-integration.outputs.version }}"
-            BACKEND_VERSION_WITH_SHA="${{ needs.docker-integration.outputs.backend_version_with_sha }}"
-            FRONTEND_VERSION_WITH_SHA="${{ needs.docker-integration.outputs.frontend_version_with_sha }}"
-            CURRENT_SHA="${{ github.sha }}"
+            BACKEND_VERSION_WITH_SHA="$TARGET_BACKEND_VERSION"
+            FRONTEND_VERSION_WITH_SHA="$TARGET_FRONTEND_VERSION"
 
             echo "🔍 Pulling images for deployment"
             echo "📌 Base Version: $VERSION"
