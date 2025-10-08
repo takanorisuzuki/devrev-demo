@@ -71,6 +71,29 @@ class Settings(BaseSettings):
             f"{info.data.get('DB_PORT')}/{info.data.get('DB_NAME')}"
         )
 
+    @field_validator("CORS_ORIGINS", "ALLOWED_HOSTS", mode="before")
+    def parse_json_list(cls, v) -> List[str]:
+        """
+        JSON文字列をリストにパース
+        
+        本番環境の.envファイルでは環境変数が以下の形式で設定される:
+        CORS_ORIGINS=["http://IP:3000", "http://IP:8000"]
+        
+        Pydanticはこれを自動的にリストに変換しないため、
+        このバリデーターでJSON文字列をパースする。
+        """
+        if isinstance(v, str):
+            import json
+            try:
+                parsed = json.loads(v)
+                if isinstance(parsed, list):
+                    return parsed
+            except json.JSONDecodeError:
+                # JSON解析失敗時は単一の値として扱う
+                return [v]
+        # 既にリストの場合はそのまま返す
+        return v if isinstance(v, list) else [v]
+
     model_config = ConfigDict(env_file=".env", case_sensitive=True)
 
 
