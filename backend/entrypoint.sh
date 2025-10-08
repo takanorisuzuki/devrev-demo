@@ -8,7 +8,22 @@ echo "⏳ データベース接続を待機中..."
 python -c "
 import time
 import psycopg2
-from app.core.config import settings
+import traceback
+import sys
+
+# デバッグ: 環境変数の確認
+import os
+print(f'DEBUG: CORS_ORIGINS env = {os.environ.get(\"CORS_ORIGINS\", \"NOT_SET\")}')
+print(f'DEBUG: ALLOWED_HOSTS env = {os.environ.get(\"ALLOWED_HOSTS\", \"NOT_SET\")}')
+
+try:
+    from app.core.config import settings
+    print(f'DEBUG: CORS_ORIGINS parsed = {settings.CORS_ORIGINS}')
+    print(f'DEBUG: ALLOWED_HOSTS parsed = {settings.ALLOWED_HOSTS}')
+except Exception as e:
+    print(f'❌ Config loading error: {e}')
+    traceback.print_exc()
+    sys.exit(1)
 
 max_attempts = 30
 attempt = 0
