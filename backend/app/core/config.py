@@ -2,6 +2,7 @@
 DriveRev アプリケーション設定
 """
 
+import json
 from typing import List, Optional
 
 from pydantic import ConfigDict, field_validator
@@ -81,17 +82,22 @@ class Settings(BaseSettings):
         
         Pydanticはこれを自動的にリストに変換しないため、
         このバリデーターでJSON文字列をパースする。
+        
+        例:
+        - '["http://a:3000", "http://b:8000"]' -> ["http://a:3000", "http://b:8000"]
+        - '"http://example.com"' -> ["http://example.com"]
+        - 'http://example.com' -> ["http://example.com"]
+        - ["http://example.com"] -> ["http://example.com"]
         """
         if isinstance(v, str):
-            import json
             try:
-                parsed = json.loads(v)
-                if isinstance(parsed, list):
-                    return parsed
+                v = json.loads(v)
             except json.JSONDecodeError:
-                # JSON解析失敗時は単一の値として扱う
+                # JSONパースに失敗した場合は、元の文字列を単一要素のリストとして扱う
                 return [v]
-        # 既にリストの場合はそのまま返す
+
+        # この時点で v はパースされたオブジェクトか、元々文字列ではなかった値
+        # v がリストであればそのまま返し、そうでなければリストでラップする
         return v if isinstance(v, list) else [v]
 
     model_config = ConfigDict(env_file=".env", case_sensitive=True)
