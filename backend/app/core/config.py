@@ -2,7 +2,6 @@
 DriveRev アプリケーション設定
 """
 
-import json
 from typing import List, Optional
 
 from pydantic import ConfigDict, field_validator
@@ -71,34 +70,6 @@ class Settings(BaseSettings):
             f"{info.data.get('DB_PASSWORD')}@{info.data.get('DB_HOST')}:"
             f"{info.data.get('DB_PORT')}/{info.data.get('DB_NAME')}"
         )
-
-    @field_validator("CORS_ORIGINS", "ALLOWED_HOSTS", mode="before")
-    def parse_json_list(cls, v) -> List[str]:
-        """
-        JSON文字列をリストにパース
-
-        本番環境の.envファイルでは環境変数が以下の形式で設定される:
-        CORS_ORIGINS=["http://IP:3000", "http://IP:8000"]
-
-        Pydanticはこれを自動的にリストに変換しないため、
-        このバリデーターでJSON文字列をパースする。
-
-        例:
-        - '["http://a:3000", "http://b:8000"]' -> ["http://a:3000", "http://b:8000"]
-        - '"http://example.com"' -> ["http://example.com"]
-        - 'http://example.com' -> ["http://example.com"]
-        - ["http://example.com"] -> ["http://example.com"]
-        """
-        if isinstance(v, str):
-            try:
-                v = json.loads(v)
-            except json.JSONDecodeError:
-                # JSONパースに失敗した場合は、元の文字列を単一要素のリストとして扱う
-                return [v]
-
-        # この時点で v はパースされたオブジェクトか、元々文字列ではなかった値
-        # v がリストであればそのまま返し、そうでなければリストでラップする
-        return v if isinstance(v, list) else [v]
 
     model_config = ConfigDict(env_file=".env", case_sensitive=True)
 
