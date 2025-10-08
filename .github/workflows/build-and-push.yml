@@ -231,6 +231,7 @@ jobs:
             ${{ github.ref == 'refs/heads/main' && format('{0}/{1}/driverev-frontend:latest-ci', env.GHCR_REGISTRY, github.repository_owner) || '' }}
           build-args: |
             NEXT_PUBLIC_API_URL=http://localhost:8000
+            API_URL=http://backend:8000
             BUILD_ID=${{ steps.version.outputs.version }}
             GIT_COMMIT=${{ steps.sha.outputs.target_sha }}
             BUILD_DATE=${{ github.event.head_commit.timestamp || github.event.repository.updated_at }}
@@ -303,6 +304,7 @@ jobs:
             ${{ env.GHCR_REGISTRY }}/${{ github.repository_owner }}/driverev-frontend:latest-prod
           build-args: |
             NEXT_PUBLIC_API_URL=http://${{ steps.gce-ip.outputs.ip }}:8000
+            API_URL=http://backend:8000
             BUILD_ID=${{ steps.version.outputs.version }}
             GIT_COMMIT=${{ steps.sha.outputs.target_sha }}
             BUILD_DATE=${{ github.event.head_commit.timestamp || github.event.repository.updated_at }}
