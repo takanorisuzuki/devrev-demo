@@ -76,13 +76,13 @@ class Settings(BaseSettings):
     def parse_json_list(cls, v) -> List[str]:
         """
         JSON文字列をリストにパース
-        
+
         本番環境の.envファイルでは環境変数が以下の形式で設定される:
         CORS_ORIGINS=["http://IP:3000", "http://IP:8000"]
-        
+
         Pydanticはこれを自動的にリストに変換しないため、
         このバリデーターでJSON文字列をパースする。
-        
+
         例:
         - '["http://a:3000", "http://b:8000"]' -> ["http://a:3000", "http://b:8000"]
         - '"http://example.com"' -> ["http://example.com"]
