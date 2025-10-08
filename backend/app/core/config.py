@@ -2,6 +2,7 @@
 DriveRev アプリケーション設定
 """
 
+import json
 from typing import List, Optional
 
 from pydantic import ConfigDict, field_validator
@@ -37,9 +38,9 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
-    # CORS設定
-    ALLOWED_HOSTS: List[str] = ["localhost", "127.0.0.1", "0.0.0.0"]
-    CORS_ORIGINS: List[str] = [
+    # CORS設定（環境変数からのパース用に str | List[str] 型を使用）
+    ALLOWED_HOSTS: str | List[str] = ["localhost", "127.0.0.1", "0.0.0.0"]
+    CORS_ORIGINS: str | List[str] = [
         "http://localhost:3000",
         "http://127.0.0.1:3000",
         "http://0.0.0.0:3000",
@@ -70,6 +71,35 @@ class Settings(BaseSettings):
             f"{info.data.get('DB_PASSWORD')}@{info.data.get('DB_HOST')}:"
             f"{info.data.get('DB_PORT')}/{info.data.get('DB_NAME')}"
         )
+
+    @field_validator("CORS_ORIGINS", "ALLOWED_HOSTS", mode="before")
+    def parse_json_list(cls, v) -> List[str]:
+        """
+        JSON文字列をリストにパース
+
+        本番環境の.envファイルやDocker Composeでは環境変数が以下の形式で設定される:
+        CORS_ORIGINS='["http://IP:3000", "http://IP:8000"]'
+
+        このバリデーターはJSON文字列を明示的にパースする。
+        Pydanticの自動変換に依存せず、明示的な処理を行うことで
+        異なる環境（.env、Docker Compose、CI）での動作を統一する。
+
+        例:
+        - '["http://a:3000", "http://b:8000"]' -> ["http://a:3000", "http://b:8000"]
+        - '"http://example.com"' -> ["http://example.com"]
+        - 'http://example.com' -> ["http://example.com"]
+        - ["http://example.com"] -> ["http://example.com"] (既にリストの場合)
+        """
+        if isinstance(v, str):
+            try:
+                v = json.loads(v)
+            except json.JSONDecodeError:
+                # JSONパースに失敗した場合は、元の文字列を単一要素のリストとして扱う
+                return [v]
+
+        # この時点で v はパースされたオブジェクトか、元々文字列ではなかった値
+        # v がリストであればそのまま返し、そうでなければリストでラップする
+        return v if isinstance(v, list) else [v]
 
     model_config = ConfigDict(env_file=".env", case_sensitive=True)
 

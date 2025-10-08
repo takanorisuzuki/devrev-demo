@@ -447,6 +447,17 @@ jobs:
           # Phase 7: --no-pull 削除（ローカルタグ driverev-backend:test を使用）
           docker compose -f .github/compose.ci.yml -p "$PROJECT" up -d --wait --wait-timeout 240 backend
 
+      - name: Show backend logs if startup failed
+        if: failure() && (needs.detect-changes.outputs.backend == 'true' || needs.detect-changes.outputs.docker == 'true')
+        run: |
+          PROJECT=devrev-${{ github.run_id }}
+          echo "========== Backend Container Logs =========="
+          docker compose -f .github/compose.ci.yml -p "$PROJECT" logs backend || true
+          echo "========== Backend Container Status =========="
+          docker compose -f .github/compose.ci.yml -p "$PROJECT" ps || true
+          echo "========== Backend Container Inspect =========="
+          docker inspect $(docker compose -f .github/compose.ci.yml -p "$PROJECT" ps -q backend) 2>/dev/null || echo "Container not found"
+
       - name: Run integration tests
         if: needs.detect-changes.outputs.backend == 'true' || needs.detect-changes.outputs.docker == 'true'
         run: |
