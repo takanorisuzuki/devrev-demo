@@ -566,7 +566,7 @@ jobs:
       (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
       github.ref == 'refs/heads/main' &&
       (github.event_name == 'push' || !inputs.skip_deploy) &&
-      (needs.docker-integration.result == 'success')
+      (needs.docker-integration.result == 'success' || needs.docker-integration.result == 'skipped')
     permissions:
       contents: read
       packages: write # GHCR push用
