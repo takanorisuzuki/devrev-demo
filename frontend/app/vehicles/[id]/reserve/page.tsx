@@ -19,6 +19,7 @@ import {
 } from "../../../../lib/utils/time-management";
 import { useAuthStore } from "@/lib/stores/auth";
 import { reservationApi } from "@/lib/api/reservations";
+import { getVehicle } from "@/lib/api/vehicles";
 import { useStores } from "@/lib/hooks/useStores";
 
 // 実際のAPIから車両と店舗データを取得
@@ -101,24 +102,16 @@ export default function DemoReservePage() {
     const fetchVehicle = async () => {
       try {
         console.log("車両ID:", vehicleId);
-        const response = await fetch(
-          `http://localhost:8000/api/v1/vehicles/${vehicleId}`,
-        );
-        console.log("API Response status:", response.status);
-
-        if (response.ok) {
-          const data = await response.json();
-          console.log("車両データ:", data);
-          setVehicle(data);
-        } else {
-          console.error(
-            `車両ID "${vehicleId}" が見つかりません (HTTP ${response.status})`,
-          );
-          setVehicle(null);
-        }
-      } catch (error) {
+        const data = await getVehicle(vehicleId);
+        console.log("車両データ:", data);
+        setVehicle(data);
+      } catch (error: any) {
         console.error("車両データの取得中にエラーが発生しました:", error);
         setVehicle(null);
+        // エラーメッセージを設定（ユーザーに表示）
+        if (error.response?.status === 404) {
+          console.error(`車両ID "${vehicleId}" が見つかりません`);
+        }
       }
     };
 
