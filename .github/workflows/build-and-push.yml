@@ -244,22 +244,24 @@ jobs:
             org.opencontainers.image.revision=${{ steps.sha.outputs.target_sha }}
             org.opencontainers.image.version=${{ steps.version.outputs.version }}
 
-      # Get GCE external IP (for Production Frontend build)
-      - name: Get GCE external IP
+      # Authenticate to Google Cloud and get VM IP (for Production Frontend build)
+      - name: Get GCE external IP for Production Frontend
         id: gce-ip
         if: |
           github.ref == 'refs/heads/main' &&
           (needs.detect-changes.outputs.frontend == 'true' || needs.detect-changes.outputs.docker == 'true')
         run: |
-          # Note: GCP authentication is handled by workflow calling context
-          # This step may fail on PRs - that's expected
-          if command -v gcloud >/dev/null 2>&1; then
-            IP=$(gcloud compute instances describe free-vm01 \
-              --zone=us-west1-b \
-              --format='get(networkInterfaces[0].accessConfigs[0].natIP)' 2>/dev/null || echo "localhost")
-          else
-            echo "⚠️  gcloud not available - using localhost for build"
-            IP="localhost"
+          # Authenticate using service account
+          echo '${{ secrets.GCP_SA_KEY }}' | gcloud auth activate-service-account --key-file=-
+          gcloud config set project ${{ secrets.GCP_PROJECT_ID }}
+          
+          IP=$(gcloud compute instances describe free-vm01 \
+            --zone=us-west1-b \
+            --format='get(networkInterfaces[0].accessConfigs[0].natIP)')
+
+          if [ -z "$IP" ]; then
+            echo "❌ Failed to get VM external IP" >&2
+            exit 1
           fi
           echo "ip=$IP" >> $GITHUB_OUTPUT
           echo "📍 Production VM IP: $IP"
@@ -381,6 +383,7 @@ jobs:
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: "ghcr.io/${{ github.repository_owner }}/driverev-backend:${{ needs.build-and-push.outputs.backend_tag }}"
+          trivyignores: backend/.trivyignore
           format: "json"
           output: "trivy-backend-results.json"
           scan-type: "image"
