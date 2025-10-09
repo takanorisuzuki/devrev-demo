@@ -210,6 +210,16 @@ class PaymentService:
                     f"{vehicle.make} {vehicle.model}" if vehicle else "車両情報なし"
                 )
 
+                # 失敗時の情報を一度だけ評価
+                is_failed = reservation.payment_status == PaymentStatus.FAILED.value
+                failure_reason = "カードが拒否されました" if is_failed else None
+                failure_code = "CARD_DECLINED" if is_failed else None
+                failure_details = (
+                    "カード会社により決済が拒否されました。カードの有効性や残高をご確認ください。"
+                    if is_failed
+                    else None
+                )
+
                 payments.append(
                     PaymentResponse(
                         payment_id=reservation.payment_reference,
@@ -218,21 +228,9 @@ class PaymentService:
                         amount=reservation.total_amount,
                         currency="JPY",
                         created_at=reservation.updated_at,
-                        failure_reason=(
-                            "カードが拒否されました"
-                            if reservation.payment_status == PaymentStatus.FAILED.value
-                            else None
-                        ),
-                        failure_code=(
-                            "CARD_DECLINED"
-                            if reservation.payment_status == PaymentStatus.FAILED.value
-                            else None
-                        ),
-                        failure_details=(
-                            "カード会社により決済が拒否されました。カードの有効性や残高をご確認ください。"
-                            if reservation.payment_status == PaymentStatus.FAILED.value
-                            else None
-                        ),
+                        failure_reason=failure_reason,
+                        failure_code=failure_code,
+                        failure_details=failure_details,
                         # 車両情報を追加
                         vehicle_name=vehicle_name,
                         pickup_date=reservation.pickup_datetime,
@@ -296,6 +294,16 @@ class PaymentService:
                     f"{vehicle.make} {vehicle.model}" if vehicle else "車両情報なし"
                 )
 
+                # 失敗時の情報を一度だけ評価
+                is_failed = reservation.payment_status == PaymentStatus.FAILED.value
+                failure_reason = "カードが拒否されました" if is_failed else None
+                failure_code = "CARD_DECLINED" if is_failed else None
+                failure_details = (
+                    "カード会社により決済が拒否されました。カードの有効性や残高をご確認ください。"
+                    if is_failed
+                    else None
+                )
+
                 payments.append(
                     PaymentResponse(
                         payment_id=reservation.payment_reference,
@@ -304,21 +312,9 @@ class PaymentService:
                         amount=reservation.total_amount,
                         currency="JPY",
                         created_at=reservation.updated_at,
-                        failure_reason=(
-                            "カードが拒否されました"
-                            if reservation.payment_status == PaymentStatus.FAILED.value
-                            else None
-                        ),
-                        failure_code=(
-                            "CARD_DECLINED"
-                            if reservation.payment_status == PaymentStatus.FAILED.value
-                            else None
-                        ),
-                        failure_details=(
-                            "カード会社により決済が拒否されました。カードの有効性や残高をご確認ください。"
-                            if reservation.payment_status == PaymentStatus.FAILED.value
-                            else None
-                        ),
+                        failure_reason=failure_reason,
+                        failure_code=failure_code,
+                        failure_details=failure_details,
                         # 車両情報を追加
                         vehicle_name=vehicle_name,
                         pickup_date=reservation.pickup_datetime,
