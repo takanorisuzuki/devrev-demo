@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { AdminStoreCreateRequest } from "@/lib/api/admin-stores";
 import { useToast } from "@/components/ui/toast";
 import { useAuthStore } from "@/lib/stores/auth";
+import { adminStoreApi } from "@/lib/api/admin-stores";
 
 interface StoreCreateModalProps {
   open: boolean;
@@ -71,32 +72,8 @@ export function StoreCreateModal({
         return;
       }
 
-      const response = await fetch(
-        "http://localhost:8000/api/v1/admin/stores",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(formData),
-        },
-      );
-
-      if (!response.ok) {
-        let errorMessage = "店舗の作成に失敗しました";
-        const responseText = await response.text();
-        try {
-          const errorData = JSON.parse(responseText);
-          errorMessage = errorData.detail?.message || errorMessage;
-        } catch (jsonError) {
-          // JSONでない場合はテキストをそのまま使用
-          errorMessage = responseText || errorMessage;
-        }
-        throw new Error(errorMessage);
-      }
-
-      const newStore = await response.json();
+      // adminStoreApi.createStore関数でAPI呼び出しと認証が処理されます
+      const newStore = await adminStoreApi.createStore(formData);
 
       addToast({
         type: "success",

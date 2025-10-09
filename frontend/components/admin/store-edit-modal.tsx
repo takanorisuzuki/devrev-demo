@@ -9,6 +9,7 @@ import { AdminStoreUpdateRequest } from "@/lib/api/admin-stores";
 import { StoreDetail } from "@/lib/types/store";
 import { useToast } from "@/components/ui/toast";
 import { useAuthStore } from "@/lib/stores/auth";
+import { adminStoreApi } from "@/lib/api/admin-stores";
 
 interface StoreEditModalProps {
   open: boolean;
@@ -87,32 +88,8 @@ export function StoreEditModal({
         return;
       }
 
-      const response = await fetch(
-        `http://localhost:8000/api/v1/admin/stores/${store.id}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(formData),
-        },
-      );
-
-      if (!response.ok) {
-        let errorMessage = "店舗の更新に失敗しました";
-        const responseText = await response.text();
-        try {
-          const errorData = JSON.parse(responseText);
-          errorMessage = errorData.detail?.message || errorMessage;
-        } catch (jsonError) {
-          // JSONでない場合はテキストをそのまま使用
-          errorMessage = responseText || errorMessage;
-        }
-        throw new Error(errorMessage);
-      }
-
-      const updatedStore = await response.json();
+      // adminStoreApi.updateStore関数でAPI呼び出しと認証が処理されます
+      const updatedStore = await adminStoreApi.updateStore(store.id, formData);
 
       addToast({
         type: "success",
