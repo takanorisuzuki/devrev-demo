@@ -12,6 +12,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.enums import PaymentStatus, ReservationStatus
 from app.models.reservation import Reservation
 from app.models.store import Store
 from app.models.user import User
@@ -79,7 +80,7 @@ class PaymentService:
                     created_at=existing_payment.updated_at,
                     failure_reason=(
                         "カードが拒否されました"
-                        if existing_payment.payment_status == "failed"
+                        if existing_payment.payment_status == PaymentStatus.FAILED.value
                         else None
                     ),
                 )
@@ -110,18 +111,18 @@ class PaymentService:
         transaction_id = f"txn_{payment_id[:8]}"
 
         # 決済成功をシミュレート（実際はStripe API呼び出し）
-        payment_status = "completed"
+        payment_status = PaymentStatus.COMPLETED
         failure_reason = None
         failure_code = None
         failure_details = None
 
         if payment_data.card_token == "tok_failed_card":
-            payment_status = "failed"
+            payment_status = PaymentStatus.FAILED
             failure_reason = "カードが拒否されました"
             failure_code = "CARD_DECLINED"
             failure_details = "カード会社により決済が拒否されました。カードの有効性や残高をご確認ください。"
         elif payment_data.card_token == "tok_declined_card":
-            payment_status = "failed"
+            payment_status = PaymentStatus.FAILED
             failure_reason = "カードが利用停止されています"
             failure_code = "CARD_BLOCKED"
             failure_details = (
@@ -130,13 +131,13 @@ class PaymentService:
 
         # 5. 予約の決済情報を更新
         reservation.payment_method = payment_data.payment_method
-        reservation.payment_status = payment_status
+        reservation.payment_status = payment_status.value
         reservation.payment_reference = transaction_id
         reservation.updated_at = datetime.utcnow()
         
         # 決済成功時は予約ステータスをconfirmedに更新
-        if payment_status == "completed" and reservation.status == "pending":
-            reservation.status = "confirmed"
+        if payment_status == PaymentStatus.COMPLETED and reservation.status == ReservationStatus.PENDING.value:
+            reservation.status = ReservationStatus.CONFIRMED.value
 
         try:
             self.db.commit()
@@ -150,8 +151,8 @@ class PaymentService:
         # 6. 決済レスポンス作成
         return PaymentResponse(
             payment_id=payment_id,
-            payment_status=payment_status,
-            transaction_id=transaction_id if payment_status == "completed" else None,
+            payment_status=payment_status.value,
+            transaction_id=transaction_id if payment_status == PaymentStatus.COMPLETED else None,
             amount=payment_data.amount,
             currency=payment_data.currency,
             created_at=datetime.utcnow(),
@@ -180,7 +181,7 @@ class PaymentService:
             .join(Vehicle, Reservation.vehicle_id == Vehicle.id)
             .filter(
                 Reservation.customer_id == customer_id,
-                Reservation.payment_status.in_(["completed", "failed"]),
+                Reservation.payment_status.in_([PaymentStatus.COMPLETED.value, PaymentStatus.FAILED.value]),
             )
             .order_by(Reservation.updated_at.desc())
             .offset(skip)
@@ -209,17 +210,17 @@ class PaymentService:
                         created_at=reservation.updated_at,
                         failure_reason=(
                             "カードが拒否されました"
-                            if reservation.payment_status == "failed"
+                            if reservation.payment_status == PaymentStatus.FAILED.value
                             else None
                         ),
                         failure_code=(
                             "CARD_DECLINED"
-                            if reservation.payment_status == "failed"
+                            if reservation.payment_status == PaymentStatus.FAILED.value
                             else None
                         ),
                         failure_details=(
                             "カード会社により決済が拒否されました。カードの有効性や残高をご確認ください。"
-                            if reservation.payment_status == "failed"
+                            if reservation.payment_status == PaymentStatus.FAILED.value
                             else None
                         ),
                         # 車両情報を追加
@@ -230,7 +231,7 @@ class PaymentService:
                     )
                 )
 
-                if reservation.payment_status == "completed":
+                if reservation.payment_status == PaymentStatus.COMPLETED.value:
                     total_amount += reservation.total_amount
 
         return PaymentHistoryResponse(
@@ -256,7 +257,7 @@ class PaymentService:
             .join(Vehicle, Reservation.vehicle_id == Vehicle.id)
             .join(User, Reservation.customer_id == User.id)
             .join(Store, Reservation.pickup_store_id == Store.id)
-            .filter(Reservation.payment_status.in_(["completed", "failed"]))
+            .filter(Reservation.payment_status.in_([PaymentStatus.COMPLETED.value, PaymentStatus.FAILED.value]))
             .order_by(Reservation.updated_at.desc())
             .offset(skip)
             .limit(limit)
@@ -288,17 +289,17 @@ class PaymentService:
                         created_at=reservation.updated_at,
                         failure_reason=(
                             "カードが拒否されました"
-                            if reservation.payment_status == "failed"
+                            if reservation.payment_status == PaymentStatus.FAILED.value
                             else None
                         ),
                         failure_code=(
                             "CARD_DECLINED"
-                            if reservation.payment_status == "failed"
+                            if reservation.payment_status == PaymentStatus.FAILED.value
                             else None
                         ),
                         failure_details=(
                             "カード会社により決済が拒否されました。カードの有効性や残高をご確認ください。"
-                            if reservation.payment_status == "failed"
+                            if reservation.payment_status == PaymentStatus.FAILED.value
                             else None
                         ),
                         # 車両情報を追加
@@ -322,10 +323,10 @@ class PaymentService:
                 )
 
                 total_payments += 1
-                if reservation.payment_status == "completed":
+                if reservation.payment_status == PaymentStatus.COMPLETED.value:
                     successful_payments += 1
                     total_amount += reservation.total_amount
-                elif reservation.payment_status == "failed":
+                elif reservation.payment_status == PaymentStatus.FAILED.value:
                     failed_payments += 1
 
         # 統計作成
@@ -366,7 +367,7 @@ class PaymentService:
                 self.db.query(Reservation)
                 .filter(
                     Reservation.payment_reference == payment_id,
-                    Reservation.payment_status == "refunded",
+                    Reservation.payment_status == PaymentStatus.REFUNDED.value,
                 )
                 .first()
             )
@@ -398,10 +399,10 @@ class PaymentService:
 
         # 4. 返金処理（Stripe統合は後で実装）
         refund_id = str(uuid.uuid4())
-        refund_status = "completed"
+        refund_status = PaymentStatus.COMPLETED
 
         # 5. 予約の決済ステータスを更新
-        reservation.payment_status = "refunded"
+        reservation.payment_status = PaymentStatus.REFUNDED.value
         reservation.updated_at = datetime.utcnow()
 
         try:
@@ -416,7 +417,7 @@ class PaymentService:
         # 6. 返金レスポンス作成
         return RefundResponse(
             refund_id=refund_id,
-            refund_status=refund_status,
+            refund_status=refund_status.value,
             amount=refund_data.amount,
             reason=refund_data.reason,
             created_at=datetime.utcnow(),
