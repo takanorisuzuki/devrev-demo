@@ -12,7 +12,7 @@ psycopg2-binary>=2.9.7  # PostgreSQL sync driver
 # Authentication and security
 python-jose[cryptography]>=3.3.0
 passlib[bcrypt]>=1.7.4
-bcrypt==4.0.1  # Fixed version for passlib 1.7.4 compatibility (bcrypt 4.1+ breaks passlib)
+bcrypt==4.0.1  # passlib 1.7.4との互換性のために固定 (bcrypt 4.1+は破壊的変更あり)。参考: https://foss.heptapod.net/python-libs/passlib/-/issues/148
 python-multipart>=0.0.6
 PyJWT>=2.8.0
 
