@@ -105,13 +105,10 @@ export default function DemoReservePage() {
         const data = await getVehicle(vehicleId);
         console.log("車両データ:", data);
         setVehicle(data);
-      } catch (error: any) {
-        console.error("車両データの取得中にエラーが発生しました:", error);
+      } catch (error: unknown) {
+        // getVehicle関数で詳細なエラーはログ記録済みのため、
+        // ここではUIの状態更新に専念します
         setVehicle(null);
-        // エラーメッセージを設定（ユーザーに表示）
-        if (error.response?.status === 404) {
-          console.error(`車両ID "${vehicleId}" が見つかりません`);
-        }
       }
     };
 
