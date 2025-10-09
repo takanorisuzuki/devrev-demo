@@ -106,7 +106,10 @@ EMAIL_FROM_NAME=DriveRev
 # --------------------------------
 # Frontend Configuration - 動的に生成
 # --------------------------------
+# クライアント側（ブラウザ）用: 外部IPを使用
 NEXT_PUBLIC_API_URL=http://__EXTERNAL_IP__:8000
+# サーバー側（SSR）用: Dockerネットワーク内部名を使用
+API_URL=http://backend:8000
 NEXT_PUBLIC_APP_ENV=production
 NEXT_PUBLIC_APP_NAME=DriveRev
 NEXT_PUBLIC_DEFAULT_LOCALE=ja
