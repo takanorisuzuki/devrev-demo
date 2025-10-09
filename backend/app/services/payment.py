@@ -133,6 +133,10 @@ class PaymentService:
         reservation.payment_status = payment_status
         reservation.payment_reference = transaction_id
         reservation.updated_at = datetime.utcnow()
+        
+        # 決済成功時は予約ステータスをconfirmedに更新
+        if payment_status == "completed" and reservation.status == "pending":
+            reservation.status = "confirmed"
 
         try:
             self.db.commit()

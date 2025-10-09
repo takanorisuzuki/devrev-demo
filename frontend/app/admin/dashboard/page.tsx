@@ -394,7 +394,7 @@ function UsersContent() {
       setUsersError(
         error instanceof Error
           ? error.message
-          : "ユーザー一覧の取得に失敗しました",
+          : "ユーザー一覧の取得に失敗しました"
       );
     } finally {
       setUsersLoading(false);
@@ -614,7 +614,7 @@ function VehiclesContent() {
     useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState<any>(null);
   const [selectedVehicles, setSelectedVehicles] = useState<Set<string>>(
-    new Set(),
+    new Set()
   );
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
@@ -1254,7 +1254,7 @@ function ReservationsContent() {
         <CardHeader>
           <CardTitle>全予約一覧 ({reservations.length}件)</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           {reservations.length === 0 ? (
             <div className="text-center py-8">
               <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -1265,25 +1265,25 @@ function ReservationsContent() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       確認番号
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       顧客情報
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       車両
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       期間
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       ステータス
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       金額
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       作成日
                     </th>
                   </tr>
@@ -1291,18 +1291,18 @@ function ReservationsContent() {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {reservations.map((reservation) => (
                     <tr key={reservation.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
+                      <td className="px-4 py-3">
+                        <div className="text-sm font-medium text-gray-900 whitespace-nowrap">
                           {reservation.confirmation_number}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-4 py-3">
                         {reservation.customer ? (
-                          <div>
-                            <div className="text-sm font-medium text-gray-900">
+                          <div className="min-w-[180px]">
+                            <div className="text-sm font-medium text-gray-900 truncate max-w-[180px]">
                               {reservation.customer.full_name}
                             </div>
-                            <div className="text-sm text-gray-500">
+                            <div className="text-xs text-gray-500 truncate max-w-[180px]">
                               {reservation.customer.email}
                             </div>
                             <div className="text-xs text-gray-400">
@@ -1313,14 +1313,14 @@ function ReservationsContent() {
                           <span className="text-gray-400">-</span>
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-4 py-3">
                         {reservation.vehicle ? (
-                          <div>
+                          <div className="min-w-[140px]">
                             <div className="text-sm font-medium text-gray-900">
                               {reservation.vehicle.make}{" "}
                               {reservation.vehicle.model}
                             </div>
-                            <div className="text-sm text-gray-500">
+                            <div className="text-xs text-gray-500">
                               {reservation.vehicle.category}
                             </div>
                           </div>
@@ -1328,25 +1328,27 @@ function ReservationsContent() {
                           <span className="text-gray-400">-</span>
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
-                          {formatDate(reservation.pickup_datetime)}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          〜 {formatDate(reservation.return_datetime)}
+                      <td className="px-4 py-3">
+                        <div className="min-w-[120px]">
+                          <div className="text-xs text-gray-900">
+                            {formatDate(reservation.pickup_datetime)}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            〜 {formatDate(reservation.return_datetime)}
+                          </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-4 py-3">
                         <span
-                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(reservation.status)}`}
+                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full whitespace-nowrap ${getStatusColor(reservation.status)}`}
                         >
                           {reservation.status}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">
                         {formatCurrency(reservation.total_amount)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">
                         {formatDate(reservation.created_at)}
                       </td>
                     </tr>
@@ -1401,7 +1403,7 @@ function StoresContent() {
     } catch (error) {
       console.error("Error fetching stores:", error);
       setStoresError(
-        error instanceof Error ? error.message : "店舗一覧の取得に失敗しました",
+        error instanceof Error ? error.message : "店舗一覧の取得に失敗しました"
       );
     } finally {
       setStoresLoading(false);
