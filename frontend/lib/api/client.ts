@@ -14,13 +14,14 @@ import {
 // サーバー側（SSR）: Dockerネットワーク内部名を使用（例: http://backend:8000）
 // クライアント側（ブラウザ）: 外部IPを使用（例: http://34.182.56.160:8000）
 const API_BASE_URL = (() => {
-  const defaultUrl = "http://localhost:8000";
   // サーバー側（SSR実行時）
   if (typeof window === "undefined") {
-    return process.env.API_URL || defaultUrl;
+    // SSR時はコンテナ内からbackendサービスにアクセスするため、フォールバックもそれに合わせる
+    return process.env.API_URL || "http://backend:8000";
   }
   // クライアント側（ブラウザ）
-  return process.env.NEXT_PUBLIC_API_URL || defaultUrl;
+  // ブラウザからはホストのlocalhostにアクセスするため、このフォールバックは適切
+  return process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 })();
 
 // Axios インスタンス作成
