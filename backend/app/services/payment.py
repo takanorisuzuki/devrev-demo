@@ -156,9 +156,7 @@ class PaymentService:
             payment_id=payment_id,
             payment_status=payment_status.value,
             transaction_id=(
-                transaction_id
-                if payment_status == PaymentStatus.COMPLETED
-                else None
+                transaction_id if payment_status == PaymentStatus.COMPLETED else None
             ),
             amount=payment_data.amount,
             currency=payment_data.currency,
