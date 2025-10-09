@@ -5,6 +5,7 @@ import { AlertTriangle, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { useAuthStore } from "@/lib/stores/auth";
+import { adminApi } from "@/lib/api/admin";
 
 interface User {
   id: string;
@@ -40,32 +41,8 @@ export function UserDeleteModal({
 
     setIsLoading(true);
     try {
-      if (!token) {
-        throw new Error("認証トークンが見つかりません");
-      }
-
-      const response = await fetch(
-        `http://localhost:8000/api/v1/admin/users/${user.id}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
-      );
-
-      if (!response.ok) {
-        let errorMessage = "ユーザーの削除に失敗しました";
-        const responseText = await response.text();
-        try {
-          const errorData = JSON.parse(responseText);
-          errorMessage = errorData.detail?.message || errorMessage;
-        } catch (jsonError) {
-          // JSONでない場合はテキストをそのまま使用
-          errorMessage = responseText || errorMessage;
-        }
-        throw new Error(errorMessage);
-      }
+      // adminApi.deleteUser関数でAPI呼び出しと認証が処理されます
+      await adminApi.deleteUser(user.id);
 
       addToast({
         type: "success",

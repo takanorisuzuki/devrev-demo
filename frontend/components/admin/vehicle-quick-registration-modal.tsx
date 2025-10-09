@@ -14,6 +14,7 @@ import {
   VehicleTemplate,
 } from "@/lib/data/vehicle-templates";
 import { useAuthStore } from "@/lib/stores/auth";
+import { createVehicle } from "@/lib/api/admin-vehicles";
 
 interface VehicleQuickRegistrationModalProps {
   open: boolean;
@@ -86,28 +87,8 @@ export function VehicleQuickRegistrationModal({
         image_filename: selectedTemplate.image_filename,
       };
 
-      const response = await fetch("http://localhost:8000/api/v1/vehicles/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(vehicleData),
-      });
-
-      if (!response.ok) {
-        let errorMessage = "車両の作成に失敗しました";
-        const responseText = await response.text();
-        try {
-          const errorData = JSON.parse(responseText);
-          errorMessage = errorData.detail?.message || errorMessage;
-        } catch (jsonError) {
-          errorMessage = responseText || errorMessage;
-        }
-        throw new Error(errorMessage);
-      }
-
-      const newVehicle = await response.json();
+      // createVehicle関数でAPI呼び出しと認証が処理されます
+      const newVehicle = await createVehicle(vehicleData);
 
       addToast({
         type: "success",

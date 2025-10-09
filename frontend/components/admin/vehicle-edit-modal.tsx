@@ -13,6 +13,7 @@ import {
   TRANSMISSIONS,
 } from "@/lib/types/vehicle";
 import { useAuthStore } from "@/lib/stores/auth";
+import { updateVehicle } from "@/lib/api/admin-vehicles";
 
 // シンプルなフォームデータ型
 interface VehicleEditFormData {
@@ -99,35 +100,8 @@ export function VehicleEditModal({
     setIsLoading(true);
 
     try {
-      if (!token) {
-        throw new Error("認証トークンが見つかりません");
-      }
-
-      const response = await fetch(
-        `http://localhost:8000/api/v1/vehicles/${vehicle.id}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(formData),
-        },
-      );
-
-      if (!response.ok) {
-        let errorMessage = "車両の更新に失敗しました";
-        const responseText = await response.text();
-        try {
-          const errorData = JSON.parse(responseText);
-          errorMessage = errorData.detail?.message || errorMessage;
-        } catch (jsonError) {
-          errorMessage = responseText || errorMessage;
-        }
-        throw new Error(errorMessage);
-      }
-
-      const updatedVehicle = await response.json();
+      // updateVehicle関数でAPI呼び出しと認証が処理されます
+      const updatedVehicle = await updateVehicle(vehicle.id, formData);
 
       addToast({
         type: "success",
