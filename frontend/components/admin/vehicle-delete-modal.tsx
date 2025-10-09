@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { Vehicle } from "@/lib/types/vehicle";
 import { useAuthStore } from "@/lib/stores/auth";
+import { deleteVehicle } from "@/lib/api/admin-vehicles";
 
 interface VehicleDeleteModalProps {
   open: boolean;
@@ -31,31 +32,8 @@ export function VehicleDeleteModal({
 
     setIsLoading(true);
     try {
-      if (!token) {
-        throw new Error("認証トークンが見つかりません");
-      }
-
-      const response = await fetch(
-        `http://localhost:8000/api/v1/vehicles/${vehicle.id}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
-      );
-
-      if (!response.ok) {
-        let errorMessage = "車両の削除に失敗しました";
-        const responseText = await response.text();
-        try {
-          const errorData = JSON.parse(responseText);
-          errorMessage = errorData.detail?.message || errorMessage;
-        } catch (jsonError) {
-          errorMessage = responseText || errorMessage;
-        }
-        throw new Error(errorMessage);
-      }
+      // deleteVehicle関数でAPI呼び出しと認証が処理されます
+      await deleteVehicle(vehicle.id);
 
       addToast({
         type: "success",

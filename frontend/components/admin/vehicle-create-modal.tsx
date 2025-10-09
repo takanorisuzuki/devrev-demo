@@ -13,6 +13,7 @@ import {
   TRANSMISSIONS,
 } from "@/lib/types/vehicle";
 import { useAuthStore } from "@/lib/stores/auth";
+import { createVehicle } from "@/lib/api/admin-vehicles";
 
 // シンプルなフォームデータ型
 interface VehicleCreateFormData {
@@ -68,32 +69,8 @@ export function VehicleCreateModal({
     setIsLoading(true);
 
     try {
-      if (!token) {
-        throw new Error("認証トークンが見つかりません");
-      }
-
-      const response = await fetch("http://localhost:8000/api/v1/vehicles/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (!response.ok) {
-        let errorMessage = "車両の作成に失敗しました";
-        const responseText = await response.text();
-        try {
-          const errorData = JSON.parse(responseText);
-          errorMessage = errorData.detail?.message || errorMessage;
-        } catch (jsonError) {
-          errorMessage = responseText || errorMessage;
-        }
-        throw new Error(errorMessage);
-      }
-
-      const newVehicle = await response.json();
+      // createVehicle関数でAPI呼び出しと認証が処理されます
+      const newVehicle = await createVehicle(formData as VehicleCreate);
 
       addToast({
         type: "success",
