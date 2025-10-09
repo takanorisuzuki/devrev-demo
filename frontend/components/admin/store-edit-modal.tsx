@@ -89,7 +89,7 @@ export function StoreEditModal({
       }
 
       // adminStoreApi.updateStore関数でAPI呼び出しと認証が処理されます
-      const updatedStore = await adminStoreApi.updateStore(store.id, formData);
+      await adminStoreApi.updateStore(store.id, formData);
 
       addToast({
         type: "success",

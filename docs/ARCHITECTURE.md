@@ -236,8 +236,9 @@ useEffect(() => {
     try {
       const data = await getVehicle(vehicleId);
       setVehicle(data);
-    } catch (error) {
-      setError(error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "不明なエラーが発生しました";
+      setError(message);
     }
   };
   fetchVehicle();

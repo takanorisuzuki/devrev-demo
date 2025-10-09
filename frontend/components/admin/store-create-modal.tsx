@@ -73,7 +73,7 @@ export function StoreCreateModal({
       }
 
       // adminStoreApi.createStore関数でAPI呼び出しと認証が処理されます
-      const newStore = await adminStoreApi.createStore(formData);
+      await adminStoreApi.createStore(formData);
 
       addToast({
         type: "success",

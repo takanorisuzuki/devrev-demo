@@ -101,9 +101,7 @@ export default function DemoReservePage() {
   useEffect(() => {
     const fetchVehicle = async () => {
       try {
-        console.log("車両ID:", vehicleId);
         const data = await getVehicle(vehicleId);
-        console.log("車両データ:", data);
         setVehicle(data);
       } catch (error: unknown) {
         // getVehicle関数で詳細なエラーはログ記録済みのため、

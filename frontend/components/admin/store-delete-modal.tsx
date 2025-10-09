@@ -41,7 +41,7 @@ export function StoreDeleteModal({
       setIsLoading(true);
 
       // adminStoreApi.deleteStore関数でAPI呼び出しと認証が処理されます
-      const result = await adminStoreApi.deleteStore(store.id);
+      await adminStoreApi.deleteStore(store.id);
 
       addToast({
         type: "success",
