@@ -42,11 +42,14 @@ import { StoreDeleteModal } from "@/components/admin/store-delete-modal";
 import { SystemSettingsComponent } from "@/components/admin/system-settings";
 import { useAuthStore, useIsAdmin } from "@/lib/stores/auth";
 import { useToast } from "@/components/ui/toast";
+import { adminApi } from "@/lib/api/admin";
+import { deleteVehicle } from "@/lib/api/admin-vehicles";
+import { adminStoreApi } from "@/lib/api/admin-stores";
 import {
   reservationApi,
   GetAdminReservationsParams,
 } from "@/lib/api/reservations";
-import { adminApi, AdminStats } from "@/lib/api/admin";
+import { AdminStats } from "@/lib/api/admin";
 import { formatJSTDate } from "@/lib/utils/time-management";
 
 export default function AdminDashboard() {
@@ -383,26 +386,8 @@ function UsersContent() {
       setUsersLoading(true);
       setUsersError(null);
 
-      // Zustandストアからトークンを取得
-      const token = useAuthStore.getState().token;
-      if (!token) {
-        throw new Error("認証トークンが見つかりません");
-      }
-
-      const response = await fetch(
-        "http://localhost:8000/api/v1/admin/users/",
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error("ユーザー一覧の取得に失敗しました");
-      }
-
-      const userData = await response.json();
+      // adminApi.getUsers関数でAPI呼び出しと認証が処理されます
+      const userData = await adminApi.getUsers();
       setUsers(userData);
     } catch (error) {
       console.error("Error fetching users:", error);
@@ -692,19 +677,8 @@ function VehiclesContent() {
       // 選択された車両を順次削除
       for (const vehicleId of selectedVehicles) {
         try {
-          const response = await fetch(
-            `http://localhost:8000/api/v1/vehicles/${vehicleId}`,
-            {
-              method: "DELETE",
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            },
-          );
-
-          if (!response.ok) {
-            throw new Error(`車両ID ${vehicleId} の削除に失敗しました`);
-          }
+          // deleteVehicle関数でAPI呼び出しと認証が処理されます
+          await deleteVehicle(vehicleId);
           successCount++;
         } catch (error) {
           console.error(`車両ID ${vehicleId} の削除エラー:`, error);
@@ -1421,29 +1395,8 @@ function StoresContent() {
       if (filters.is_active !== "")
         params.is_active = filters.is_active === "true";
 
-      const searchParams = new URLSearchParams();
-      Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          searchParams.append(key, value.toString());
-        }
-      });
-
-      const url = `http://localhost:8000/api/v1/admin/stores${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
-
-      const response = await fetch(url, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "店舗一覧の取得に失敗しました");
-      }
-
-      const data = await response.json();
+      // adminStoreApi.getStores関数でAPI呼び出しと認証が処理されます
+      const data = await adminStoreApi.getStores(params);
       setStores(data.stores);
     } catch (error) {
       console.error("Error fetching stores:", error);
