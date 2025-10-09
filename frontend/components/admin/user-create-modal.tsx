@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 import { useAuthStore } from "@/lib/stores/auth";
+import { adminApi } from "@/lib/api/admin";
 
 // シンプルなフォームデータ型
 interface UserCreateFormData {
@@ -55,33 +56,8 @@ export function UserCreateModal({
     e.preventDefault();
     setIsLoading(true);
     try {
-      if (!token) {
-        throw new Error("認証トークンが見つかりません");
-      }
-
-      const response = await fetch("http://localhost:8000/api/v1/admin/users", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (!response.ok) {
-        let errorMessage = "ユーザーの作成に失敗しました";
-        const responseText = await response.text();
-        try {
-          const errorData = JSON.parse(responseText);
-          errorMessage = errorData.detail?.message || errorMessage;
-        } catch (jsonError) {
-          // JSONでない場合はテキストをそのまま使用
-          errorMessage = responseText || errorMessage;
-        }
-        throw new Error(errorMessage);
-      }
-
-      const newUser = await response.json();
+      // adminApi.createUser関数でAPI呼び出しと認証が処理されます
+      const newUser = await adminApi.createUser(formData);
 
       addToast({
         type: "success",
