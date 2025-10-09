@@ -134,9 +134,12 @@ class PaymentService:
         reservation.payment_status = payment_status.value
         reservation.payment_reference = transaction_id
         reservation.updated_at = datetime.utcnow()
-        
+
         # 決済成功時は予約ステータスをconfirmedに更新
-        if payment_status == PaymentStatus.COMPLETED and reservation.status == ReservationStatus.PENDING.value:
+        if (
+            payment_status == PaymentStatus.COMPLETED
+            and reservation.status == ReservationStatus.PENDING.value
+        ):
             reservation.status = ReservationStatus.CONFIRMED.value
 
         try:
@@ -152,7 +155,11 @@ class PaymentService:
         return PaymentResponse(
             payment_id=payment_id,
             payment_status=payment_status.value,
-            transaction_id=transaction_id if payment_status == PaymentStatus.COMPLETED else None,
+            transaction_id=(
+                transaction_id
+                if payment_status == PaymentStatus.COMPLETED
+                else None
+            ),
             amount=payment_data.amount,
             currency=payment_data.currency,
             created_at=datetime.utcnow(),
@@ -181,7 +188,12 @@ class PaymentService:
             .join(Vehicle, Reservation.vehicle_id == Vehicle.id)
             .filter(
                 Reservation.customer_id == customer_id,
-                Reservation.payment_status.in_([PaymentStatus.COMPLETED.value, PaymentStatus.FAILED.value]),
+                Reservation.payment_status.in_(
+                    [
+                        PaymentStatus.COMPLETED.value,
+                        PaymentStatus.FAILED.value,
+                    ]
+                ),
             )
             .order_by(Reservation.updated_at.desc())
             .offset(skip)
@@ -257,7 +269,14 @@ class PaymentService:
             .join(Vehicle, Reservation.vehicle_id == Vehicle.id)
             .join(User, Reservation.customer_id == User.id)
             .join(Store, Reservation.pickup_store_id == Store.id)
-            .filter(Reservation.payment_status.in_([PaymentStatus.COMPLETED.value, PaymentStatus.FAILED.value]))
+            .filter(
+                Reservation.payment_status.in_(
+                    [
+                        PaymentStatus.COMPLETED.value,
+                        PaymentStatus.FAILED.value,
+                    ]
+                )
+            )
             .order_by(Reservation.updated_at.desc())
             .offset(skip)
             .limit(limit)
