@@ -13,16 +13,15 @@ import {
 // API Base URL - サーバー側とクライアント側で異なるURLを使用
 // サーバー側（SSR）: Dockerネットワーク内部名を使用（例: http://backend:8000）
 // クライアント側（ブラウザ）: 外部IPを使用（例: http://34.182.56.160:8000）
-const getApiBaseUrl = () => {
+const API_BASE_URL = (() => {
+  const defaultUrl = "http://localhost:8000";
   // サーバー側（SSR実行時）
   if (typeof window === "undefined") {
-    return process.env.API_URL || "http://localhost:8000";
+    return process.env.API_URL || defaultUrl;
   }
   // クライアント側（ブラウザ）
-  return process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-};
-
-const API_BASE_URL = getApiBaseUrl();
+  return process.env.NEXT_PUBLIC_API_URL || defaultUrl;
+})();
 
 // Axios インスタンス作成
 export const apiClient = axios.create({
