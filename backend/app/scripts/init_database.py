@@ -128,7 +128,7 @@ def main():
         "create_sample_users",
         "create_sample_stores",
         "create_demo_vehicles",
-        "assign_vehicles_to_stores",
+        "assign_stores_to_vehicles",
         "create_past_reservations",
     ]
 
