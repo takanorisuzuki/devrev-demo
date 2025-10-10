@@ -611,11 +611,248 @@ async def generate_api_key(
 
 ---
 
-## Phase 3-5: 続き
+## Phase 3: 店舗別在庫・予約システム
 
-（以降の Phase は同様のフォーマットで記載）
+### 目標
 
-**Phase 3**: 予約カレンダー（詳細は `05_RESERVATION_SYSTEM.md` 参照）
+店舗の営業時間と車両の空き状況を管理し、AI Agent が適切な予約提案ができるようにする。
+
+### 3-1: Backend - Store Model 拡張
+
+**ファイル**: `backend/app/models/store.py`
+
+**変更内容**:
+
+```python
+class Store(Base):
+    # ... 既存フィールド ...
+
+    # 営業時間管理（新規追加）
+    opening_hours: dict | None = Column(JSON, nullable=True)
+    # 例: {
+    #   "monday": {"open": "09:00", "close": "19:00", "closed": false},
+    #   "tuesday": {"open": "09:00", "close": "19:00", "closed": false},
+    #   "saturday": {"open": "10:00", "close": "18:00", "closed": false},
+    #   "sunday": {"open": "10:00", "close": "18:00", "closed": false}
+    # }
+
+    closed_dates: list | None = Column(JSON, nullable=True)
+    # 例: ["2024-12-31", "2025-01-01", "2025-01-02"]
+
+    dropoff_enabled_stores: list | None = Column(JSON, nullable=True)
+    # 例: ["uuid-osaka-store", "uuid-fukuoka-store"]
+
+    def is_open_on_date(self, date: datetime.date) -> bool:
+        """指定日が営業日かチェック"""
+        if self.closed_dates and date.isoformat() in self.closed_dates:
+            return False
+
+        if not self.opening_hours:
+            return True  # デフォルトは営業
+
+        day_name = date.strftime('%A').lower()
+        day_hours = self.opening_hours.get(day_name)
+
+        return day_hours and not day_hours.get('closed', False)
+```
+
+**Alembic マイグレーション**:
+
+```bash
+cd backend
+alembic revision -m "add_operating_hours_to_stores"
+alembic upgrade head
+```
+
+**工数**: 0.5 日
+
+### 3-2: Backend - Vehicle Model 拡張
+
+**ファイル**: `backend/app/models/vehicle.py`
+
+**変更内容**:
+
+```python
+class Vehicle(Base):
+    # ... 既存フィールド ...
+
+    # メンテナンス期間管理（新規追加）
+    maintenance_periods: list | None = Column(JSON, nullable=True)
+    # 例: [
+    #   {"start": "2024-02-01", "end": "2024-02-05", "reason": "定期点検"},
+    #   {"start": "2024-03-15", "end": "2024-03-16", "reason": "タイヤ交換"}
+    # ]
+
+    features: list | None = Column(JSON, nullable=True)
+    # 例: ["カーナビ", "ETC", "バックカメラ", "ドライブレコーダー"]
+
+    def is_available_on_period(
+        self,
+        start_date: datetime.date,
+        end_date: datetime.date
+    ) -> bool:
+        """指定期間がメンテナンス期間と重複しないかチェック"""
+        if not self.maintenance_periods:
+            return True
+
+        for period in self.maintenance_periods:
+            maint_start = datetime.date.fromisoformat(period['start'])
+            maint_end = datetime.date.fromisoformat(period['end'])
+
+            # 期間が重複するかチェック
+            if not (end_date < maint_start or start_date > maint_end):
+                return False
+
+        return True
+```
+
+**工数**: 0.5 日
+
+### 3-3: Backend - 空き車両検索 API
+
+**ファイル**: `backend/app/api/v1/vehicles.py` (既存ファイルに追加)
+
+```python
+from datetime import datetime, date
+from sqlalchemy import and_, or_
+
+@router.get("/search-available", response_model=List[VehicleAvailability])
+async def search_available_vehicles(
+    start_date: str,  # YYYY-MM-DD
+    end_date: str,    # YYYY-MM-DD
+    vehicle_type: str | None = None,
+    store_id: str | None = None,
+    db: Session = Depends(get_db)
+):
+    """
+    空き車両を検索
+
+    ロジック:
+    1. 指定期間に予約が入っていない車両
+    2. メンテナンス期間と重複しない車両
+    3. 指定された車両タイプ（オプション）
+    4. 指定された店舗（オプション）
+    """
+    try:
+        start = date.fromisoformat(start_date)
+        end = date.fromisoformat(end_date)
+    except ValueError:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid date format. Use YYYY-MM-DD"
+        )
+
+    # ベースクエリ
+    query = db.query(Vehicle).filter(Vehicle.is_available == True)
+
+    if vehicle_type:
+        query = query.filter(Vehicle.type == vehicle_type)
+
+    if store_id:
+        query = query.filter(Vehicle.store_id == store_id)
+
+    vehicles = query.all()
+
+    # 空き状況をチェック
+    available_vehicles = []
+    for vehicle in vehicles:
+        # 予約状況チェック
+        conflicting_reservations = db.query(Reservation).filter(
+            and_(
+                Reservation.vehicle_id == vehicle.id,
+                Reservation.status.in_(['pending', 'confirmed']),
+                or_(
+                    and_(
+                        Reservation.start_date <= start,
+                        Reservation.end_date >= start
+                    ),
+                    and_(
+                        Reservation.start_date <= end,
+                        Reservation.end_date >= end
+                    ),
+                    and_(
+                        Reservation.start_date >= start,
+                        Reservation.end_date <= end
+                    )
+                )
+            )
+        ).count()
+
+        if conflicting_reservations > 0:
+            continue
+
+        # メンテナンス期間チェック
+        if not vehicle.is_available_on_period(start, end):
+            continue
+
+        available_vehicles.append(vehicle)
+
+    return available_vehicles
+```
+
+**工数**: 1.5 日
+
+### 3-4: Frontend - 日付範囲選択コンポーネント
+
+**ファイル**: `frontend/components/reservations/DateRangePicker.tsx` (新規作成)
+
+```typescript
+'use client';
+
+import { useState } from 'react';
+import { Calendar } from '@/components/ui/calendar';
+
+export interface DateRange {
+  from: Date;
+  to: Date;
+}
+
+export function DateRangePicker({
+  onDateRangeChange
+}: {
+  onDateRangeChange: (range: DateRange) => void;
+}) {
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
+
+  const handleSelect = (range: DateRange | undefined) => {
+    if (range?.from && range?.to) {
+      setDateRange(range);
+      onDateRangeChange(range);
+    }
+  };
+
+  return (
+    <div className="p-4">
+      <Calendar
+        mode="range"
+        selected={dateRange}
+        onSelect={handleSelect}
+        numberOfMonths={2}
+        disabled={(date) => date < new Date()}
+      />
+    </div>
+  );
+}
+```
+
+**工数**: 1 日
+
+### Phase 3 成果物チェックリスト
+
+- [ ] Store Model に営業時間フィールド追加
+- [ ] Vehicle Model にメンテナンス期間フィールド追加
+- [ ] Alembic マイグレーション実行
+- [ ] 空き車両検索 API 実装
+- [ ] 日付範囲選択 UI 実装
+- [ ] API と UI の統合
+- [ ] テスト実行
+
+**合計工数**: 3.5-4 日
+
+---
+
+## Phase 4-5: 続き
+
 **Phase 4**: Global Configuration
 **Phase 5**: Workflow Skill 実装（詳細は `04_DEVREV_INTEGRATION.md` 参照）
 

@@ -291,46 +291,118 @@ class User(Base):
 
 ### コアエンティティ比較
 
-| PetStore       | DriveRev                 | 関係              |
-| -------------- | ------------------------ | ----------------- |
-| Pet            | Vehicle                  | 1:1 (商品)        |
-| PetCategory    | VehicleCategory          | 1:1 (カテゴリ)    |
-| VetAppointment | Reservation              | 1:1 (予約)        |
-| Veterinarian   | Store Staff (未実装)     | 新規追加予定      |
-| Order          | Reservation Order (統合) | 異なる設計        |
-| Product        | N/A                      | DriveRev では不要 |
+| PetStore       | DriveRev                 | 関係              | 備考 |
+| -------------- | ------------------------ | ----------------- | ---- |
+| Pet            | Vehicle                  | 1:1 (商品)        | 両方とも「貸し出す資産」 |
+| PetCategory    | VehicleType              | 1:1 (カテゴリ)    | サービスタイプ ≈ 車両タイプ |
+| VetAppointment | Reservation              | 1:1 (予約)        | 時間枠 → 日付範囲 |
+| Veterinarian   | **Store** (既存モデル)   | **概念の置き換え** | スタッフ → 店舗・在庫管理 |
+| Order          | Reservation (統合済)     | 異なる設計        | 注文と予約を統合 |
+| Product        | N/A                      | DriveRev では不要 | 物販なし |
 
-### 追加が必要なモデル
+**重要な設計方針**:
+- PetStoreの「Veterinarian（スタッフ）」は DriveRevでは「Store（店舗）+ Vehicle在庫」に置き換え
+- スタッフの勤務スケジュール → 店舗の営業時間 + 車両のメンテナンス期間
+- これにより、PetStoreと同じデータ構造・APIパターンで自然なレンタカーシステムを実現
 
-1. **GlobalConfig** (PetStore から移植)
+### 拡張が必要な既存モデル
 
-   ```python
-   class GlobalConfig(Base):
-       __tablename__ = "global_config"
+#### 1. **Store Model** (営業時間・乗り捨て管理)
 
-       id = Column(Integer, primary_key=True)
-       config_key = Column(String(100), unique=True)
-       config_value = Column(Text)
-       description = Column(String(255))
-       is_secret = Column(Boolean, default=False)
-       created_at = Column(DateTime, default=datetime.utcnow)
-       updated_at = Column(DateTime, onupdate=datetime.utcnow)
-   ```
+```python
+class Store(Base):
+    # 既存フィールド: id, name, address, phone, email, ...
 
-2. **ApiCallLog** (トレーニング用)
-   ```python
-   class ApiCallLog(Base):
-       __tablename__ = "api_call_logs"
+    # 追加フィールド
+    opening_hours: dict | None = Column(JSON, nullable=True)
+    # 例: {"monday": {"open": "09:00", "close": "19:00", "closed": false}}
 
-       id = Column(Integer, primary_key=True)
-       user_id = Column(UUID(as_uuid=True), ForeignKey('users.id'))
-       endpoint = Column(String(255))
-       method = Column(String(10))
-       status_code = Column(Integer)
-       request_body = Column(Text)
-       response_body = Column(Text)
-       created_at = Column(DateTime, default=datetime.utcnow)
-   ```
+    closed_dates: list | None = Column(JSON, nullable=True)
+    # 例: ["2024-12-31", "2025-01-01"]
+
+    dropoff_enabled_stores: list | None = Column(JSON, nullable=True)
+    # 例: ["uuid-osaka", "uuid-fukuoka"]
+
+    def is_open_on_date(self, date: datetime.date) -> bool:
+        """指定日が営業日かチェック（PetStoreのスタッフスケジュールと同等）"""
+        pass
+```
+
+**PetStore対応**: Veterinarian の勤務スケジュール → Store の営業時間
+
+#### 2. **Vehicle Model** (メンテナンス管理)
+
+```python
+class Vehicle(Base):
+    # 既存フィールド: id, model, type, daily_rate, ...
+
+    # 追加フィールド
+    maintenance_periods: list | None = Column(JSON, nullable=True)
+    # 例: [{"start": "2024-02-01", "end": "2024-02-05", "reason": "定期点検"}]
+
+    features: list | None = Column(JSON, nullable=True)
+    # 例: ["カーナビ", "ETC", "バックカメラ"]
+
+    def is_available_on_period(self, start: date, end: date) -> bool:
+        """指定期間が利用可能かチェック（PetStoreの時間枠チェックと同等）"""
+        pass
+```
+
+**PetStore対応**: スタッフの空き時間 → 車両の利用可能期間
+
+#### 3. **User Model** (DevRev統合)
+
+```python
+class User(Base):
+    # 既存フィールド: id, email, hashed_password, ...
+
+    # DevRev Integration (新規追加)
+    devrev_app_id: str | None = Column(String(500), nullable=True)
+    devrev_application_access_token: str | None = Column(String(500), nullable=True)
+    devrev_revuser_id: str | None = Column(String(200), nullable=True, index=True)
+    use_global_devrev_config: bool = Column(Boolean, default=False)
+
+    # API Key Management (新規追加)
+    api_key: str | None = Column(String(100), nullable=True, unique=True)
+    api_key_name: str | None = Column(String(100))
+    api_key_created_at: datetime | None = Column(DateTime)
+    api_key_last_used: datetime | None = Column(DateTime)
+```
+
+**PetStore対応**: 完全に同じフィールド構成
+
+### 追加が必要な新規モデル
+
+#### 4. **GlobalConfig** (PetStore から移植)
+
+```python
+class GlobalConfig(Base):
+    __tablename__ = "global_config"
+
+    id = Column(Integer, primary_key=True)
+    config_key = Column(String(100), unique=True)
+    config_value = Column(Text)
+    description = Column(String(255))
+    is_secret = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, onupdate=datetime.utcnow)
+```
+
+#### 5. **ApiCallLog** (トレーニング・デバッグ用)
+
+```python
+class ApiCallLog(Base):
+    __tablename__ = "api_call_logs"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey('users.id'))
+    endpoint = Column(String(255))
+    method = Column(String(10))
+    status_code = Column(Integer)
+    request_body = Column(Text)
+    response_body = Column(Text)
+    created_at = Column(DateTime, default=datetime.utcnow)
+```
 
 ---
 

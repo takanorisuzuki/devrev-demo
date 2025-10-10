@@ -412,13 +412,14 @@ async def get_api_key_with_aat(
 
 ### パターン 2: 予約作成
 
-**Workflow 名**: `BookReservation`
-**用途**: ユーザーに代わって予約を作成
+**Workflow 名**: `CreateReservation`
+**用途**: ユーザーに代わってレンタカー予約を作成
 
 **前提条件**:
 
-1. API Key が取得済み
-2. 予約に必要な情報（日付、時間、車両 ID）
+1. API Key が取得済み（GetApiKey Workflow で取得）
+2. 車両 ID（SearchAvailableVehicles Workflow で選択）
+3. 予約期間（開始日、終了日）
 
 **Skill Structure**:
 
@@ -521,16 +522,22 @@ async def get_api_key_with_aat(
 }
 ```
 
-### パターン 3: 空き時間検索
+### パターン 3: 空き車両検索
 
-**Workflow 名**: `GetAvailableSlots`
-**用途**: 指定された日付の空き時間を検索
+**Workflow 名**: `SearchAvailableVehicles`
+**用途**: 指定期間・車両タイプで利用可能な車両を検索
+
+**入力パラメータ**:
+- start_date: 利用開始日（YYYY-MM-DD）
+- end_date: 利用終了日（YYYY-MM-DD）
+- vehicle_type: 車両タイプ（sedan, suv, compact 等）[オプション]
+- store_id: 店舗 ID [オプション]
 
 **Skill Structure**:
 
 ```json
 {
-  "description": "Get available time slots for a date",
+  "description": "Search available vehicles for specified period and type",
   "steps": [
     {
       "name": "Agent Skill Trigger",
@@ -543,9 +550,14 @@ async def get_api_key_with_aat(
               "value": {
                 "fields": [
                   {
-                    "name": "date",
+                    "name": "start_date",
                     "field_type": "text",
-                    "description": "Date in YYYY-MM-DD format"
+                    "description": "Start date in YYYY-MM-DD format"
+                  },
+                  {
+                    "name": "end_date",
+                    "field_type": "text",
+                    "description": "End date in YYYY-MM-DD format"
                   },
                   {
                     "name": "vehicle_type",
@@ -567,7 +579,7 @@ async def get_api_key_with_aat(
           "fields": [
             {
               "name": "url",
-              "value": "https://driverev.example.com/api/v1/reservations/available-slots"
+              "value": "https://driverev.example.com/api/v1/vehicles/search-available"
             },
             {
               "name": "method",
@@ -577,8 +589,12 @@ async def get_api_key_with_aat(
               "name": "query_params",
               "value": [
                 {
-                  "key": "date",
-                  "value": "{{date}}"
+                  "key": "start_date",
+                  "value": "{{start_date}}"
+                },
+                {
+                  "key": "end_date",
+                  "value": "{{end_date}}"
                 },
                 {
                   "key": "vehicle_type",
@@ -600,7 +616,7 @@ async def get_api_key_with_aat(
               "name": "outputs",
               "value": [
                 {
-                  "key": "slots",
+                  "key": "available_vehicles",
                   "value": "{{http_1.output.body}}"
                 }
               ]

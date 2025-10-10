@@ -61,23 +61,24 @@
 | **予約作成**           |
 | - 基本予約作成         | ✅                          | ✅                      | 完了        | -      |
 | - 日付選択             | ✅ カレンダー               | ⚠️ 入力フォーム         | UI 改善必要 | **P0** |
-| - 時間枠選択           | ✅ タイムスロット           | ⚠️ 開始/終了時刻        | 改善必要    | **P0** |
-| - サービス選択         | ✅ 8 種類のサービス         | ⚠️ 車両選択のみ         | 拡張必要    | P1     |
-| - スタッフ選択         | ✅ Veterinarian 選択        | ❌                      | 未実装      | **P0** |
-| **空き時間検索**       |
-| - 日別空き時間         | ✅                          | ❌                      | 未実装      | **P0** |
-| - スタッフ別空き時間   | ✅                          | ❌                      | 未実装      | **P0** |
-| - サービス別空き時間   | ✅                          | ❌                      | 未実装      | P1     |
+| - 期間選択             | ✅ タイムスロット           | ⚠️ 開始/終了日          | 改善必要    | **P0** |
+| - 車両タイプ選択       | ✅ 8 種類のサービス         | ✅ 車両タイプ選択       | 完了        | -      |
+| - オプション選択       | ✅ サービスバリエーション   | ⚠️ 部分実装             | 拡張必要    | P1     |
+| - 店舗選択             | ✅ Veterinarian 選択        | ⚠️ Store model 存在     | UI 未実装   | **P0** |
+| **空き車両検索**       |
+| - 期間別空き車両       | ✅                          | ❌                      | 未実装      | **P0** |
+| - 店舗別空き車両       | ✅                          | ❌                      | 未実装      | **P0** |
+| - 車両タイプ別検索     | ✅                          | ⚠️ 部分実装             | API 拡張必要 | P1     |
 | **予約管理**           |
 | - 予約一覧             | ✅                          | ✅                      | 完了        | -      |
 | - 予約詳細             | ✅                          | ✅                      | 完了        | -      |
 | - 予約キャンセル       | ✅                          | ✅                      | 完了        | -      |
 | - ステータス更新       | ✅                          | ⚠️ 部分実装             | 管理者のみ  | P2     |
-| **スタッフ管理**       |
-| - スタッフ登録         | ✅ Veterinarians            | ❌                      | 未実装      | **P0** |
-| - スタッフプロフィール | ✅ 専門分野など             | ❌                      | 未実装      | P1     |
-| - 勤務スケジュール     | ✅ 曜日別                   | ❌                      | 未実装      | **P0** |
-| - スタッフ検索 API     | ✅                          | ❌                      | 未実装      | P1     |
+| **店舗・車両管理**     |
+| - 店舗登録             | ✅ Veterinarians            | ⚠️ Store model 存在     | UI 未実装   | **P0** |
+| - 店舗営業時間設定     | ✅ 専門分野・勤務時間       | ❌                      | 未実装      | **P0** |
+| - 車両メンテナンス管理 | ✅ 曜日別スケジュール       | ❌                      | 未実装      | P1     |
+| - 店舗別在庫 API       | ✅                          | ❌                      | 未実装      | **P0** |
 
 ### 🛒 注文・決済
 
@@ -117,10 +118,11 @@
 | **Workflow Integration** |
 | - Get API Key            | ✅         | ❌              | 未実装   | P1     |
 | - Get User Info          | ✅         | ❌              | 未実装   | P1     |
-| - Book Appointment       | ✅         | ❌              | 未実装   | P1     |
-| - Get Available Slots    | ✅         | ❌              | 未実装   | P1     |
-| - Get All Services       | ✅         | ❌              | 未実装   | P2     |
-| - Get All Staff          | ✅         | ❌              | 未実装   | P2     |
+| - Create Reservation     | ✅ Book Appointment | ❌   | 未実装   | P1     |
+| - Search Available Vehicles | ✅ Get Available Slots | ❌ | 未実装 | P1 |
+| - Get All Vehicle Types  | ✅ Get All Services | ❌  | 未実装   | P2     |
+| - Get Store Inventory    | ✅ Get All Staff    | ❌  | 未実装   | P2     |
+| - Calculate Total Cost   | ❌ (新規)           | ❌  | 未実装   | P2     |
 | **Webhook**              |
 | - Webhook Endpoints      | ✅         | ❌              | 未実装   | P3     |
 | - Event Notifications    | ✅         | ❌              | 未実装   | P3     |
@@ -144,16 +146,17 @@
 **依存関係**: なし
 **ブロッカー**: これがないと PLuG Chat が使えない
 
-#### 2. 予約カレンダーシステム
+#### 2. 店舗別在庫・予約システム
 
-- **スタッフ（Staff）モデル** (Veterinarian と同等)
-- **勤務スケジュール管理**
-- **空き時間検索 API** (`GET /api/v1/reservations/available-slots`)
-- **カレンダー UI コンポーネント**
+- **店舗営業時間管理** (Store model 拡張)
+- **車両メンテナンス期間管理** (Vehicle model 拡張)
+- **空き車両検索 API** (`GET /api/v1/vehicles/search-available`)
+- **カレンダー UI コンポーネント** (日付範囲選択)
 
 **実装工数**: 3-4 日
 **依存関係**: なし
 **ブロッカー**: これがないと予約ワークフローが動かない
+**PetStore との違い**: スタッフスケジュール → 店舗営業時間 + 車両在庫管理
 
 ### 🟠 高優先度（P1） - 早期実装推奨
 
@@ -182,14 +185,16 @@ DevRev Workflow の**実践的な学習**に必要な機能です。
 #### 5. Workflow 用 API エンドポイント
 
 - **Get User Info** (`GET /api/v1/admin/user?devrev_revuser_id=`)
-- **Book Reservation** (`POST /api/v1/reservations?api_key=`)
-- **Get Available Slots** (`GET /api/v1/reservations/available-slots`)
-- **Get All Vehicles** (`GET /api/v1/vehicles`)
-- **Get All Staff** (`GET /api/v1/staff`)
+- **Create Reservation** (`POST /api/v1/reservations?api_key=`)
+- **Search Available Vehicles** (`GET /api/v1/vehicles/search-available`)
+- **Get All Vehicle Types** (`GET /api/v1/vehicles/types`)
+- **Get Store Inventory** (`GET /api/v1/stores/{id}/inventory`)
+- **Calculate Total Cost** (`POST /api/v1/reservations/calculate-cost`) ← 新規
 
 **実装工数**: 2-3 日
 **依存関係**: P0, P1 の一部
 **用途**: DevRev Workflow Skill からの呼び出し
+**PetStore との違い**: スタッフ検索 → 店舗在庫検索、料金計算機能追加
 
 ### 🟡 中優先度（P2） - 段階的実装
 
