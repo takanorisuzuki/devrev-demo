@@ -116,6 +116,35 @@ DevRev Session Token は、PLuG SDK がユーザーを識別するための**一
 }
 ```
 
+#### 利用モード別の設定切り替え（Living Docs）
+
+- **ゲストアクセス**: ログインしていない場合は `GlobalConfig` に登録された共有 App ID / AAT / PAT でセッションを生成する。メールアドレスは `guest@driverev.dev` のようなダミー識別子を使い、RevUser ID は共有アカウントに紐づく。
+- **ログインユーザー**: プロフィールで `devrev_use_personal_config` をオンにすると、個人の App ID / AAT を暗号化保存し、以降の PLuG 初期化はその設定で行う。Session Token は個別に発行し、`devrev_session_token` へ暗号化保存する。
+- **フォールバック**: 個人設定が未入力の場合は 400 を返し、PLuG を初期化しない。個人設定をオフにした場合はゲストと同じ Global 設定を利用する。
+
+#### 非同期 DevRev サービス（例）
+
+```python
+class DevRevService:
+    def __init__(self, aat: str):
+        self.aat = aat
+        self.base_url = "https://api.devrev.ai"
+
+    async def verify_aat_and_get_revuser(self) -> dict | None:
+        async with httpx.AsyncClient(timeout=10) as client:
+            response = await client.get(
+                f"{self.base_url}/dev-users.self",
+                headers={"Authorization": self.aat, "Content-Type": "application/json"},
+            )
+            response.raise_for_status()
+            data = response.json()
+            return {
+                "revuser_id": data.get("id"),
+                "email": data.get("email"),
+                "display_name": data.get("display_name"),
+            }
+```
+
 #### 2. RevUser ID 保存
 
 **重要**: `subject`フィールドが**RevUser ID**です。これを保存しておくことで、将来的に DevRev Workflow Skill からユーザー API を呼び出す際に使用できます。
@@ -130,6 +159,8 @@ if 'subject' in token_data:
     current_user.devrev_revuser_id = token_data['subject']
     db.commit()
 ```
+
+> メモ: `devrev_session_token` と `devrev_session_expires_at` は User テーブルに保存する。トークン値は `crypto_service.encrypt()` で暗号化し、失効済みのレコードは定期的に削除する。
 
 ### Session Token 更新戦略
 
@@ -155,7 +186,7 @@ useEffect(() => {
 #### オプション 2: サーバー側セッション管理
 
 ```python
-# Flask Session (PetStore方式)
+# Flask Session (参照システム<!-- 旧称: PetStore -->方式)
 session['devrev_session_token'] = session_token
 session['devrev_token_expires_at'] = time.time() + 3600
 
@@ -163,6 +194,13 @@ session['devrev_token_expires_at'] = time.time() + 3600
 if time.time() > session.get('devrev_token_expires_at', 0):
     # 再生成
 ```
+
+#### 最終方針（DriveRev）
+
+- **Session Token は DB に暗号化保存**し、`devrev_session_expires_at` で失効判定する
+- **バックエンドが単一の生成窓口**となり、PLuG 初期化前に `/devrev/session-token` を呼び出す
+- **期限切れトークンのクリーンアップ**は定期ジョブまたは DB TTL で実施する
+- DevRev API 呼び出しには `httpx.AsyncClient` などの非同期クライアントを採用し、FastAPI のイベントループブロッキングを避ける
 
 ### PLuG SDK 初期化
 
@@ -282,25 +320,30 @@ async def get_api_key_with_aat(
     This endpoint is used by DevRev Workflow Skills to retrieve
     the user's DriveRev API key for making subsequent API calls.
     """
-    revuser_id = request.revuser_id
+    devrev_service = DevRevService(devrev_aat)
+    revuser_info = await devrev_service.verify_aat_and_get_revuser()
 
-    # Find user by RevUser ID
-    user = db.query(User).filter(User.devrev_revuser_id == revuser_id).first()
+    if not revuser_info:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid Application Access Token"
+        )
+
+    if revuser_info["revuser_id"] != request.revuser_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="RevUser ID mismatch"
+        )
+
+    user = db.query(User).filter(
+        User.devrev_revuser_id == revuser_info["revuser_id"]
+    ).first()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
         )
 
-    # Verify AAT matches user's stored AAT
-    config = user.get_effective_devrev_config()
-    if devrev_aat != config['aat']:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid AAT or RevUser ID mismatch"
-        )
-
-    # Return API key if user has one
     if not user.api_key:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -310,8 +353,9 @@ async def get_api_key_with_aat(
     return ApiKeyResponse(
         api_key=user.api_key,
         user_info={
-            'email': user.email,
-            'full_name': user.full_name
+            "email": user.email,
+            "full_name": user.full_name,
+            "revuser_id": user.devrev_revuser_id,
         }
     )
 ```
@@ -635,10 +679,11 @@ async def get_api_key_with_aat(
 
 ### 1. Application Access Token (AAT) の保護
 
-**問題**: AAT は DB 平文保存されている
-
-**改善策**: 環境変数から取得した暗号化キーで暗号化
-
+- AAT と Session Token は `app/core/crypto.py` の `crypto_service` で暗号化／復号する
+- 暗号化キーは `.env` ではなく Secret Manager（本番）で管理し、`scripts/generate-encryption-key.sh` で生成する
+- キーローテーション時は `LEGACY_ENCRYPTION_KEYS` を使って段階的に再暗号化し、`scripts/migrate_encryption.py` を実行する
+<!--
+旧記述:
 ```python
 from cryptography.fernet import Fernet
 
@@ -660,6 +705,7 @@ def decrypted_devrev_aat(self) -> str | None:
         return None
     return decrypt_aat(self.devrev_application_access_token)
 ```
+-->
 
 ### 2. API Key 保護
 
@@ -675,12 +721,31 @@ def decrypted_devrev_aat(self) -> str | None:
 **注意点**:
 
 - ✅ HTTPS のみで送信
-- ✅ HTTPOnly Cookie（検討）
-- ✅ 有効期限チェック
-- ❌ ローカルストレージに保存しない
+- ✅ DB 保存時に暗号化・有効期限チェック
+- ✅ 定期ジョブか TTL で失効トークンを削除
+- ❌ ローカルストレージに保存しない（PLuG 初期化直前に取得）
+<!-- 旧記述では HTTPOnly Cookie の検討や単純保存禁止など同趣旨の注意点を列挙していた。 -->
+
+### 4. 非機能要件（Living Docs）
+
+- **DevRev API 呼び出しポリシー**  
+  `DevRevService` は `httpx.AsyncClient` を 10 秒タイムアウト・最大 3 回指数バックオフで再試行する。全失敗時は 502（Bad Gateway）を返し、呼び出し元は DevRev 連携を一時無効化する。<br>
+  <!-- 旧運用: `requests` + 単発呼び出しで、タイムアウト・リトライなし。 -->
+
+- **ロギングと観測性**  
+  DevRev API へのリクエスト/レスポンス（ステータスコード、遅延）は構造化ログで出力し、オブザーバビリティ基盤（例: GCP Logging）で追跡する。5xx が閾値（連続 5 回）を超えたらアラートを発報する。
+
+- **PLuG 初期化フロント挙動**  
+  フロントエンドは `/devrev/session-token` から 204 を受け取ると PLuG を非表示にし、401/403/502 はトーストでユーザーに通知する。開発環境では console.warn を併用してデバッグを容易にする。
+
+- **フェイルセーフ**  
+  DevRev 統合が失敗しても DriveRev の予約・決済機能は動作する。セッション生成失敗時はバックエンド側でログを残し、再試行のためのメトリクス（成功率）を記録する。
+
+- **ドキュメント更新ルール**  
+  アーキテクチャ変更や非機能要件の見直しが発生した際は、本章と `01_ARCHITECTURE.md`・`05_IMPLEMENTATION_ANALYSIS.md` を同時に更新し、旧仕様は HTML コメントで残して変更履歴を可視化する。
 
 ---
 
 ## 次のステップ
 
-👉 [05_RESERVATION_SYSTEM.md](./05_RESERVATION_SYSTEM.md) で予約システムの詳細設計を確認
+👉 [05_IMPLEMENTATION_ANALYSIS.md](./05_IMPLEMENTATION_ANALYSIS.md) でギャップ分析とリスク項目を確認

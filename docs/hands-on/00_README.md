@@ -4,9 +4,20 @@
 
 このハンズオンラボは、**日本のお客様とパートナー**が DevRev の AI Agent 機能を実践的に学ぶための環境です。DriveRev（レンタカーサイト）を題材に、自身の DevRev Trial 組織を使って、実際に公開されているサイトで AI Agent の開発、テスト、デプロイメントを体験できます。
 
+### DriveRev セルフラーニングサイトの利用モード（Living Docs）
+
+- **ゲストモード（未ログイン）**  
+  DriveRev ではゲストユーザーが即座に体験できるよう、運営側で用意した固定 App ID / AAT / PAT を Global 設定として保持しています。ゲストが PLuG チャットを開くと、この共有アカウントで DevRev と連携したサポート体験が得られます。実際のトークン値は社内管理のため公開しません。
+
+- **パーソナルモード（ログイン済み）**  
+  DriveRev にユーザー登録したあとは、プロフィール画面で自分の DevRev App ID / PAT / AAT を登録できます。`個人設定を有効化` をオンにすると、以後はご自身の DevRev 組織の PLuG チャットが表示され、カスタマイズ内容（Workflow、Knowledge、Branding）をそのまま DriveRev でセルフテストできます。
+
+- **運用上の注意**  
+  固定トークンや内部運用の詳細は公開せず、Git リポジトリではマスキングしたサンプル値のみを管理します。非機能要件（リトライ、監視など）は内部ガイドラインに従い、本ドキュメントには必要最小限のみ記載します。
+
 ## 🌟 学習目標
 
-1. **DevRev PLuG 統合**: 実際の Web アプリケーションに PLuG チャットを統合
+1. **DevRev PLuG 統合**: 実際の Web アプリケーションに PLuG チャットを統合（ゲスト／個人設定双方に対応）
 2. **ユーザー ID マネジメント**: Session Token を使った安全なユーザー認証
 3. **API 連携**: DriveRev の API を使った DevRev Workflow 開発
 4. **Knowledge Base**: DevRev KB と AI Agent の連携
@@ -19,17 +30,18 @@
 
 1. **[01_ARCHITECTURE.md](./01_ARCHITECTURE.md)** - アーキテクチャ比較と設計方針
 
-   - PetStore と DriveRev の技術スタック比較
+   - 参照システムと DriveRev の技術スタック比較
    - Flask vs FastAPI/Next.js
+    <!-- - セッション認証 vs JWT 認証 -->
    - セッション認証 vs JWT 認証
    - 設計上の重要な決定事項
 
 2. **[02_FEATURE_COMPARISON.md](./02_FEATURE_COMPARISON.md)** - 機能比較と実装ギャップ
 
-   - PetStore の全機能リスト
+   - 参照システムの全機能リスト
    - DriveRev の現状機能
    - 実装が必要な機能の優先順位
-   - PetStore vs DriveRev 機能対応表
+   - 参照システムと DriveRev の機能対応表
 
 3. **[03_IMPLEMENTATION_PLAN.md](./03_IMPLEMENTATION_PLAN.md)** - 段階的実装計画
 
@@ -183,7 +195,7 @@
 ## 🔄 バージョン履歴
 
 - **v1.0.0** (2025-01-16): 初版リリース
-  - PetStore ベースの機能分析
+  - 参照システム<!-- 旧称: PetStore --> ベースの機能分析
   - 基本的な DevRev 統合設計
   - ハンズオンラボガイド（日本語）
 

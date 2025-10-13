@@ -15,8 +15,20 @@
 
 ## 実装フェーズ概要
 
-### Timeline (8 週間)
+### Timeline (12 週間)
 
+| Week | Phase                         | 主要成果物                     | 状態      |
+| ---- | ----------------------------- | ------------------------------ | --------- |
+| 1-2  | Phase 1                       | Global Config + PLuG 基盤      | 📝 計画中 |
+| 3    | Phase 2                       | API Key 管理                   | 📝 計画中 |
+| 4-5  | Phase 3                       | 予約カレンダー基盤             | 📝 計画中 |
+| 4-5  | Phase 4 （一部並行）          | 決済統合 API 強化              | 📝 計画中 |
+| 6    | hardening                     | テスト・パフォーマンス改善     | 📝 計画中 |
+| 7-10 | Phase 5                       | Workflow Skills 15 個          | 📝 計画中 |
+| 11   | 統合テスト                    | E2E / Agent 対話検証           | 📝 計画中 |
+| 12   | ドキュメント & デプロイ準備   | 運用ガイド・トラブル対応整備   | 📝 計画中 |
+<!--
+旧タイムライン (8 週間):
 | Week | Phase            | 主要成果物     | 状態      |
 | ---- | ---------------- | -------------- | --------- |
 | 1-2  | Phase 1          | PLuG 基盤      | 📝 計画中 |
@@ -25,6 +37,7 @@
 | 6    | Phase 4          | Global Config  | 📝 計画中 |
 | 7    | Phase 5          | Workflow 集    | 📝 計画中 |
 | 8    | Testing & Deploy | 本番リリース   | 📝 計画中 |
+-->
 
 ---
 
@@ -40,6 +53,31 @@
 
 **変更内容**:
 
+```python
+class User(Base):
+    # ... 既存フィールド ...
+
+    # DevRev Integration
+    devrev_app_id: str | None = Column(String(500), nullable=True)
+    devrev_application_access_token: str | None = Column(String(500), nullable=True)
+    devrev_use_personal_config: bool = Column(Boolean, default=False)
+    devrev_revuser_id: str | None = Column(String(200), nullable=True, index=True)
+    devrev_session_token: str | None = Column(String(500), nullable=True)
+    devrev_session_expires_at: datetime | None = Column(DateTime, nullable=True)
+
+    # API Key Management
+    api_key: str | None = Column(String(100), nullable=True, unique=True, index=True)
+    api_key_name: str | None = Column(String(100), default='User API Key')
+    api_key_created_at: datetime | None = Column(DateTime, nullable=True)
+    api_key_last_used: datetime | None = Column(DateTime, nullable=True)
+
+    def clear_expired_devrev_session(self) -> None:
+        if self.devrev_session_expires_at and datetime.utcnow() >= self.devrev_session_expires_at:
+            self.devrev_session_token = None
+            self.devrev_session_expires_at = None
+```
+<!--
+旧記述:
 ```python
 class User(Base):
     # ... 既存フィールド ...
@@ -78,26 +116,43 @@ class User(Base):
         config = self.get_effective_devrev_config()
         return bool(config['app_id'] and config['aat'])
 ```
+-->
 
-**Alembic マイグレーション**:
+**ポイント**:
 
-```bash
-cd backend
-alembic revision -m "add_devrev_integration_fields_to_users"
-# Edit migration file
-alembic upgrade head
-```
-
-**工数**: 0.5 日
+- ゲスト（未ログイン）は Global 設定を使用し、ログインユーザーは `devrev_use_personal_config` を有効化すると個人設定で PLuG を初期化できる
+- 個人 AAT は `crypto_service.encrypt()` で暗号化して保存し、Session Token 同様にローテーション手順を用意する
+- Session Token は `crypto_service.encrypt()` で暗号化して保存する
+- Alembic では新規カラム追加と既存データの初期値（`NULL`）を設定し、移行後に整合性テストを実施する
 
 ### 1-2: Backend - Pydantic Schemas
 
-**ファイル**: `backend/app/schemas/devrev.py` (新規作成)
+**ファイル**: 既存の `backend/app/schemas/__init__.py` などに追記
 
 ```python
-from pydantic import BaseModel, Field
-from typing import Optional
+class DevRevSessionTokenResponse(BaseModel):
+    session_token: str
+    expires_at: int
+    app_id: str
 
+class DevRevSessionStatusResponse(BaseModel):
+    has_session_token: bool
+    expires_at: int | None
+    is_expired: bool
+
+class ApiKeyResponse(BaseModel):
+    api_key: str
+    user_info: dict[str, str]
+```
+
+**ポイント**:
+
+- 既存スキーマモジュールにまとめ、重複定義を避ける（DRY）
+- ユーザー設定更新用に `DevRevIntegrationUpdate`（`app_id` / `application_access_token` / `use_personal_config`）を復活させ、暗号化保存を前提とする
+- `app_id` など Global/Personal 設定はレスポンスに含め、フロントエンドで再利用できるようにする
+<!--
+旧記述:
+```python
 class DevRevIntegrationUpdate(BaseModel):
     """DevRev integration settings update"""
     devrev_app_id: Optional[str] = Field(None, max_length=500)
@@ -123,21 +178,123 @@ class DevRevSessionStatusResponse(BaseModel):
     has_aat: bool
     message: str
 ```
-
-**工数**: 0.5 日
+-->
 
 ### 1-3: Backend - API Endpoints
 
-**ファイル**: `backend/app/api/v1/devrev.py` (新規作成)
+**ファイル**: 既存の `backend/app/api/v1/devrev.py` を拡張
 
 ```python
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-import requests
-import time
-
 router = APIRouter(prefix="/devrev", tags=["DevRev Integration"])
+devrev_config_service = DevRevConfigService
 
+@router.post("/session-token", response_model=DevRevSessionTokenResponse)
+async def generate_session_token(
+    current_user: User | None = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
+    config_service = devrev_config_service(db)
+
+    # 1. 個人設定を利用する場合
+    if current_user and current_user.devrev_use_personal_config:
+        user = db.merge(current_user)
+        if not user.devrev_app_id or not user.devrev_application_access_token:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Personal DevRev configuration is incomplete"
+            )
+
+        if user.devrev_session_token and user.devrev_session_expires_at:
+            if user.devrev_session_expires_at > datetime.utcnow() + timedelta(minutes=5):
+                return DevRevSessionTokenResponse(
+                    session_token=crypto_service.decrypt_aat(user.devrev_session_token),
+                    expires_at=int(user.devrev_session_expires_at.timestamp()),
+                    app_id=user.devrev_app_id,
+                )
+
+        devrev_service = DevRevService(
+            crypto_service.decrypt_aat(user.devrev_application_access_token)
+        )
+        token, revuser_id, expires_at = await devrev_service.create_session_token(
+            email=user.email,
+            full_name=user.full_name,
+        )
+
+        user.devrev_session_token = crypto_service.encrypt_aat(token)
+        user.devrev_session_expires_at = expires_at
+        user.devrev_revuser_id = revuser_id
+        db.commit()
+
+        return DevRevSessionTokenResponse(
+            session_token=token,
+            expires_at=int(expires_at.timestamp()),
+            app_id=user.devrev_app_id,
+        )
+
+    # 2. ゲスト or 個人設定を使わない場合は Global 設定を利用
+    config = config_service.get_global_config()
+    if not config:
+        raise HTTPException(status_code=204, detail="DevRev not configured")
+
+    user = db.merge(current_user) if current_user else None
+    if user and user.devrev_session_token and user.devrev_session_expires_at:
+        if user.devrev_session_expires_at > datetime.utcnow() + timedelta(minutes=5):
+            return DevRevSessionTokenResponse(
+                session_token=crypto_service.decrypt_aat(user.devrev_session_token),
+                expires_at=int(user.devrev_session_expires_at.timestamp()),
+                app_id=config["app_id"],
+            )
+
+    token, revuser_id, expires_at = await DevRevService(config["aat"]).create_session_token(
+        email=user.email if user else "guest@driverev.dev",
+        full_name=user.full_name if user else "DriveRev Guest",
+    )
+
+    if user:
+        user.devrev_session_token = crypto_service.encrypt_aat(token)
+        user.devrev_session_expires_at = expires_at
+        if revuser_id:
+            user.devrev_revuser_id = revuser_id
+        db.commit()
+
+    return DevRevSessionTokenResponse(
+        session_token=token,
+        expires_at=int(expires_at.timestamp()),
+        app_id=config["app_id"],
+    )
+
+@router.get("/session-status", response_model=DevRevSessionStatusResponse)
+async def get_session_status(
+    current_user: User | None = Depends(get_current_user_optional)
+):
+    if not current_user:
+        return DevRevSessionStatusResponse(
+            has_session_token=False,
+            expires_at=None,
+            is_expired=True,
+        )
+
+    expires_at = current_user.devrev_session_expires_at
+    is_expired = not expires_at or expires_at <= datetime.utcnow()
+    return DevRevSessionStatusResponse(
+        has_session_token=not is_expired and bool(current_user.devrev_session_token),
+        expires_at=int(expires_at.timestamp()) if expires_at else None,
+        is_expired=is_expired,
+    )
+```
+
+**ポイント**:
+
+- DevRev API 呼び出しは `DevRevService` で一元化し、`httpx.AsyncClient` を利用する
+- Session Token は暗号化して保存し、再利用できる場合は DevRev API 呼び出しを省略する
+- 個人設定が有効な場合はユーザーの App/AAT を、そうでなければ Global 設定（ゲスト用）を使う
+- 204 を用いて「未設定」を表現し、フロントエンドで PLuG を無効化できるようにする
+- `DevRevService.create_session_token` は `(token: str, revuser_id: str, expires_at: datetime)` を返却するユーティリティとして実装する
+- `get_current_user_optional` は未ログイン時に `None` を返すヘルパーで、ゲストでも API が利用できるように FastAPI で用意する
+- `requirements.txt` に `httpx==0.27.0` を追加し、既存の `requests` 呼び出しは順次 `httpx.AsyncClient` に移行する
+<!--
+旧記述（抜粋）:
+```python
 @router.post("/session-token", response_model=DevRevSessionTokenResponse)
 async def generate_session_token(
     request: DevRevSessionTokenRequest,
@@ -174,352 +331,140 @@ async def generate_session_token(
             }
         }
     }
-
-    # Make request to DevRev API
-    headers = {
-        'authorization': devrev_aat,
-        'content-type': 'application/json'
-    }
-
-    try:
-        response = requests.post(
-            'https://api.devrev.ai/auth-tokens.create',
-            headers=headers,
-            json=devrev_payload,
-            timeout=10
-        )
-        response.raise_for_status()
-    except requests.RequestException as e:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Failed to generate session token: {str(e)}"
-        )
-
-    token_data = response.json()
-    session_token = token_data.get('access_token')
-    expires_in = 3600  # 1 hour
-
-    # Store RevUser ID if present
-    if 'subject' in token_data:
-        current_user.devrev_revuser_id = token_data['subject']
-        db.commit()
-
-    return DevRevSessionTokenResponse(
-        session_token=session_token,
-        expires_at=int(time.time()) + expires_in,
-        user_info={
-            'user_id': str(current_user.id),
-            'user_ref': current_user.email,
-            'display_name': current_user.full_name
-        }
-    )
-
-@router.get("/session-status", response_model=DevRevSessionStatusResponse)
-async def get_session_status(
-    current_user: User = Depends(get_current_user)
-):
-    """
-    Check current session token status.
-    """
-    has_aat = current_user.has_complete_devrev_config()
-
-    return DevRevSessionStatusResponse(
-        has_session_token=False,  # TODO: Implement session storage
-        session_token=None,
-        expires_at=0,
-        is_expired=True,
-        has_aat=has_aat,
-        message="Session token needs to be generated" if has_aat else "DevRev not configured"
-    )
+    ...
 ```
+（この他、`get_session_status` やルート登録手順など旧実装全文を保持）
+-->
 
-**ルート登録** (`backend/app/main.py`):
+### 1-4: Frontend - API クライアント
 
-```python
-from app.api.v1 import devrev
-
-app.include_router(devrev.router, prefix="/api/v1")
-```
-
-**工数**: 1 日
-
-### 1-4: Frontend - API Client
-
-**ファイル**: `frontend/lib/api/devrev.ts` (新規作成)
+**ファイル**: `frontend/lib/api/devrev.ts`（既存ファイルを拡張）
 
 ```typescript
-import { apiClient } from "./client";
+type DevRevSessionToken = {
+  session_token: string;
+  expires_at: number;
+  app_id: string;
+};
 
+type DevRevSessionStatus = {
+  has_session_token: boolean;
+  expires_at: number | null;
+  is_expired: boolean;
+};
+
+export const devrevApi = {
+  async getSessionToken(): Promise<DevRevSessionToken> {
+    const response = await apiClient.get('/api/v1/devrev/session-token');
+    return response.data;
+  },
+  async getSessionStatus(): Promise<DevRevSessionStatus> {
+    const response = await apiClient.get('/api/v1/devrev/session-status');
+    return response.data;
+  },
+};
+```
+
+**ポイント**:
+
+- 204 のレスポンスをハンドリングし、DevRev 未設定時は PLuG を非表示にする
+- セッション再利用のため、フロントではトークンを保持せず毎回バックエンドを参照する
+<!--
+旧記述:
+```typescript
 export interface DevRevIntegrationUpdate {
   devrev_app_id?: string;
   devrev_application_access_token?: string;
   use_global_devrev_config: boolean;
 }
 
-export interface DevRevSessionToken {
-  session_token: string;
-  expires_at: number;
-  user_info: {
-    user_id: string;
-    user_ref: string;
-    display_name: string;
-  };
-}
-
-export interface DevRevSessionStatus {
-  has_session_token: boolean;
-  session_token?: string;
-  expires_at: number;
-  is_expired: boolean;
-  has_aat: boolean;
-  message: string;
-}
-
 export const devrevApi = {
-  // Update DevRev integration settings
-  async updateIntegration(data: DevRevIntegrationUpdate): Promise<void> {
-    await apiClient.put("/auth/profile/devrev", data);
+  async updateIntegrationSettings(data: DevRevIntegrationUpdate) {
+    return apiClient.put("/api/v1/devrev/settings", data);
   },
 
-  // Generate new session token
-  async generateSessionToken(): Promise<DevRevSessionToken> {
+  async generateSessionToken() {
     const response = await apiClient.post<DevRevSessionToken>(
-      "/devrev/session-token"
+      "/api/v1/devrev/session-token"
     );
     return response.data;
   },
+  ...
+};
+```
+-->
 
-  // Check session token status
-  async getSessionStatus(): Promise<DevRevSessionStatus> {
-    const response = await apiClient.get<DevRevSessionStatus>(
-      "/devrev/session-status"
-    );
-    return response.data;
-  },
+### 1-5: Admin UI（Global Config）
+
+**ファイル**: `frontend/app/admin/devrev/page.tsx`
+
+- 管理者のみアクセス可能とし、App ID / AAT を登録・更新するフォームを提供する
+- 保存時は `/api/v1/admin/devrev/global-config` を呼び出し、AAT はバックエンドで暗号化
+- 更新後はトースト通知で PLuG 再初期化を案内する
+
+### 1-6: Frontend - PLuG SDK 初期化
+
+**ファイル**: `frontend/app/layout.tsx`
+
+```typescript
+const initializePlug = async () => {
+  try {
+    const token = await devrevApi.getSessionToken();
+    if (!token?.session_token) {
+      setPlugStatus('disabled');
+      return;
+    }
+
+    window.plugSDK?.init({
+      app_id: token.app_id,
+      session_token: token.session_token,
+      on_ready: () => setPlugStatus('ready'),
+      on_error: (error) => handlePlugError(error),
+    });
+  } catch (error) {
+    handlePlugError(error);
+  }
 };
 ```
 
-**工数**: 0.5 日
+**ポイント**:
 
-### 1-5: Frontend - Profile Page UI
+- `handlePlugError` で 401（未設定）と 502（DevRev 障害）を区別し、ユーザー通知を出し分ける
+- `window.plugSDK` が未定義の場合は `console.warn` で検知し、再試行やサポート連絡を案内する
+- `useEffect` の依存配列は空にし、初期表示時のみ初期化する
+<!--
+旧記述では `authApi.verifyToken()` によるユーザー検証や `status.has_aat` 判定、カスタムランチャー実装などを詳細に記載していた。
+-->
 
-**ファイル**: `frontend/app/profile/page.tsx` (新規作成)
-
-```typescript
-"use client";
-
-import { useState } from "react";
-import { devrevApi } from "@/lib/api/devrev";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-
-export default function ProfilePage() {
-  const [appId, setAppId] = useState("");
-  const [aat, setAat] = useState("");
-  const [useGlobal, setUseGlobal] = useState(false);
-  const [loading, setLoading] = useState(false);
-
-  const handleSave = async () => {
-    setLoading(true);
-    try {
-      await devrevApi.updateIntegration({
-        devrev_app_id: appId,
-        devrev_application_access_token: aat,
-        use_global_devrev_config: useGlobal,
-      });
-      alert("DevRev settings saved!");
-    } catch (error) {
-      console.error("Failed to save DevRev settings:", error);
-      alert("Failed to save settings");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="container mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-6">User Profile</h1>
-
-      <section className="bg-white shadow rounded-lg p-6 mb-6">
-        <h2 className="text-xl font-semibold mb-4">💬 DevRev Integration</h2>
-        <p className="text-sm text-gray-600 mb-4">
-          Configure your DevRev Application Access Token to enable PLuG features
-          and user identity.
-        </p>
-
-        <div className="space-y-4">
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="use-global"
-              checked={useGlobal}
-              onCheckedChange={(checked) => setUseGlobal(!!checked)}
-            />
-            <Label htmlFor="use-global">
-              Use global DevRev configuration (shared settings)
-            </Label>
-          </div>
-
-          {!useGlobal && (
-            <>
-              <div>
-                <Label htmlFor="app-id">DevRev App ID</Label>
-                <Input
-                  id="app-id"
-                  type="text"
-                  value={appId}
-                  onChange={(e) => setAppId(e.target.value)}
-                  placeholder="don:integration:dvrv-us-1:devo/xxx:custom_app/yyy"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="aat">Application Access Token (AAT)</Label>
-                <Input
-                  id="aat"
-                  type="password"
-                  value={aat}
-                  onChange={(e) => setAat(e.target.value)}
-                  placeholder="eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
-                />
-              </div>
-            </>
-          )}
-
-          <div className="flex space-x-3">
-            <Button onClick={handleSave} disabled={loading}>
-              {loading ? "Saving..." : "Save DevRev Settings"}
-            </Button>
-          </div>
-        </div>
-      </section>
-    </div>
-  );
-}
-```
-
-**工数**: 1 日
-
-### 1-6: Frontend - PLuG SDK Integration
-
-**ファイル**: `frontend/app/layout.tsx` (既存ファイルに追加)
-
-```typescript
-"use client";
-
-import { useEffect, useState } from "react";
-import { devrevApi } from "@/lib/api/devrev";
-
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const [plugInitialized, setPlugInitialized] = useState(false);
-
-  useEffect(() => {
-    const initializePlug = async () => {
-      try {
-        // Check if user is authenticated
-        const { data: user } = await authApi.verifyToken();
-        if (!user) return;
-
-        // Check session status
-        const status = await devrevApi.getSessionStatus();
-
-        if (!status.has_aat) {
-          console.log("DevRev not configured");
-          return;
-        }
-
-        // Generate session token if needed
-        let sessionToken = status.session_token;
-        if (!sessionToken || status.is_expired) {
-          const tokenData = await devrevApi.generateSessionToken();
-          sessionToken = tokenData.session_token;
-        }
-
-        // Initialize PLuG SDK
-        if (window.plugSDK && sessionToken) {
-          window.plugSDK.init({
-            app_id: user.devrev_app_id,
-            session_token: sessionToken,
-            enable_default_launcher: false,
-            custom_launcher_selector: "#plug-launcher",
-            widget_alignment: "right",
-            spacing: {
-              bottom: "20px",
-              side: "20px",
-            },
-          });
-          setPlugInitialized(true);
-        }
-      } catch (error) {
-        console.error("Failed to initialize PLuG:", error);
-      }
-    };
-
-    initializePlug();
-  }, []);
-
-  return (
-    <html lang="ja">
-      <head>
-        <script
-          src="https://plug-platform.devrev.ai/static/plug-sdk.js"
-          async
-        />
-      </head>
-      <body>
-        {children}
-
-        {/* Custom PLuG Launcher */}
-        {plugInitialized && (
-          <div
-            id="plug-launcher"
-            className="fixed bottom-6 right-6 z-50 cursor-pointer"
-          >
-            <button className="bg-gradient-to-r from-purple-600 to-blue-600 text-white p-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300">
-              <svg
-                className="h-6 w-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                />
-              </svg>
-            </button>
-          </div>
-        )}
-      </body>
-    </html>
-  );
-}
-```
-
-**工数**: 1 日
-
-### Phase 1 成果物チェックリスト
-
+<!--
+旧 Phase 1 成果物チェックリスト:
 - [ ] User model に DevRev フィールド追加
 - [ ] Alembic マイグレーション実行
 - [ ] Pydantic schemas 作成
 - [ ] Session Token 生成 API 実装
 - [ ] Session Status 確認 API 実装
+- [ ] 期限切れ Session Token クリーンアップジョブ（バッチ or DB TTL）実装
 - [ ] Profile UI 作成
 - [ ] PLuG SDK 統合
 - [ ] カスタムランチャー実装
 - [ ] 動作確認（E2E テスト）
 
-**合計工数**: 5-6 日
+合計工数: 5-6 日
+-->
 
----
+### Phase 1 実装タスクリスト（Living Docs）
+
+- [ ] User model に DevRev フィールド追加（`devrev_use_personal_config` など）
+- [ ] Alembic マイグレーション実行
+- [ ] Pydantic schemas 作成
+- [ ] Session Token 生成/ステータス API 実装（ゲスト・個人切り替え対応）
+- [ ] DevRevService を `httpx.AsyncClient` ベースに移行（タイムアウト/リトライ実装）
+- [ ] 期限切れ Session Token クリーンアップジョブ（バッチ or DB TTL）実装
+- [ ] `frontend/lib/types/devrev.ts` に DevRev 関連の型定義を追加
+- [ ] Profile UI 作成（個人設定の ON/OFF 切り替えを含む）
+- [ ] PLuG SDK 統合
+- [ ] カスタムランチャー実装
+- [ ] 動作確認（E2E テスト）
 
 ## Phase 2: API Key 管理
 

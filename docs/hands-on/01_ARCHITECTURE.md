@@ -13,7 +13,7 @@
 
 ## プロジェクト概要
 
-### PetStore (参照実装)
+### 参照システム<!-- 旧称: PetStore --> (参照実装)
 
 - **ドメイン**: ペット販売・獣医サービス
 - **目的**: DevRev PLuG 統合のリファレンス実装
@@ -25,7 +25,7 @@
 - **ドメイン**: レンタカーサービス
 - **目的**: モダンな DevRev AI Agent 学習プラットフォーム
 - **特徴**: FastAPI + Next.js のモダン SPA
-- **目標**: PetStore の機能を日本市場向けに最適化
+- **目標**: 参照システム<!-- 旧称: PetStore --> の機能を日本市場向けに最適化
 
 ---
 
@@ -33,7 +33,7 @@
 
 ### Backend
 
-| 項目                     | PetStore                  | DriveRev             | 備考                                |
+| 項目                     | 参照システム<!-- 旧称: PetStore -->                  | DriveRev             | 備考                                |
 | ------------------------ | ------------------------- | -------------------- | ----------------------------------- |
 | **フレームワーク**       | Flask 2.3.3               | FastAPI 0.115+       | FastAPI は API 特化、型安全性       |
 | **テンプレートエンジン** | Jinja2 (SSR)              | N/A (SPA)            | DriveRev はクライアントレンダリング |
@@ -46,7 +46,7 @@
 
 ### Frontend
 
-| 項目               | PetStore                    | DriveRev                | 備考                      |
+| 項目               | 参照システム<!-- 旧称: PetStore -->                    | DriveRev                | 備考                      |
 | ------------------ | --------------------------- | ----------------------- | ------------------------- |
 | **アーキテクチャ** | SSR (Server Side Rendering) | SPA (Single Page App)   | DriveRev はモダン         |
 | **フレームワーク** | Jinja2 Templates            | Next.js 14 (React 18)   | DriveRev はフレームワーク |
@@ -58,7 +58,7 @@
 
 ### DevOps & Infrastructure
 
-| 項目                 | PetStore                | DriveRev                | 備考                  |
+| 項目                 | 参照システム<!-- 旧称: PetStore -->                | DriveRev                | 備考                  |
 | -------------------- | ----------------------- | ----------------------- | --------------------- |
 | **コンテナ**         | Docker + Docker Compose | Docker + Docker Compose | 同じ                  |
 | **WSGI/ASGI**        | Gunicorn (WSGI)         | Uvicorn (ASGI)          | DriveRev は非同期対応 |
@@ -73,7 +73,7 @@
 
 ### 1. 認証・認可
 
-#### PetStore (Session-based)
+#### 参照システム<!-- 旧称: PetStore --> (Session-based)
 
 ```python
 # Flask-Login
@@ -113,7 +113,7 @@ async def get_profile(current_user: User = Depends(get_current_user)):
 
 ### 2. レンダリング方式
 
-#### PetStore (SSR)
+#### 参照システム<!-- 旧称: PetStore --> (SSR)
 
 ```python
 # Flask Route
@@ -160,7 +160,7 @@ export default async function VehiclesPage() {
 
 ### 3. DevRev PLuG 統合の違い
 
-#### PetStore
+#### 参照システム<!-- 旧称: PetStore -->
 
 ```html
 <!-- Jinja2 Template -->
@@ -213,7 +213,7 @@ useEffect(() => {
 
 | プロジェクト | ユーザー ID 型           | 理由                           |
 | ------------ | ------------------------ | ------------------------------ |
-| PetStore     | Integer (Auto Increment) | SQLite の制約、シンプル        |
+| 参照システム<!-- 旧称: PetStore -->     | Integer (Auto Increment) | SQLite の制約、シンプル        |
 | DriveRev     | UUID                     | 分散システム対応、セキュリティ |
 
 **移行への影響**:
@@ -223,7 +223,7 @@ useEffect(() => {
 
 ### 2. API 設計
 
-#### PetStore
+#### 参照システム<!-- 旧称: PetStore -->
 
 - **エンドポイント**: `/api/*`
 - **認証**: Session, API Key, DevRev AAT
@@ -244,7 +244,7 @@ useEffect(() => {
 
 ### 3. データベーススキーマ
 
-#### PetStore User Model
+#### 参照システム<!-- 旧称: PetStore --> User Model
 
 ```python
 class User(db.Model):
@@ -273,10 +273,19 @@ class User(Base):
     role: UserRole = Column(Enum(UserRole))
 
     # DevRev Integration (追加予定)
-    devrev_app_id = Column(String(500), nullable=True)
-    devrev_application_access_token = Column(String(500), nullable=True)
-    devrev_revuser_id = Column(String(200), nullable=True)
-    use_global_devrev_config = Column(Boolean, default=False)
+    devrev_app_id = Column(String(500), nullable=True)  # ログインユーザー固有の PLuG App ID
+    devrev_application_access_token = Column(String(500), nullable=True)  # 暗号化保存前提
+    devrev_use_personal_config = Column(Boolean, default=False)  # True の場合は個人設定を優先
+    devrev_revuser_id = Column(String(200), nullable=True, index=True)
+    devrev_session_token = Column(String(500), nullable=True)
+    devrev_session_expires_at = Column(DateTime, nullable=True)
+    <!--
+    旧構成 (2025/02 時点):
+        devrev_revuser_id = Column(String(200), nullable=True, index=True)
+        devrev_session_token = Column(String(500), nullable=True)
+        devrev_session_expires_at = Column(DateTime, nullable=True)
+        # GlobalConfig のみで運用し、ユーザー単位の App/AAT を持たない方針だった。
+    -->
 
     # API Key Management (追加予定)
     api_key = Column(String(100), nullable=True, unique=True)
@@ -291,7 +300,7 @@ class User(Base):
 
 ### コアエンティティ比較
 
-| PetStore       | DriveRev                 | 関係              | 備考 |
+| 参照システム<!-- 旧称: PetStore -->       | DriveRev                 | 関係              | 備考 |
 | -------------- | ------------------------ | ----------------- | ---- |
 | Pet            | Vehicle                  | 1:1 (商品)        | 両方とも「貸し出す資産」 |
 | PetCategory    | VehicleType              | 1:1 (カテゴリ)    | サービスタイプ ≈ 車両タイプ |
@@ -301,9 +310,9 @@ class User(Base):
 | Product        | N/A                      | DriveRev では不要 | 物販なし |
 
 **重要な設計方針**:
-- PetStoreの「Veterinarian（スタッフ）」は DriveRevでは「Store（店舗）+ Vehicle在庫」に置き換え
+- 参照システム<!-- 旧称: PetStore -->の「Veterinarian（スタッフ）」は DriveRevでは「Store（店舗）+ Vehicle在庫」に置き換え
 - スタッフの勤務スケジュール → 店舗の営業時間 + 車両のメンテナンス期間
-- これにより、PetStoreと同じデータ構造・APIパターンで自然なレンタカーシステムを実現
+- これにより、参照システム<!-- 旧称: PetStore -->と同じデータ構造・APIパターンで自然なレンタカーシステムを実現
 
 ### 拡張が必要な既存モデル
 
@@ -324,11 +333,11 @@ class Store(Base):
     # 例: ["uuid-osaka", "uuid-fukuoka"]
 
     def is_open_on_date(self, date: datetime.date) -> bool:
-        """指定日が営業日かチェック（PetStoreのスタッフスケジュールと同等）"""
+        """指定日が営業日かチェック（参照システム<!-- 旧称: PetStore -->のスタッフスケジュールと同等）"""
         pass
 ```
 
-**PetStore対応**: Veterinarian の勤務スケジュール → Store の営業時間
+**参照システム<!-- 旧称: PetStore -->対応**: Veterinarian の勤務スケジュール → Store の営業時間
 
 #### 2. **Vehicle Model** (メンテナンス管理)
 
@@ -344,11 +353,11 @@ class Vehicle(Base):
     # 例: ["カーナビ", "ETC", "バックカメラ"]
 
     def is_available_on_period(self, start: date, end: date) -> bool:
-        """指定期間が利用可能かチェック（PetStoreの時間枠チェックと同等）"""
+        """指定期間が利用可能かチェック（参照システム<!-- 旧称: PetStore -->の時間枠チェックと同等）"""
         pass
 ```
 
-**PetStore対応**: スタッフの空き時間 → 車両の利用可能期間
+**参照システム<!-- 旧称: PetStore -->対応**: スタッフの空き時間 → 車両の利用可能期間
 
 #### 3. **User Model** (DevRev統合)
 
@@ -359,8 +368,17 @@ class User(Base):
     # DevRev Integration (新規追加)
     devrev_app_id: str | None = Column(String(500), nullable=True)
     devrev_application_access_token: str | None = Column(String(500), nullable=True)
+    devrev_use_personal_config: bool = Column(Boolean, default=False)
     devrev_revuser_id: str | None = Column(String(200), nullable=True, index=True)
-    use_global_devrev_config: bool = Column(Boolean, default=False)
+    devrev_session_token: str | None = Column(String(500), nullable=True)
+    devrev_session_expires_at: datetime | None = Column(DateTime, nullable=True)
+    <!--
+    旧構成:
+        devrev_revuser_id: str | None = Column(String(200), nullable=True, index=True)
+        devrev_session_token: str | None = Column(String(500), nullable=True)
+        devrev_session_expires_at: datetime | None = Column(DateTime, nullable=True)
+        # GlobalConfig のみ運用 (ユーザー設定なし)
+    -->
 
     # API Key Management (新規追加)
     api_key: str | None = Column(String(100), nullable=True, unique=True)
@@ -369,11 +387,31 @@ class User(Base):
     api_key_last_used: datetime | None = Column(DateTime)
 ```
 
-**PetStore対応**: 完全に同じフィールド構成
+**参照システム<!-- 旧称: PetStore -->対応**: 完全に同じフィールド構成
+**DriveRev差分**: ゲスト（未ログイン）は `GlobalConfig` に格納された固定 App/AAT を利用し、ログイン後はユーザー行の `devrev_app_id` / `devrev_application_access_token`（暗号化保存）を有効化して自組織の PLuG をカスタマイズできる
+
+### アーキテクチャ・デシジョン（Living Docs）
+
+- **DevRev 統合の責務分離**  
+  Global Config（`global_config` テーブル）でゲスト用の固定 App/AAT を保持し、未ログイン時はこの設定で PLuG を提供する。ログイン後のユーザーは `devrev_use_personal_config` を有効化すると、個人設定（`devrev_app_id` / `devrev_application_access_token`）を使って自組織の PLuG を呼び出せる。<br>
+  <!-- 旧案 (2025/02): Global Config のみで運用し、個人設定は無効化していた。 -->
+
+- **DevRev サービス層の非同期化**  
+  すべての DevRev API 呼び出しは `DevRevService` を経由し、`httpx.AsyncClient` を利用した非同期実装とする。タイムアウト（既定 10 秒）、リトライ方針、例外ロギングはサービス層に集約し、FastAPI のイベントループをブロックしない。<br>
+  <!-- 旧案: `requests` を直接 API ハンドラから呼び出していた。 -->
+
+- **Session Token の暗号化と再利用**  
+  Session Token はユーザー行に暗号化保存し、`devrev_session_expires_at` が 5 分以上先であれば復号して再利用する。期限切れトークンはバッチまたは DB TTL で削除する。DevRev 未設定（Global Config 不存在）時は DriveRev 本体機能のみ動作させ、PLuG 初期化 API は 204 を返す。
+
+- **負荷と障害時の扱い**  
+  DevRev API 障害時は `DevRevService.create_session_token` が 502 を返し、フロントは PLuG を無効化／ユーザーへ案内を表示する。DriveRev の予約・決済機能は独立して動作し、DevRev 統合はオプション扱いとする。
+
+- **ドキュメント更新運用**  
+  本ファイル・`03_IMPLEMENTATION_PLAN.md`・`04_DEVREV_INTEGRATION.md`・`05_IMPLEMENTATION_ANALYSIS.md` を同期更新し、旧仕様は HTML コメントで残す。これにより、Living Document として意思決定の経緯を可視化しつつ、現行仕様との差異を追跡できる。
 
 ### 追加が必要な新規モデル
 
-#### 4. **GlobalConfig** (PetStore から移植)
+#### 4. **GlobalConfig** (参照システム<!-- 旧称: PetStore --> から移植)
 
 ```python
 class GlobalConfig(Base):
@@ -410,7 +448,7 @@ class ApiCallLog(Base):
 
 ### 1. パスワードハッシュ
 
-**PetStore & DriveRev (同じ)**:
+**参照システム<!-- 旧称: PetStore --> & DriveRev (同じ)**:
 
 - bcrypt with salt
 - 最小 12 文字
@@ -418,7 +456,7 @@ class ApiCallLog(Base):
 
 ### 2. API Key 管理
 
-**PetStore**:
+**参照システム<!-- 旧称: PetStore -->**:
 
 ```python
 # Simple API Key
@@ -462,7 +500,7 @@ def decrypt_aat(encrypted_aat: str) -> str:
 
 ## まとめ
 
-### PetStore から学ぶべき点
+### 参照システム<!-- 旧称: PetStore --> から学ぶべき点
 
 ✅ **DevRev 統合パターン**: Session Token 生成、API Key 管理
 ✅ **ユーザー設定**: Personal vs Global Configuration

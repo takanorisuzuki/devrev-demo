@@ -13,7 +13,7 @@
 
 ### 🔐 認証・ユーザー管理
 
-| 機能                | PetStore | DriveRev    | 実装状況              | 優先度 |
+| 機能                | 参照システム<!-- 旧称: PetStore --> | DriveRev    | 実装状況              | 優先度 |
 | ------------------- | -------- | ----------- | --------------------- | ------ |
 | ユーザー登録        | ✅       | ✅          | 完了                  | -      |
 | ログイン/ログアウト | ✅       | ✅          | 完了                  | -      |
@@ -23,28 +23,28 @@
 
 ### 🔌 DevRev 統合
 
-| 機能                     | PetStore | DriveRev | 実装状況 | 優先度 |
-| ------------------------ | -------- | -------- | -------- | ------ |
+| 機能                     | 参照システム<!-- 旧称: PetStore --> | DriveRev | 実装状況                         | 優先度 |
+| ------------------------ | -------- | -------- | -------------------------------- | ------ |
 | **PLuG 基本統合**        |
-| - PLuG Widget 表示       | ✅       | ❌       | 未実装   | **P0** |
-| - カスタムランチャー     | ✅       | ❌       | 未実装   | P1     |
-| - Session Token 生成     | ✅       | ❌       | 未実装   | **P0** |
-| - Session Token 更新     | ✅       | ❌       | 未実装   | P1     |
-| - RevUser ID 管理        | ✅       | ❌       | 未実装   | **P0** |
+| - PLuG Widget 表示       | ✅       | 📝 設計済 | Phase 1 で実装開始（ゲスト + 個人） | **P0** |
+| - カスタムランチャー     | ✅       | 📝 設計済 | Phase 1 後半で追加                  | P1     |
+| - Session Token 生成     | ✅       | 📝 設計済 | `DevRevService.create_session_token` で再設計 | **P0** |
+| - Session Token 更新     | ✅       | 📝 設計済 | 期限チェック + 再発行を仕様化        | P1     |
+| - RevUser ID 管理        | ✅       | 📝 設計済 | User モデルに再導入、暗号化保存      | **P0** |
 | **設定管理**             |
-| - Personal DevRev Config | ✅       | ❌       | 未実装   | **P0** |
-| - Global DevRev Config   | ✅       | ❌       | 未実装   | P1     |
-| - App ID 設定            | ✅       | ❌       | 未実装   | **P0** |
-| - AAT 設定               | ✅       | ❌       | 未実装   | **P0** |
+| - Personal DevRev Config | ✅       | 📝 設計済 | プロフィール UI で切り替え可能       | **P0** |
+| - Global DevRev Config   | ✅       | 📝 設計済 | ゲスト用固定トークンを管理           | P1     |
+| - App ID 設定            | ✅       | 📝 設計済 | Global / Personal 両対応            | **P0** |
+| - AAT 設定               | ✅       | 📝 設計済 | 暗号化保存 + ローテーション設計      | **P0** |
 | **API Key 管理**         |
-| - API Key 生成           | ✅       | ❌       | 未実装   | P1     |
-| - API Key 表示/削除      | ✅       | ❌       | 未実装   | P1     |
-| - DevRev AAT 経由取得    | ✅       | ❌       | 未実装   | P1     |
-| - 使用統計               | ✅       | ❌       | 未実装   | P2     |
+| - API Key 生成           | ✅       | ❌       | 未実装（Phase 2 で着手）            | P1     |
+| - API Key 表示/削除      | ✅       | ❌       | 未実装（Phase 2 で着手）            | P1     |
+| - DevRev AAT 経由取得    | ✅       | ❌       | 未実装（Phase 2 で着手）            | P1     |
+| - 使用統計               | ✅       | ❌       | 未実装                              | P2     |
 
 ### 📦 商品・在庫管理
 
-| 機能           | PetStore (Pets)    | DriveRev (Vehicles) | 実装状況 | 優先度 |
+| 機能           | 参照システム<!-- 旧称: PetStore --> (Pets)    | DriveRev (Vehicles) | 実装状況 | 優先度 |
 | -------------- | ------------------ | ------------------- | -------- | ------ |
 | 一覧表示       | ✅ Pets            | ✅ Vehicles         | 完了     | -      |
 | 詳細表示       | ✅                 | ✅                  | 完了     | -      |
@@ -56,7 +56,7 @@
 
 ### 📅 予約システム
 
-| 機能                   | PetStore (Vet Appointments) | DriveRev (Reservations) | 実装状況    | 優先度 |
+| 機能                   | 参照システム<!-- 旧称: PetStore --> (Vet Appointments) | DriveRev (Reservations) | 実装状況    | 優先度 |
 | ---------------------- | --------------------------- | ----------------------- | ----------- | ------ |
 | **予約作成**           |
 | - 基本予約作成         | ✅                          | ✅                      | 完了        | -      |
@@ -82,7 +82,7 @@
 
 ### 🛒 注文・決済
 
-| 機能               | PetStore       | DriveRev            | 実装状況   | 優先度 |
+| 機能               | 参照システム<!-- 旧称: PetStore -->       | DriveRev            | 実装状況   | 優先度 |
 | ------------------ | -------------- | ------------------- | ---------- | ------ |
 | カート機能         | ✅ Products    | ❌                  | 不要       | -      |
 | 注文作成           | ✅             | ✅ Reservation      | 統合済     | -      |
@@ -92,7 +92,7 @@
 
 ### 📊 管理機能
 
-| 機能                   | PetStore | DriveRev        | 実装状況 | 優先度 |
+| 機能                   | 参照システム<!-- 旧称: PetStore --> | DriveRev        | 実装状況 | 優先度 |
 | ---------------------- | -------- | --------------- | -------- | ------ |
 | **ユーザー管理**       |
 | - ユーザー一覧         | ✅       | ❌              | 未実装   | P2     |
@@ -108,7 +108,7 @@
 
 ### 🔧 API・統合
 
-| 機能                     | PetStore   | DriveRev        | 実装状況 | 優先度 |
+| 機能                     | 参照システム<!-- 旧称: PetStore -->   | DriveRev        | 実装状況 | 優先度 |
 | ------------------------ | ---------- | --------------- | -------- | ------ |
 | **REST API**             |
 | - CRUD エンドポイント    | ✅ 50+     | ✅ 20+          | 拡張必要 | P1     |
@@ -135,16 +135,17 @@
 
 これらは DevRev AI Agent 学習の**最低限の前提条件**です。
 
-#### 1. DevRev PLuG 基本統合
+#### 1. DevRev PLuG 基本統合（Phase 1 設計反映済）
 
-- **Session Token 生成** (`POST /api/v1/auth/devrev/session-token`)
-- **RevUser ID 管理** (User model に追加)
-- **PLuG Widget 表示** (Frontend integration)
-- **Personal DevRev Config** (User Profile UI)
+- **Session Token 生成** (`POST /api/v1/devrev/session-token`) — ゲスト／個人設定に対応
+- **RevUser ID 管理** — User モデルに再導入、暗号化保存
+- **PLuG Widget 表示** — ゲストは Global 設定、ログイン後は個人設定で初期化
+- **Personal DevRev Config** — プロフィール UI で `個人設定を有効化`
 
-**実装工数**: 2-3 日
-**依存関係**: なし
-**ブロッカー**: これがないと PLuG Chat が使えない
+**実装工数**: 2-3 日  
+**依存関係**: Phase 1 backend / frontend  
+**現状**: 設計書に反映済、実装着手待ち  
+**ブロッカー**: 実装完了まで PLuG Chat が使用不可
 
 #### 2. 店舗別在庫・予約システム
 
@@ -156,7 +157,7 @@
 **実装工数**: 3-4 日
 **依存関係**: なし
 **ブロッカー**: これがないと予約ワークフローが動かない
-**PetStore との違い**: スタッフスケジュール → 店舗営業時間 + 車両在庫管理
+**参照システム<!-- 旧称: PetStore --> との違い**: スタッフスケジュール → 店舗営業時間 + 車両在庫管理
 
 ### 🟠 高優先度（P1） - 早期実装推奨
 
@@ -174,7 +175,7 @@ DevRev Workflow の**実践的な学習**に必要な機能です。
 
 #### 4. Global Configuration
 
-- **GlobalConfig Model** (PetStore から移植)
+- **GlobalConfig Model** (参照システム<!-- 旧称: PetStore --> から移植)
 - **Admin UI** (Global DevRev 設定)
 - **Configuration API** (`GET/PUT /api/v1/admin/config`)
 
@@ -194,7 +195,7 @@ DevRev Workflow の**実践的な学習**に必要な機能です。
 **実装工数**: 2-3 日
 **依存関係**: P0, P1 の一部
 **用途**: DevRev Workflow Skill からの呼び出し
-**PetStore との違い**: スタッフ検索 → 店舗在庫検索、料金計算機能追加
+**参照システム<!-- 旧称: PetStore --> との違い**: スタッフ検索 → 店舗在庫検索、料金計算機能追加
 
 ### 🟡 中優先度（P2） - 段階的実装
 
@@ -297,7 +298,7 @@ graph TD
 
 ## DriveRev 固有の機能
 
-PetStore にはない、DriveRev 独自の機能やアドバンテージ：
+参照システム<!-- 旧称: PetStore --> にはない、DriveRev 独自の機能やアドバンテージ：
 
 ### 1. モダンな UI/UX
 
