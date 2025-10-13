@@ -466,6 +466,28 @@ const initializePlug = async () => {
 - [ ] カスタムランチャー実装
 - [ ] 動作確認（E2E テスト）
 
+**Phase 1 タスク依存関係**:
+
+**必須の事前作業**（Week 1 前半）:
+
+1. `httpx` への移行（DevRevService の非同期化）
+2. TypeScript 型定義（`frontend/lib/types/devrev.ts`）の作成
+3. Session Token API の整備（`/devrev/session-token` エンドポイント）
+
+**依存関係のある後続タスク**（Week 1 後半〜Week 2）:
+
+- **PLuG SDK 統合・E2E テスト**: 上記 1, 3 が完了後に着手
+- **Profile UI**: バックエンド API（上記 3）が安定後に着手
+- **カスタムランチャー**: PLuG SDK 統合が完了後に着手
+
+**並行可能なタスク**:
+
+- GlobalConfig Model 作成
+- User Model 拡張
+- Alembic マイグレーション
+- AAT 暗号化実装
+- Admin UI（Global DevRev 設定）
+
 ## Phase 2: API Key 管理
 
 ### 目標

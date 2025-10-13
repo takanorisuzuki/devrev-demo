@@ -408,6 +408,8 @@ class User(Base):
 
 - **ドキュメント更新運用**  
   本ファイル・`03_IMPLEMENTATION_PLAN.md`・`04_DEVREV_INTEGRATION.md`・`05_IMPLEMENTATION_ANALYSIS.md` を同期更新し、旧仕様は HTML コメントで残す。これにより、Living Document として意思決定の経緯を可視化しつつ、現行仕様との差異を追跡できる。
+- **Phase 1 の UI 方針**  
+  Phase 1 時点では `devrev_use_personal_config` の UI 表示を行わず、すべてのユーザーが Global 設定を利用する。将来のフェーズで個人設定を解放する場合は、管理者承認フローと併せて UI を追加する。
 
 ### 追加が必要な新規モデル
 

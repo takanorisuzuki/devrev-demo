@@ -1189,6 +1189,21 @@ export default function AdminDevRevSettingsPage() {
 - デフォルトは共有トークン（Global 設定）で運用でき、セルフラーニング用途に十分
 - 管理者が明示的に許可したユーザーのみ個人設定を使える構成にできる
 
+**テストの期待値**:
+
+**Unit Test**:
+
+- `get_or_create_session_token` の個人設定／Global 設定それぞれの経路で復号・暗号化が正しく行われるか検証する
+- Session Token のキャッシュ動作（有効期限内の再呼び出し時、DevRev API 呼び出しをスキップすること）を検証する
+
+**Integration Test**:
+
+- `/devrev/session-token` API が以下のケースで想定どおりのレスポンスと DB 更新を行うか確認する：
+  - DevRev 未設定時（Global 設定なし）: 204 No Content
+  - Global 設定時（`devrev_use_personal_config=False`）: 200 OK + Session Token 返却 + DB 保存
+  - Personal 設定時（`devrev_use_personal_config=True`）: 200 OK + Session Token 返却 + DB 保存
+- エラーケース（AAT 無効、DevRev API 障害）で適切なエラーハンドリングが行われるか確認する
+
 ---
 
 ### 🟠 Issue #7: 工数見積もりが楽観的

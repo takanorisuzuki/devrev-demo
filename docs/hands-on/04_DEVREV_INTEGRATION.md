@@ -743,6 +743,8 @@ def decrypted_devrev_aat(self) -> str | None:
 
 - **ドキュメント更新ルール**  
   アーキテクチャ変更や非機能要件の見直しが発生した際は、本章と `01_ARCHITECTURE.md`・`05_IMPLEMENTATION_ANALYSIS.md` を同時に更新し、旧仕様は HTML コメントで残して変更履歴を可視化する。
+- **実装タスクとの紐づけ**  
+  具体的な作業手順は `03_IMPLEMENTATION_PLAN.md` の Phase 1 タスクリストにまとめている（例: `httpx` への移行、TypeScript 型定義追加、セッションクリーンアップジョブなど）。実装前に該当セクションを参照し、抜け漏れがないか確認する。
 
 ---
 
