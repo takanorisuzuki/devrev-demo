@@ -17,16 +17,17 @@
 
 ### Timeline (12 週間)
 
-| Week | Phase                         | 主要成果物                     | 状態      |
-| ---- | ----------------------------- | ------------------------------ | --------- |
-| 1-2  | Phase 1                       | Global Config + PLuG 基盤      | 📝 計画中 |
-| 3    | Phase 2                       | API Key 管理                   | 📝 計画中 |
-| 4-5  | Phase 3                       | 予約カレンダー基盤             | 📝 計画中 |
-| 4-5  | Phase 4 （一部並行）          | 決済統合 API 強化              | 📝 計画中 |
-| 6    | hardening                     | テスト・パフォーマンス改善     | 📝 計画中 |
-| 7-10 | Phase 5                       | Workflow Skills 15 個          | 📝 計画中 |
-| 11   | 統合テスト                    | E2E / Agent 対話検証           | 📝 計画中 |
-| 12   | ドキュメント & デプロイ準備   | 運用ガイド・トラブル対応整備   | 📝 計画中 |
+| Week | Phase                       | 主要成果物                   | 状態      |
+| ---- | --------------------------- | ---------------------------- | --------- |
+| 1-2  | Phase 1                     | Global Config + PLuG 基盤    | 📝 計画中 |
+| 3    | Phase 2                     | API Key 管理                 | 📝 計画中 |
+| 4-5  | Phase 3                     | 予約カレンダー基盤           | 📝 計画中 |
+| 4-5  | Phase 4 （一部並行）        | 決済統合 API 強化            | 📝 計画中 |
+| 6    | hardening                   | テスト・パフォーマンス改善   | 📝 計画中 |
+| 7-10 | Phase 5                     | Workflow Skills 15 個        | 📝 計画中 |
+| 11   | 統合テスト                  | E2E / Agent 対話検証         | 📝 計画中 |
+| 12   | ドキュメント & デプロイ準備 | 運用ガイド・トラブル対応整備 | 📝 計画中 |
+
 <!--
 旧タイムライン (8 週間):
 | Week | Phase            | 主要成果物     | 状態      |
@@ -76,6 +77,7 @@ class User(Base):
             self.devrev_session_token = None
             self.devrev_session_expires_at = None
 ```
+
 <!--
 旧記述:
 ```python
@@ -152,6 +154,7 @@ class ApiKeyResponse(BaseModel):
 - `app_id` など Global/Personal 設定はレスポンスに含め、フロントエンドで再利用できるようにする
 <!--
 旧記述:
+
 ```python
 class DevRevIntegrationUpdate(BaseModel):
     """DevRev integration settings update"""
@@ -178,6 +181,7 @@ class DevRevSessionStatusResponse(BaseModel):
     has_aat: bool
     message: str
 ```
+
 -->
 
 ### 1-3: Backend - API Endpoints
@@ -294,6 +298,7 @@ async def get_session_status(
 - `requirements.txt` に `httpx==0.27.0` を追加し、既存の `requests` 呼び出しは順次 `httpx.AsyncClient` に移行する
 <!--
 旧記述（抜粋）:
+
 ```python
 @router.post("/session-token", response_model=DevRevSessionTokenResponse)
 async def generate_session_token(
@@ -333,6 +338,7 @@ async def generate_session_token(
     }
     ...
 ```
+
 （この他、`get_session_status` やルート登録手順など旧実装全文を保持）
 -->
 
@@ -355,11 +361,11 @@ type DevRevSessionStatus = {
 
 export const devrevApi = {
   async getSessionToken(): Promise<DevRevSessionToken> {
-    const response = await apiClient.get('/api/v1/devrev/session-token');
+    const response = await apiClient.get("/api/v1/devrev/session-token");
     return response.data;
   },
   async getSessionStatus(): Promise<DevRevSessionStatus> {
-    const response = await apiClient.get('/api/v1/devrev/session-status');
+    const response = await apiClient.get("/api/v1/devrev/session-status");
     return response.data;
   },
 };
@@ -371,6 +377,7 @@ export const devrevApi = {
 - セッション再利用のため、フロントではトークンを保持せず毎回バックエンドを参照する
 <!--
 旧記述:
+
 ```typescript
 export interface DevRevIntegrationUpdate {
   devrev_app_id?: string;
@@ -392,6 +399,7 @@ export const devrevApi = {
   ...
 };
 ```
+
 -->
 
 ### 1-5: Admin UI（Global Config）
@@ -411,14 +419,14 @@ const initializePlug = async () => {
   try {
     const token = await devrevApi.getSessionToken();
     if (!token?.session_token) {
-      setPlugStatus('disabled');
+      setPlugStatus("disabled");
       return;
     }
 
     window.plugSDK?.init({
       app_id: token.app_id,
       session_token: token.session_token,
-      on_ready: () => setPlugStatus('ready'),
+      on_ready: () => setPlugStatus("ready"),
       on_error: (error) => handlePlugError(error),
     });
   } catch (error) {
@@ -487,6 +495,172 @@ const initializePlug = async () => {
 - Alembic マイグレーション
 - AAT 暗号化実装
 - Admin UI（Global DevRev 設定）
+
+---
+
+### Phase 1 補足: DevRev User ID 連携（Workflow Skills 用）
+
+**背景**: DevRev Agent が Workflow Skills を実行する際、DevRev User ID に基づいて DriveRev ユーザーを識別し、JWT Token を取得する必要があります。
+
+**実装タスク**:
+
+#### 1. User モデルの AAT 暗号化対応
+
+**ファイル**: `backend/app/models/user.py`
+
+**追加実装**:
+
+```python
+from app.core.crypto import encrypt_aat, decrypt_aat
+
+class User(Base):
+    # ... 既存フィールド ...
+
+    # DevRev Integration
+    devrev_revuser_id = Column(String, unique=True, nullable=True, index=True)
+    devrev_application_access_token = Column(Text, nullable=True)  # 暗号化して保存
+
+    # AAT の暗号化・復号プロパティ
+    @property
+    def decrypted_devrev_aat(self) -> str | None:
+        """暗号化された AAT を復号して返す"""
+        if not self.devrev_application_access_token:
+            return None
+        return decrypt_aat(self.devrev_application_access_token)
+
+    @decrypted_devrev_aat.setter
+    def decrypted_devrev_aat(self, plain_aat: str):
+        """AAT を暗号化して保存"""
+        if plain_aat:
+            self.devrev_application_access_token = encrypt_aat(plain_aat)
+        else:
+            self.devrev_application_access_token = None
+```
+
+**ポイント**:
+
+- AAT は Fernet で暗号化して DB に保存
+- `devrev_revuser_id` に一意性制約を追加（Alembic Migration で設定）
+
+#### 2. 新規エンドポイント: JWT Token 取得
+
+**ファイル**: `backend/app/api/v1/auth.py`
+
+**追加実装**:
+
+```python
+from pydantic import BaseModel
+from datetime import timedelta
+
+class DevRevTokenRequest(BaseModel):
+    """DevRev User ID から JWT Token を取得するリクエスト"""
+    devrev_user_id: str
+
+@router.post("/token-from-devrev", response_model=Token)
+def get_token_by_devrev_user_id(
+    request: DevRevTokenRequest,
+    authorization: str = Header(..., alias="Authorization"),
+    db: Session = Depends(get_db),
+) -> Token:
+    """
+    DevRev User ID から JWT Access Token を取得する
+
+    - DevRev Agent からの呼び出し専用
+    - Authorization Header で AAT を検証
+    """
+    # Authorization Header から AAT を取得
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Authorization Header が必要です")
+
+    provided_aat = authorization.replace("Bearer ", "").strip()
+
+    # DevRev User ID でユーザーを検索
+    user = db.query(User).filter(User.devrev_revuser_id == request.devrev_user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="DevRev User ID に紐づくユーザーが見つかりません")
+
+    # AAT 検証
+    if user.decrypted_devrev_aat != provided_aat:
+        raise HTTPException(status_code=401, detail="AAT の検証に失敗しました")
+
+    # JWT Token 生成
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.email, "role": user.role.value},
+        expires_delta=access_token_expires,
+    )
+    refresh_token = create_refresh_token(user.email, user.role.value)
+
+    return Token(
+        access_token=access_token,
+        token_type="bearer",
+        expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        refresh_token=refresh_token,
+        user=UserResponse.model_validate(user),
+    )
+```
+
+**ポイント**:
+
+- DevRev Agent からの AAT を検証
+- JWT Token の有効期限は 15 分
+- Rate Limiting を追加（10 req/min per DevRev User ID）
+
+#### 3. Alembic Migration
+
+**ファイル**: `backend/alembic/versions/YYYYMMDD_add_devrev_user_id_constraints.py`
+
+**追加内容**:
+
+```python
+def upgrade() -> None:
+    # devrev_revuser_id に一意性制約を追加
+    op.create_unique_constraint(
+        'uq_users_devrev_revuser_id',
+        'users',
+        ['devrev_revuser_id']
+    )
+
+    # devrev_application_access_token を Text 型に変更（暗号化後の長い文字列対応）
+    op.alter_column(
+        'users',
+        'devrev_application_access_token',
+        type_=sa.Text(),
+        existing_type=sa.String(500)
+    )
+```
+
+#### 4. Workflow Skills 作成
+
+**ファイル**: `docs/hands-on/workflows/get-user-token.json`
+
+**内容**: DevRev User ID から JWT Token を取得する Workflow Skill
+
+**実装数**:
+
+- Phase 1: 1 個（`get-user-token.json`）
+- Phase 5: 残り 11 個（予約、検索、一覧取得など）
+
+**詳細**: `04_DEVREV_INTEGRATION.md` の「Workflow Skill との連携」を参照
+
+#### 5. テスト実装
+
+**ファイル**:
+
+- `backend/tests/test_user_devrev_integration.py` (Unit Test)
+- `backend/tests/test_auth_devrev.py` (Integration Test)
+- `backend/tests/e2e/test_devrev_agent_workflow.py` (E2E Test)
+
+**テスト内容**:
+
+- AAT の暗号化・復号が正しく動作するか
+- DevRev User ID の一意性制約が機能するか
+- JWT Token 取得エンドポイントが正常に動作するか
+- AAT 不一致時にエラーが返るか
+
+**参考ドキュメント**: `04_DEVREV_INTEGRATION.md` の「テストシナリオ」
+
+---
 
 ## Phase 2: API Key 管理
 
@@ -764,10 +938,10 @@ async def search_available_vehicles(
 **ファイル**: `frontend/components/reservations/DateRangePicker.tsx` (新規作成)
 
 ```typescript
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { Calendar } from '@/components/ui/calendar';
+import { useState } from "react";
+import { Calendar } from "@/components/ui/calendar";
 
 export interface DateRange {
   from: Date;
@@ -775,7 +949,7 @@ export interface DateRange {
 }
 
 export function DateRangePicker({
-  onDateRangeChange
+  onDateRangeChange,
 }: {
   onDateRangeChange: (range: DateRange) => void;
 }) {
@@ -818,10 +992,194 @@ export function DateRangePicker({
 
 ---
 
+### Phase 3 補足: 予約関連 Workflow Skills 実装
+
+**背景**: Phase 3 で予約システムの基盤を構築した後、DevRev Agent が予約機能を利用できるよう、Workflow Skills を実装します。
+
+**実装タスク**:
+
+#### 3-5: 予約関連 Workflow Skills（優先度: 高）
+
+**対象ファイル**: `docs/hands-on/workflows/` ディレクトリ
+
+**実装する Workflow Skills（3 個）**:
+
+1. **`book-reservation.json`** - 予約作成
+
+   - DriveRev Backend API: `POST /api/v1/reservations`
+   - 必要なパラメータ: `vehicle_id`, `start_date`, `end_date`, `pickup_store_id`, `return_store_id`
+   - JWT Token 必須
+
+2. **`get-appointments.json`** → **`get-reservations.json`** に改名
+
+   - DriveRev Backend API: `GET /api/v1/reservations`
+   - ユーザーの予約一覧を取得
+   - JWT Token 必須
+
+3. **`get-available-slots.json`** → **`get-available-vehicles.json`** に変更
+   - DriveRev Backend API: `POST /api/v1/vehicles/availability`
+   - 指定期間で空いている車両を検索
+   - JWT Token 不要（Public API）
+
+**実装手順**:
+
+1. Phase 1 で作成した `get-user-token.json` を参考に、上記 3 つの Workflow JSON を DriveRev 仕様に修正
+2. 各 Workflow の `base_url` を `http://34.182.56.160:8000/api/v1` に変更
+3. 認証が必要な Workflow には、`get-user-token.json` で取得した JWT Token を使用するステップを追加
+4. DevRev コンソールで各 Workflow を Agent に登録
+5. Agent 対話テスト（予約作成、予約確認、空き検索）
+
+**テスト内容**:
+
+- **Unit Test**: JSON フォーマット検証、必須パラメータ確認
+- **Integration Test**: DriveRev Backend API への実際のリクエスト
+- **E2E Test**: DevRev Agent からの Workflow 呼び出しと正常なレスポンス確認
+
+**工数**: 1.5 日
+
+**詳細設計**: `04_DEVREV_INTEGRATION.md` の「全 Workflow Skills の実装パターン一覧」を参照
+
+---
+
 ## Phase 4-5: 続き
 
 **Phase 4**: Global Configuration
-**Phase 5**: Workflow Skill 実装（詳細は `04_DEVREV_INTEGRATION.md` 参照）
+
+---
+
+## Phase 5: 残り Workflow Skills 実装（Week 7-10）
+
+### 目標
+
+Phase 1, 3 で実装した Workflow Skills 以外の、ユーザー情報取得、車両検索、店舗情報取得などの Workflow を完成させ、DevRev Agent のすべての機能を有効化する。
+
+### 5-1: 実装する Workflow Skills（8 個）
+
+**Phase 1 で実装済み**: `get-user-token.json`（1 個）  
+**Phase 3 で実装済み**: `book-reservation.json`, `get-reservations.json`, `get-available-vehicles.json`（3 個）
+
+**Phase 5 で実装する**（8 個）:
+
+#### Pattern A: JWT Token 必須（6 個）
+
+1. **`get-user-info.json`**
+
+   - Backend API: `GET /api/v1/auth/me`
+   - ユーザーの基本情報（名前、メール、電話番号）を取得
+   - JWT Token 必須
+
+2. **`get-available-staff.json`** → **`get-available-vehicles.json`** に統合済み
+
+3. **`get-all-vehicles.json`**
+
+   - Backend API: `GET /api/v1/vehicles`
+   - 全車両の一覧を取得（カテゴリ別フィルタリング可能）
+   - JWT Token 不要
+
+4. **`get-all-stores.json`**
+
+   - Backend API: `GET /api/v1/stores`
+   - 全店舗の一覧を取得
+   - JWT Token 不要
+
+5. **`get-order-status.json`** → **`get-reservation-status.json`** に改名
+   - Backend API: `GET /api/v1/reservations/{reservation_id}`
+   - 特定の予約のステータスを取得
+   - JWT Token 必須
+
+#### Pattern B: 認証不要（1 個）
+
+6. **`register-account.json`**
+   - Backend API: `POST /api/v1/auth/register`
+   - 新規ユーザー登録
+   - JWT Token 不要
+
+#### Pattern C: 代替実装（1 個）
+
+7. **`get-all-services.json`** → 車両カテゴリで代替
+   - Backend API: `GET /api/v1/vehicles?category=all`
+   - DriveRev にはサービス概念がないため、車両カテゴリ一覧で代替
+   - JWT Token 不要
+
+#### Pattern D: 削除推奨（実装しない）
+
+8. **`get-tracking-info.json`** - レンタカーには不要
+9. **`assign-conversation.json`, `resolve-conversation.json`, `create-ticket.json`** - DevRev API 直接呼び出しのため、DriveRev Backend 不要
+
+### 5-2: 実装手順（Week 7-10）
+
+**Week 7（JWT Token 必須の Workflow 実装）**:
+
+1. `get-user-info.json` の実装
+2. `get-all-vehicles.json` の実装
+3. `get-all-stores.json` の実装
+4. `get-reservation-status.json` の実装
+5. DevRev コンソールへの登録
+6. Integration Test 実行
+
+**Week 8（認証不要・代替実装の Workflow）**:
+
+1. `register-account.json` の実装
+2. `get-all-services.json`（車両カテゴリ）の実装
+3. DevRev コンソールへの登録
+4. Integration Test 実行
+
+**Week 9（統合テスト・E2E）**:
+
+1. 全 Workflow Skills の E2E テスト
+2. DevRev Agent との対話テスト
+   - 「予約を確認したい」
+   - 「空いている車を探して」
+   - 「店舗情報を教えて」
+   - 「新規登録したい」
+3. エラーケースのテスト
+   - JWT Token 期限切れ
+   - 無効なパラメータ
+   - DevRev API 障害時の挙動
+
+**Week 10（ドキュメント整備・最終調整）**:
+
+1. Workflow Skills の実装ガイド作成
+2. トラブルシューティングガイド更新
+3. `workflows/README.md` の更新（実装状況を 15/15 に）
+4. `WORKFLOW_MAPPING.md` の最終レビュー
+
+### 5-3: テスト計画
+
+**Unit Test**:
+
+- 各 Workflow JSON のフォーマット検証
+- 必須パラメータの存在確認
+- URL パスの正確性確認
+
+**Integration Test**:
+
+- DriveRev Backend API への実際のリクエスト
+- 各 Workflow の正常系・異常系テスト
+- JWT Token の有効期限管理テスト
+
+**E2E Test**:
+
+- DevRev Agent からの Workflow 呼び出し
+- ユーザーシナリオベースのテスト
+  - 「車を予約したい」（`get-available-vehicles` → `book-reservation` の連携）
+  - 「予約を確認したい」（`get-reservations` → `get-reservation-status`）
+  - 「ユーザー情報を変更したい」（`get-user-info` → `update-user-info`）
+
+### Phase 5 成果物チェックリスト
+
+- [ ] JWT Token 必須の Workflow 6 個実装
+- [ ] 認証不要の Workflow 1 個実装
+- [ ] 代替実装の Workflow 1 個実装
+- [ ] 全 Workflow の Unit Test 完了
+- [ ] 全 Workflow の Integration Test 完了
+- [ ] E2E Test 完了
+- [ ] ドキュメント更新（README, WORKFLOW_MAPPING）
+- [ ] DevRev Agent での動作確認
+
+**合計工数**: 12-14 日（Week 7-10）
+
+**詳細設計**: `04_DEVREV_INTEGRATION.md` の「全 Workflow Skills の実装パターン一覧」を参照
 
 ---
 

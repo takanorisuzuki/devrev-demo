@@ -6,7 +6,8 @@
 2. [Session Token 管理](#session-token管理)
 3. [API Key 管理](#api-key管理)
 4. [Workflow Skill 実装パターン](#workflow-skill実装パターン)
-5. [セキュリティ考慮事項](#セキュリティ考慮事項)
+5. [DevRev User ID 連携](#devrev-user-id連携)
+6. [セキュリティ考慮事項](#セキュリティ考慮事項)
 
 ---
 
@@ -572,6 +573,7 @@ async def get_api_key_with_aat(
 **用途**: 指定期間・車両タイプで利用可能な車両を検索
 
 **入力パラメータ**:
+
 - start_date: 利用開始日（YYYY-MM-DD）
 - end_date: 利用終了日（YYYY-MM-DD）
 - vehicle_type: 車両タイプ（sedan, suv, compact 等）[オプション]
@@ -675,6 +677,1123 @@ async def get_api_key_with_aat(
 
 ---
 
+## DevRev User ID 連携
+
+### 📋 セクションサマリー
+
+このセクションでは、DevRev Agent が DriveRev API を呼び出す際の**ユーザー認証の仕組み**を設計します。
+
+**🎯 実装する機能**:
+
+1. **User モデル拡張**: DevRev User ID と AAT フィールドを追加
+2. **新規エンドポイント**: `POST /api/v1/auth/token-from-devrev` で JWT Token を取得
+3. **Workflow Skills**: 12 個の Workflow を実装（10 個実装可能、1 個代替、1 個削除）
+
+**📊 実装状況**:
+
+- User モデル拡張: ❌ 未実装 → Phase 1 (Week 3)
+- 新規エンドポイント: ❌ 未実装 → Phase 2 (Week 3-4)
+- Workflow Skills: ❌ 未実装 → Phase 3 (Week 4)
+- E2E テスト: ❌ 未実装 → Phase 4 (Week 4)
+
+**📖 読み方ガイド**:
+
+- **設計を理解したい**: [概要](#概要) → [設計方針](#設計方針)
+- **実装を開始したい**: [User モデルの拡張](#user-モデルの拡張) → [新規エンドポイント設計](#新規エンドポイント設計)
+- **Workflow を作成したい**: [Workflow Skill との連携](#workflow-skill-との連携)
+- **テストを実施したい**: [テストシナリオ](#テストシナリオ)
+
+---
+
+### 概要
+
+DevRev Agent が Workflow Skills を実行する際、DevRev User ID（`rev_user`）に基づいて DriveRev ユーザーを識別し、そのユーザーとして API を実行する必要があります。
+
+**参照システム（Demo-PetStore）の実装**:
+
+- PetStore では、各ユーザーに **PetStore API Key** が発行される
+- Workflow Skill `GetApiKey` で DevRev User ID → PetStore API Key を取得
+- 以降の API 呼び出しでこの API Key を使用してユーザー認証
+
+**DriveRev の課題**:
+
+- DriveRev は **JWT 認証**を採用（API Key の概念なし）
+- DevRev User ID と DriveRev User の紐づけが未実装
+- Workflow Skills がユーザー固有の JWT Token を取得する仕組みが必要
+
+### 現状の GAP 分析
+
+| 項目                           | PetStore（参照システム）                      | DriveRev（現状）                   | GAP                             |
+| ------------------------------ | --------------------------------------------- | ---------------------------------- | ------------------------------- |
+| **ユーザー識別子の保存**       | `User.devrev_revuser_id` (String, Unique)     | ❌ フィールドなし                  | User モデル拡張が必要           |
+| **認証トークンの保存**         | `User.devrev_application_access_token` (Text) | ❌ フィールドなし                  | User モデル拡張が必要           |
+| **API Key 取得エンドポイント** | `GET /api/admin/users/api-key`                | ❌ エンドポイントなし              | 新規エンドポイント実装が必要    |
+| **認証方式**                   | PetStore API Key                              | JWT (Access Token / Refresh Token) | 既存の JWT 認証を流用可能       |
+| **Workflow Skill**             | `GetApiKey` → API Key 返却                    | ❌ 未実装                          | `GetUserToken` Skill を新規実装 |
+
+### 設計方針
+
+#### 1. PetStore 互換の実装パターンを採用
+
+PetStore の設計思想を尊重し、以下のパターンを踏襲します：
+
+**メリット**:
+
+- 参照システムとの整合性が高い
+- DevRev Agent からの呼び出しパターンが同じ
+- 実装の検証が容易（PetStore と比較可能）
+
+**実装方針**:
+
+1. User モデルに DevRev User ID フィールドを追加
+2. DevRev User ID → JWT Token 取得エンドポイントを実装
+3. Workflow Skill `get-user-token.json` を作成（`get-api-key.json` の代替）
+
+#### 2. セキュリティの強化
+
+PetStore の実装をベースに、以下のセキュリティ強化を追加：
+
+- ✅ AAT の暗号化保存（Fernet）
+- ✅ DevRev User ID の一意性制約
+- ✅ JWT Token の短い有効期限（15 分）+ Refresh Token 発行
+- ✅ Rate Limiting（ブルートフォース攻撃対策）
+
+---
+
+### User モデルの拡張
+
+#### 現在の User モデル
+
+```python
+# backend/app/models/user.py
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    email = Column(String, unique=True, nullable=False, index=True)
+    full_name = Column(String, nullable=False)
+    hashed_password = Column(String, nullable=False)
+    phone = Column(String, nullable=True)
+    role = Column(Enum(UserRole), default=UserRole.CUSTOMER, nullable=False)
+    is_active = Column(Boolean, default=True)
+    is_verified = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+```
+
+#### 拡張後の User モデル
+
+```python
+# backend/app/models/user.py
+
+from sqlalchemy import Column, String, Text, Boolean, DateTime, Enum, UUID
+from app.core.crypto import encrypt_aat, decrypt_aat
+
+class User(Base):
+    __tablename__ = "users"
+
+    # ===== 既存フィールド =====
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    email = Column(String, unique=True, nullable=False, index=True)
+    full_name = Column(String, nullable=False)
+    hashed_password = Column(String, nullable=False)
+    phone = Column(String, nullable=True)
+    role = Column(Enum(UserRole), default=UserRole.CUSTOMER, nullable=False)
+    is_active = Column(Boolean, default=True)
+    is_verified = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # ===== DevRev 統合フィールド（新規追加） =====
+    devrev_revuser_id = Column(
+        String,
+        unique=True,
+        nullable=True,
+        index=True,
+        comment="DevRev User ID (e.g., don:identity:dvrv-us-1:devo/xxx:revu/123)"
+    )
+
+    devrev_application_access_token = Column(
+        Text,
+        nullable=True,
+        comment="Encrypted DevRev Application Access Token (AAT)"
+    )
+
+    # ===== プロパティ: AAT の暗号化・復号 =====
+    @property
+    def decrypted_devrev_aat(self) -> str | None:
+        """暗号化された AAT を復号して返す"""
+        if not self.devrev_application_access_token:
+            return None
+        return decrypt_aat(self.devrev_application_access_token)
+
+    @decrypted_devrev_aat.setter
+    def decrypted_devrev_aat(self, plain_aat: str):
+        """AAT を暗号化して保存"""
+        if plain_aat:
+            self.devrev_application_access_token = encrypt_aat(plain_aat)
+        else:
+            self.devrev_application_access_token = None
+```
+
+#### Alembic Migration
+
+```python
+# backend/alembic/versions/YYYYMMDD_add_devrev_user_id.py
+
+"""Add DevRev User ID and AAT fields to User model
+
+Revision ID: abc123def456
+Revises: previous_revision_id
+Create Date: 2025-10-14 12:00:00.000000
+"""
+
+from alembic import op
+import sqlalchemy as sa
+
+revision = 'abc123def456'
+down_revision = 'previous_revision_id'
+branch_labels = None
+depends_on = None
+
+def upgrade() -> None:
+    # DevRev User ID フィールドを追加
+    op.add_column('users', sa.Column(
+        'devrev_revuser_id',
+        sa.String(),
+        nullable=True,
+        comment='DevRev User ID (e.g., don:identity:...)'
+    ))
+
+    # AAT フィールドを追加
+    op.add_column('users', sa.Column(
+        'devrev_application_access_token',
+        sa.Text(),
+        nullable=True,
+        comment='Encrypted DevRev Application Access Token'
+    ))
+
+    # devrev_revuser_id に一意性制約とインデックスを追加
+    op.create_unique_constraint(
+        'uq_users_devrev_revuser_id',
+        'users',
+        ['devrev_revuser_id']
+    )
+    op.create_index(
+        'ix_users_devrev_revuser_id',
+        'users',
+        ['devrev_revuser_id']
+    )
+
+def downgrade() -> None:
+    op.drop_index('ix_users_devrev_revuser_id', table_name='users')
+    op.drop_constraint('uq_users_devrev_revuser_id', 'users', type_='unique')
+    op.drop_column('users', 'devrev_application_access_token')
+    op.drop_column('users', 'devrev_revuser_id')
+```
+
+---
+
+### 新規エンドポイント設計
+
+#### エンドポイント: `POST /api/v1/auth/token-from-devrev`
+
+**用途**: DevRev User ID から JWT Access Token を取得する
+
+**認証**: DevRev Application Access Token (AAT) を Authorization ヘッダーで検証
+
+**リクエスト**:
+
+```http
+POST /api/v1/auth/token-from-devrev HTTP/1.1
+Host: driverev.example.com
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...
+
+{
+  "devrev_user_id": "don:identity:dvrv-us-1:devo/xxx:revu/123"
+}
+```
+
+**レスポンス（成功）**:
+
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer",
+  "expires_in": 900,
+  "refresh_token": "def502004e7b8a...",
+  "user": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "email": "user@example.com",
+    "full_name": "山田太郎",
+    "role": "customer"
+  }
+}
+```
+
+**レスポンス（エラー）**:
+
+```json
+// 404 - DevRev User ID に紐づくユーザーが見つからない
+{
+  "detail": "DevRev User ID に紐づくユーザーが見つかりません"
+}
+
+// 401 - AAT 検証失敗
+{
+  "detail": "DevRev Application Access Token の検証に失敗しました"
+}
+```
+
+#### 実装コード
+
+```python
+# backend/app/api/v1/auth.py
+
+from datetime import timedelta
+from fastapi import APIRouter, Depends, Header, HTTPException, status
+from sqlalchemy.orm import Session
+from app.core.config import settings
+from app.core.security import create_access_token, create_refresh_token
+from app.db.database import get_db
+from app.models.user import User
+from app.schemas.user import Token, UserResponse
+from pydantic import BaseModel
+
+router = APIRouter()
+
+class DevRevTokenRequest(BaseModel):
+    """DevRev User ID から JWT Token を取得するリクエスト"""
+    devrev_user_id: str
+
+@router.post("/token-from-devrev", response_model=Token)
+def get_token_by_devrev_user_id(
+    request: DevRevTokenRequest,
+    authorization: str = Header(..., alias="Authorization"),
+    db: Session = Depends(get_db),
+) -> Token:
+    """
+    DevRev User ID から JWT Access Token を取得する
+
+    - **devrev_user_id**: DevRev User ID (don:identity:...)
+    - **Authorization Header**: DevRev Application Access Token (AAT)
+
+    **認証フロー**:
+    1. Authorization Header から AAT を取得
+    2. DevRev User ID でユーザーを検索
+    3. ユーザーの保存された AAT と一致するか検証
+    4. JWT Access Token と Refresh Token を生成して返却
+
+    **セキュリティ**:
+    - AAT は DB に暗号化して保存されている
+    - JWT Token の有効期限は 15 分（Refresh Token: 7 日）
+    - Rate Limiting により brute force 攻撃を防止
+    """
+    # Authorization Header から AAT を取得
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authorization Header が必要です"
+        )
+
+    provided_aat = authorization.replace("Bearer ", "").strip()
+
+    # DevRev User ID でユーザーを検索
+    user = db.query(User).filter(
+        User.devrev_revuser_id == request.devrev_user_id
+    ).first()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="DevRev User ID に紐づくユーザーが見つかりません"
+        )
+
+    # AAT 検証
+    if user.decrypted_devrev_aat != provided_aat:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="DevRev Application Access Token の検証に失敗しました"
+        )
+
+    # ユーザーがアクティブか確認
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="このアカウントは無効化されています"
+        )
+
+    # JWT Access Token 生成
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.email, "role": user.role.value},
+        expires_delta=access_token_expires,
+    )
+
+    # Refresh Token 生成
+    refresh_token = create_refresh_token(user.email, user.role.value)
+
+    return Token(
+        access_token=access_token,
+        token_type="bearer",
+        expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        refresh_token=refresh_token,
+        user=UserResponse.model_validate(user),
+    )
+```
+
+---
+
+### Workflow Skill との連携
+
+#### Workflow Skill: `get-user-token.json`
+
+PetStore の `get-api-key.json` に相当する Workflow Skill です。
+
+**参照システム（PetStore）の実装**:
+
+```json
+{
+  "url": "https://petstore.devrev.community/api/admin/users/api-key",
+  "method": "GET",
+  "query_params": [
+    {
+      "key": "devrev_revuser_id",
+      "value": "{% expr $get('ai_agent_skill_trigger_1', 'output').userid %}"
+    }
+  ],
+  "headers": [
+    {
+      "key": "Authorization",
+      "value": "Bearer {固定の Admin AAT}"
+    }
+  ]
+}
+```
+
+**DriveRev の実装**:
+
+```json
+{
+  "url": "http://34.182.56.160:8000/api/v1/auth/token-from-devrev",
+  "method": "POST",
+  "headers": [
+    {
+      "key": "Authorization",
+      "value": "Bearer {実際の DevRev AAT}"
+    },
+    {
+      "key": "Content-Type",
+      "value": "application/json"
+    }
+  ],
+  "body": {
+    "devrev_user_id": "{% expr $get('ai_agent_skill_trigger_1', 'output').userid %}"
+  }
+}
+```
+
+**出力**:
+
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer",
+  "expires_in": 900,
+  "user": { ... }
+}
+```
+
+#### 他の Workflow Skills での利用
+
+取得した `access_token` を使って、以降の API 呼び出しを実行します。
+
+**例: 予約作成 Workflow**:
+
+```json
+{
+  "url": "http://34.182.56.160:8000/api/v1/reservations",
+  "method": "POST",
+  "headers": [
+    {
+      "key": "Authorization",
+      "value": "Bearer {% expr $get('get_user_token_1', 'output').body.access_token %}"
+    },
+    {
+      "key": "Content-Type",
+      "value": "application/json"
+    }
+  ],
+  "body": {
+    "vehicle_id": "...",
+    "pickup_store_id": "...",
+    "return_store_id": "...",
+    "pickup_datetime": "...",
+    "return_datetime": "..."
+  }
+}
+```
+
+#### 全 Workflow Skills の実装パターン一覧
+
+DevRev 専用の 3 個（会話管理、チケット作成）を除く **12 個**の Workflow Skills の実装パターンを示します。
+
+##### パターン分類
+
+| パターン                       | 個数 | 説明                                |
+| ------------------------------ | ---- | ----------------------------------- |
+| **パターン A: JWT Token 必須** | 9    | `get-user-token` → JWT Token 利用   |
+| **パターン B: 認証不要**       | 1    | 直接 API 呼び出し（アカウント登録） |
+| **パターン C: 代替実装**       | 1    | 車両カテゴリで代替（サービス一覧）  |
+| **パターン D: 削除推奨**       | 1    | レンタカーには概念なし（配送追跡）  |
+
+---
+
+##### パターン A: JWT Token が必要な Workflow (9 個)
+
+すべて同じフローで実装できます：
+
+**Step 1**: `get-user-token` で JWT Token を取得  
+**Step 2**: JWT Token を使って DriveRev API を呼び出し
+
+| #   | Workflow Skill                | DriveRev Endpoint                       | Method | 説明             |
+| --- | ----------------------------- | --------------------------------------- | ------ | ---------------- |
+| 1   | `get-user-info.json`          | `/api/v1/auth/me`                       | GET    | ユーザー情報取得 |
+| 2   | `book-reservation.json`       | `/api/v1/reservations`                  | POST   | 予約作成         |
+| 3   | `get-appointments.json`       | `/api/v1/reservations`                  | GET    | 予約一覧取得     |
+| 4   | `get-available-slots.json`    | `/api/v1/vehicles/availability`         | POST   | 空き時間検索     |
+| 5   | `get-available-vehicles.json` | `/api/v1/vehicles/availability`         | POST   | 空き車両検索     |
+| 6   | `get-all-vehicles.json`       | `/api/v1/vehicles`                      | GET    | 車両一覧取得     |
+| 7   | `get-all-stores.json`         | `/api/v1/stores`                        | GET    | 店舗一覧取得     |
+| 8   | `get-order-status.json`       | `/api/v1/reservations/{reservation_id}` | GET    | 予約状況確認     |
+| 9   | `get-user-token.json`         | `/api/v1/auth/token-from-devrev`        | POST   | JWT Token 取得   |
+
+**実装例（汎用テンプレート）**:
+
+```json
+{
+  "description": "{Workflow の説明}",
+  "steps": [
+    {
+      "name": "Agent Skill Trigger",
+      "operation": "ai_agent_skill_trigger",
+      "inputValues": [
+        {
+          "fields": [
+            {
+              "name": "schema",
+              "value": {
+                "fields": [
+                  {
+                    "name": "userid",
+                    "field_type": "id",
+                    "id_type": ["rev_user"],
+                    "description": "DevRev User ID"
+                  }
+                  // 必要に応じて追加パラメータ
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Get User Token",
+      "operation": "http",
+      "inputValues": [
+        {
+          "fields": [
+            {
+              "name": "url",
+              "value": "http://34.182.56.160:8000/api/v1/auth/token-from-devrev"
+            },
+            {
+              "name": "method",
+              "value": "POST"
+            },
+            {
+              "name": "headers",
+              "value": [
+                {
+                  "key": "Authorization",
+                  "value": "Bearer {実際の DevRev AAT}"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ]
+            },
+            {
+              "name": "body",
+              "value": {
+                "devrev_user_id": "{% expr $get('ai_agent_skill_trigger_1', 'output').userid %}"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Call DriveRev API",
+      "operation": "http",
+      "inputValues": [
+        {
+          "fields": [
+            {
+              "name": "url",
+              "value": "http://34.182.56.160:8000/api/v1/{endpoint}"
+            },
+            {
+              "name": "method",
+              "value": "GET/POST/PUT/DELETE"
+            },
+            {
+              "name": "headers",
+              "value": [
+                {
+                  "key": "Authorization",
+                  "value": "Bearer {% expr $get('get_user_token_1', 'output').body.access_token %}"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ]
+            }
+            // 必要に応じて body パラメータ
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Set Skill Output",
+      "operation": "set_ai_agent_skill_output",
+      "inputValues": [
+        {
+          "fields": [
+            {
+              "name": "outputs",
+              "value": [
+                {
+                  "key": "result",
+                  "value": "{% expr $get('http_2', 'output').body %}"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+**個別実装例**:
+
+###### 1. `get-user-info.json`
+
+```json
+{
+  "url": "http://34.182.56.160:8000/api/v1/auth/me",
+  "method": "GET",
+  "headers": [
+    {
+      "key": "Authorization",
+      "value": "Bearer {% expr $get('get_user_token_1', 'output').body.access_token %}"
+    }
+  ]
+}
+```
+
+###### 2. `get-appointments.json` (予約一覧)
+
+```json
+{
+  "url": "http://34.182.56.160:8000/api/v1/reservations",
+  "method": "GET",
+  "headers": [
+    {
+      "key": "Authorization",
+      "value": "Bearer {% expr $get('get_user_token_1', 'output').body.access_token %}"
+    }
+  ],
+  "query_params": [
+    {
+      "key": "status",
+      "value": "confirmed"
+    },
+    {
+      "key": "limit",
+      "value": "50"
+    }
+  ]
+}
+```
+
+###### 3. `get-available-slots.json` (空き時間検索)
+
+```json
+{
+  "url": "http://34.182.56.160:8000/api/v1/vehicles/availability",
+  "method": "POST",
+  "headers": [
+    {
+      "key": "Authorization",
+      "value": "Bearer {% expr $get('get_user_token_1', 'output').body.access_token %}"
+    },
+    {
+      "key": "Content-Type",
+      "value": "application/json"
+    }
+  ],
+  "body": {
+    "start_date": "{% expr $get('ai_agent_skill_trigger_1', 'output').start_date %}",
+    "end_date": "{% expr $get('ai_agent_skill_trigger_1', 'output').end_date %}",
+    "store_id": "{% expr $get('ai_agent_skill_trigger_1', 'output').store_id %}"
+  }
+}
+```
+
+###### 4. `get-all-vehicles.json` (車両一覧)
+
+```json
+{
+  "url": "http://34.182.56.160:8000/api/v1/vehicles",
+  "method": "GET",
+  "headers": [
+    {
+      "key": "Authorization",
+      "value": "Bearer {% expr $get('get_user_token_1', 'output').body.access_token %}"
+    }
+  ],
+  "query_params": [
+    {
+      "key": "is_available",
+      "value": "true"
+    },
+    {
+      "key": "limit",
+      "value": "100"
+    }
+  ]
+}
+```
+
+###### 5. `get-all-stores.json` (店舗一覧)
+
+```json
+{
+  "url": "http://34.182.56.160:8000/api/v1/stores",
+  "method": "GET",
+  "headers": [
+    {
+      "key": "Authorization",
+      "value": "Bearer {% expr $get('get_user_token_1', 'output').body.access_token %}"
+    }
+  ],
+  "query_params": [
+    {
+      "key": "is_active",
+      "value": "true"
+    }
+  ]
+}
+```
+
+###### 6. `get-order-status.json` (予約状況確認)
+
+```json
+{
+  "url": "http://34.182.56.160:8000/api/v1/reservations/{% expr $get('ai_agent_skill_trigger_1', 'output').reservation_id %}",
+  "method": "GET",
+  "headers": [
+    {
+      "key": "Authorization",
+      "value": "Bearer {% expr $get('get_user_token_1', 'output').body.access_token %}"
+    }
+  ]
+}
+```
+
+---
+
+##### パターン B: 認証不要な Workflow (1 個)
+
+| #   | Workflow Skill          | DriveRev Endpoint       | Method | 説明           |
+| --- | ----------------------- | ----------------------- | ------ | -------------- |
+| 10  | `register-account.json` | `/api/v1/auth/register` | POST   | アカウント登録 |
+
+**実装例**:
+
+```json
+{
+  "url": "http://34.182.56.160:8000/api/v1/auth/register",
+  "method": "POST",
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json"
+    }
+  ],
+  "body": {
+    "email": "{% expr $get('ai_agent_skill_trigger_1', 'output').email %}",
+    "password": "{% expr $get('ai_agent_skill_trigger_1', 'output').password %}",
+    "full_name": "{% expr $get('ai_agent_skill_trigger_1', 'output').full_name %}",
+    "phone": "{% expr $get('ai_agent_skill_trigger_1', 'output').phone %}"
+  }
+}
+```
+
+---
+
+##### パターン C: 代替実装が必要な Workflow (1 個)
+
+| #   | Workflow Skill          | 代替方法                            | 説明                                                        |
+| --- | ----------------------- | ----------------------------------- | ----------------------------------------------------------- |
+| 11  | `get-all-services.json` | `GET /api/v1/vehicles?category=all` | DriveRev には「サービス」の概念がないため車両カテゴリで代替 |
+
+**背景**:
+
+- **PetStore**: ペットのグルーミング、トレーニングなどの「サービス」を提供
+- **DriveRev**: レンタカーなので「車両カテゴリ」（compact, suv, premium など）が該当
+
+**実装例（暫定）**:
+
+```json
+{
+  "url": "http://34.182.56.160:8000/api/v1/vehicles",
+  "method": "GET",
+  "headers": [
+    {
+      "key": "Authorization",
+      "value": "Bearer {% expr $get('get_user_token_1', 'output').body.access_token %}"
+    }
+  ],
+  "query_params": [
+    {
+      "key": "category",
+      "value": "all"
+    }
+  ]
+}
+```
+
+**代替案**:
+
+- 新規エンドポイント `GET /api/v1/services` を追加実装し、車両カテゴリを「サービス」として返却
+- フロントエンドで車両カテゴリをサービスとして表示
+
+---
+
+##### パターン D: 削除推奨な Workflow (1 個)
+
+| #   | Workflow Skill           | 理由                               |
+| --- | ------------------------ | ---------------------------------- |
+| 12  | `get-tracking-info.json` | レンタカーには配送追跡の概念がない |
+
+**背景**:
+
+- **PetStore**: 商品配送の追跡情報（配送業者、トラッキング番号、配送状況）
+- **DriveRev**: 車両レンタルなので配送追跡は不要
+
+**代替案（もし必要なら）**:
+
+- 「車両の現在位置」機能として新規エンドポイント `GET /api/v1/vehicles/{vehicle_id}/location` を追加実装
+- ただし、GPS 連携などの追加機能が必要
+
+---
+
+#### Workflow Skills の実装優先度
+
+| 優先度   | Workflow Skills                                                                                           | 理由                     |
+| -------- | --------------------------------------------------------------------------------------------------------- | ------------------------ |
+| **高**   | `get-user-token`, `get-user-info`, `book-reservation`, `get-appointments`                                 | 予約フローの基本機能     |
+| **中**   | `get-available-slots`, `get-available-vehicles`, `get-all-vehicles`, `get-all-stores`, `get-order-status` | 検索・一覧表示機能       |
+| **低**   | `register-account`, `get-all-services`                                                                    | 補助機能、代替実装が必要 |
+| **削除** | `get-tracking-info`                                                                                       | レンタカーには不要       |
+
+---
+
+#### 実装時の注意点
+
+1. **JWT Token の有効期限**:
+
+   - Access Token: 15 分
+   - Workflow 実行中に期限切れになる可能性あり
+   - 長時間実行される Workflow では Refresh Token の利用を検討
+
+2. **エラーハンドリング**:
+
+   - 401 Unauthorized: JWT Token 期限切れ → Refresh Token で再取得
+   - 404 Not Found: リソースが見つからない → ユーザーにエラー通知
+   - 500 Internal Server Error: サーバーエラー → リトライまたはフォールバック
+
+3. **Rate Limiting**:
+
+   - DevRev Agent からの連続呼び出しに対する Rate Limiting を設定
+   - 推奨: 10 req/min per DevRev User ID
+
+4. **パラメータバリデーション**:
+
+   - Workflow からの入力パラメータを必ずバリデーション
+   - 不正な値（未来日時、負の金額など）を拒否
+
+5. **ロギング**:
+   - DevRev Agent からの API 呼び出しを構造化ログで記録
+   - DevRev User ID、Workflow 名、実行時間を含める
+
+---
+
+### 実装手順（Phase）
+
+#### Phase 1: User モデル拡張 (Week 3)
+
+**タスク**:
+
+1. ✅ User モデルに `devrev_revuser_id` と `devrev_application_access_token` フィールドを追加
+2. ✅ `@property` で AAT の暗号化・復号メソッドを実装
+3. ✅ Alembic Migration スクリプトを作成・実行
+4. ✅ Unit Test: 暗号化・復号の正常動作を検証
+
+**成果物**:
+
+- `backend/app/models/user.py` (更新)
+- `backend/alembic/versions/YYYYMMDD_add_devrev_user_id.py` (新規)
+- `backend/tests/test_user_devrev_integration.py` (新規)
+
+#### Phase 2: 新規エンドポイント実装 (Week 3-4)
+
+**タスク**:
+
+1. ✅ `POST /api/v1/auth/token-from-devrev` エンドポイントを実装
+2. ✅ AAT 検証ロジックを実装
+3. ✅ Rate Limiting を追加（例: 10 req/min per DevRev User ID）
+4. ✅ Integration Test: 正常系・異常系のテストケースを実装
+
+**成果物**:
+
+- `backend/app/api/v1/auth.py` (更新)
+- `backend/app/schemas/user.py` (DevRevTokenRequest スキーマ追加)
+- `backend/tests/test_auth_devrev.py` (新規)
+
+#### Phase 3: Workflow Skill 作成 (Week 4)
+
+**タスク**:
+
+1. ✅ `get-user-token.json` を作成
+2. ✅ DevRev Console で Workflow Skill を登録
+3. ✅ Test Console で動作確認
+4. ✅ 他の Workflow Skills（予約作成など）を `access_token` 利用に修正
+
+**成果物**:
+
+- `docs/hands-on/workflows/get-user-token.json` (新規)
+- `docs/hands-on/workflows/book-reservation.json` (更新)
+
+#### Phase 4: E2E テスト (Week 4)
+
+**タスク**:
+
+1. ✅ DevRev Agent → DriveRev Backend の E2E フローをテスト
+2. ✅ 複数ユーザーでの並行実行テスト
+3. ✅ AAT 不一致時のエラーハンドリング確認
+4. ✅ JWT Token 有効期限切れ時の動作確認
+
+**成果物**:
+
+- `backend/tests/e2e/test_devrev_agent_workflow.py` (新規)
+- Test Report (Markdown)
+
+---
+
+### テストシナリオ
+
+#### Unit Test
+
+```python
+# backend/tests/test_user_devrev_integration.py
+
+import pytest
+from app.models.user import User
+from app.core.crypto import encrypt_aat, decrypt_aat
+
+def test_devrev_aat_encryption_decryption():
+    """AAT の暗号化・復号が正しく動作するか"""
+    user = User(
+        email="test@example.com",
+        full_name="Test User",
+        hashed_password="hashed"
+    )
+
+    # AAT を設定
+    original_aat = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.test.signature"
+    user.decrypted_devrev_aat = original_aat
+
+    # 暗号化されて保存されているか確認
+    assert user.devrev_application_access_token is not None
+    assert user.devrev_application_access_token != original_aat
+
+    # 復号して元の AAT と一致するか確認
+    assert user.decrypted_devrev_aat == original_aat
+
+def test_devrev_revuser_id_uniqueness(db_session):
+    """DevRev User ID の一意性制約が機能するか"""
+    devrev_id = "don:identity:dvrv-us-1:devo/xxx:revu/123"
+
+    # 1人目のユーザーを作成
+    user1 = User(
+        email="user1@example.com",
+        full_name="User 1",
+        hashed_password="hashed",
+        devrev_revuser_id=devrev_id
+    )
+    db_session.add(user1)
+    db_session.commit()
+
+    # 2人目のユーザーに同じ DevRev User ID を設定
+    user2 = User(
+        email="user2@example.com",
+        full_name="User 2",
+        hashed_password="hashed",
+        devrev_revuser_id=devrev_id
+    )
+    db_session.add(user2)
+
+    # IntegrityError が発生するか確認
+    with pytest.raises(IntegrityError):
+        db_session.commit()
+```
+
+#### Integration Test
+
+```python
+# backend/tests/test_auth_devrev.py
+
+import pytest
+from fastapi.testclient import TestClient
+from app.main import app
+from app.models.user import User
+
+client = TestClient(app)
+
+def test_token_from_devrev_success(db_session, test_user_with_devrev_id):
+    """DevRev User ID から JWT Token を正常に取得できるか"""
+    response = client.post(
+        "/api/v1/auth/token-from-devrev",
+        headers={
+            "Authorization": f"Bearer {test_user_with_devrev_id.decrypted_devrev_aat}"
+        },
+        json={
+            "devrev_user_id": test_user_with_devrev_id.devrev_revuser_id
+        }
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert "access_token" in data
+    assert "refresh_token" in data
+    assert data["token_type"] == "bearer"
+    assert data["user"]["email"] == test_user_with_devrev_id.email
+
+def test_token_from_devrev_user_not_found(db_session):
+    """存在しない DevRev User ID でエラーが返るか"""
+    response = client.post(
+        "/api/v1/auth/token-from-devrev",
+        headers={
+            "Authorization": "Bearer test_aat"
+        },
+        json={
+            "devrev_user_id": "don:identity:dvrv-us-1:devo/xxx:revu/999"
+        }
+    )
+
+    assert response.status_code == 404
+    assert "DevRev User ID に紐づくユーザーが見つかりません" in response.json()["detail"]
+
+def test_token_from_devrev_aat_mismatch(db_session, test_user_with_devrev_id):
+    """AAT が一致しない場合にエラーが返るか"""
+    response = client.post(
+        "/api/v1/auth/token-from-devrev",
+        headers={
+            "Authorization": "Bearer wrong_aat"
+        },
+        json={
+            "devrev_user_id": test_user_with_devrev_id.devrev_revuser_id
+        }
+    )
+
+    assert response.status_code == 401
+    assert "DevRev Application Access Token の検証に失敗しました" in response.json()["detail"]
+```
+
+#### E2E Test
+
+```python
+# backend/tests/e2e/test_devrev_agent_workflow.py
+
+import pytest
+from fastapi.testclient import TestClient
+from app.main import app
+
+client = TestClient(app)
+
+def test_devrev_agent_full_workflow(db_session, test_user_with_devrev_id):
+    """DevRev Agent のフルワークフロー（Token 取得 → 予約作成）をテスト"""
+
+    # Step 1: DevRev User ID から JWT Token を取得
+    token_response = client.post(
+        "/api/v1/auth/token-from-devrev",
+        headers={
+            "Authorization": f"Bearer {test_user_with_devrev_id.decrypted_devrev_aat}"
+        },
+        json={
+            "devrev_user_id": test_user_with_devrev_id.devrev_revuser_id
+        }
+    )
+
+    assert token_response.status_code == 200
+    access_token = token_response.json()["access_token"]
+
+    # Step 2: 取得した JWT Token で予約を作成
+    reservation_response = client.post(
+        "/api/v1/reservations",
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        },
+        json={
+            "vehicle_id": "test-vehicle-id",
+            "pickup_store_id": "test-store-id",
+            "return_store_id": "test-store-id",
+            "pickup_datetime": "2025-10-20T10:00:00",
+            "return_datetime": "2025-10-21T10:00:00"
+        }
+    )
+
+    assert reservation_response.status_code == 201
+    assert "confirmation_number" in reservation_response.json()
+```
+
+---
+
+### まとめ
+
+**実装のポイント**:
+
+1. ✅ **PetStore 互換**: 参照システムの設計パターンを踏襲し、DevRev Agent からの呼び出しフローを維持
+2. ✅ **セキュリティ強化**: AAT の暗号化保存、JWT Token の短い有効期限、Rate Limiting
+3. ✅ **段階的実装**: Phase 1-4 で段階的に実装し、各 Phase でテストを実施
+4. ✅ **テスト充実**: Unit / Integration / E2E の 3 層でテストを実装
+
+**次のステップ**:
+
+👉 Phase 1（User モデル拡張）から実装を開始し、`03_IMPLEMENTATION_PLAN.md` のタスクリストに統合する
+
+---
+
 ## セキュリティ考慮事項
 
 ### 1. Application Access Token (AAT) の保護
@@ -684,6 +1803,7 @@ async def get_api_key_with_aat(
 - キーローテーション時は `LEGACY_ENCRYPTION_KEYS` を使って段階的に再暗号化し、`scripts/migrate_encryption.py` を実行する
 <!--
 旧記述:
+
 ```python
 from cryptography.fernet import Fernet
 
@@ -705,6 +1825,7 @@ def decrypted_devrev_aat(self) -> str | None:
         return None
     return decrypt_aat(self.devrev_application_access_token)
 ```
+
 -->
 
 ### 2. API Key 保護
