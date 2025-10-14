@@ -147,6 +147,7 @@ redis-data/
 # IDEs
 .vscode/
 .idea/
+*.code-workspace
 *.swp
 *.swo
 *~
