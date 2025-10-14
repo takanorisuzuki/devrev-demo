@@ -9,7 +9,6 @@ from typing import Optional
 import httpx
 from sqlalchemy.orm import Session
 
-from app.core.config import settings
 from app.models.user import User
 
 
@@ -18,7 +17,7 @@ class DevRevService:
 
     # DevRev API Base URL
     DEVREV_API_URL = "https://api.devrev.ai"
-    
+
     # Session Token有効期限（デフォルト: 1時間）
     SESSION_TOKEN_EXPIRY_HOURS = 1
 
@@ -82,7 +81,7 @@ class DevRevService:
         # POST /session_tokens.create
         url = f"{self.DEVREV_API_URL}/internal/session_tokens.create"
         headers = {"Authorization": aat, "Content-Type": "application/json"}
-        
+
         # ユーザー情報をペイロードに含める
         payload = {
             "user_id": str(user.id),

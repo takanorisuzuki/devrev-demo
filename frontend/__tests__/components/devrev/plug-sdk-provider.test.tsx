@@ -332,7 +332,11 @@ describe("PlugSDKProvider", () => {
   describe("Environment configuration", () => {
     it("should use development debug mode in dev environment", async () => {
       const originalEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = "development";
+      Object.defineProperty(process.env, "NODE_ENV", {
+        value: "development",
+        writable: true,
+        configurable: true,
+      });
 
       const mockUser = {
         id: 1,
@@ -364,7 +368,11 @@ describe("PlugSDKProvider", () => {
         );
       });
 
-      process.env.NODE_ENV = originalEnv;
+      Object.defineProperty(process.env, "NODE_ENV", {
+        value: originalEnv,
+        writable: true,
+        configurable: true,
+      });
     });
   });
 });

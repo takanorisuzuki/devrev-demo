@@ -77,7 +77,11 @@ class TestDevRevService:
         """Test getting global DevRev config"""
         service = DevRevService(mock_db)
 
-        with patch.dict(os.environ, {"DEVREV_GLOBAL_APP_ID": "GLOBAL_APP_ID", "DEVREV_GLOBAL_AAT": "GLOBAL_AAT"}):
+        env_vars = {
+            "DEVREV_GLOBAL_APP_ID": "GLOBAL_APP_ID",
+            "DEVREV_GLOBAL_AAT": "GLOBAL_AAT"
+        }
+        with patch.dict(os.environ, env_vars):
             config = service.get_devrev_config(test_user)
 
             assert config["mode"] == "global"
@@ -125,7 +129,9 @@ class TestDevRevService:
     def test_is_session_token_valid_with_expired_token(self, mock_db, test_user_with_config):
         """Test session token validity check with expired token"""
         # Set expired token
-        test_user_with_config.devrev_session_expires_at = datetime.now(timezone.utc) - timedelta(hours=1)
+        test_user_with_config.devrev_session_expires_at = (
+            datetime.now(timezone.utc) - timedelta(hours=1)
+        )
 
         service = DevRevService(mock_db)
 

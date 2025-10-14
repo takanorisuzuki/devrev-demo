@@ -20,13 +20,13 @@ class TestDevRevAPI:
         # Create a test user and login
         # This assumes you have user creation and login endpoints
         # Adjust based on your actual auth implementation
-        
+
         # For now, we'll mock the JWT token
         # In a real implementation, you'd need to:
         # 1. Create a test user
         # 2. Login and get JWT token
         # 3. Return Authorization header
-        
+
         mock_token = "test_jwt_token"
         return {"Authorization": f"Bearer {mock_token}"}
 
@@ -210,7 +210,7 @@ class TestDevRevAPI:
         """Test rate limiting on DevRev endpoints (if implemented)"""
         # This test assumes you have rate limiting
         # Skip if not implemented
-        
+
         # Make multiple requests in quick succession
         responses = []
         for _ in range(10):
@@ -223,18 +223,18 @@ class TestDevRevAPI:
         # If rate limiting is implemented, at least one should be 429
         # Otherwise, this test will pass as informational
         status_codes = [r.status_code for r in responses]
-        
+
         # Just check that we got some responses
         assert len(status_codes) == 10
 
     def test_devrev_api_documentation(self, client):
         """Test that DevRev endpoints are documented in OpenAPI"""
         response = client.get("/openapi.json")
-        
+
         if response.status_code == 200:
             openapi_spec = response.json()
             paths = openapi_spec.get("paths", {})
-            
+
             # Check that DevRev endpoints are documented
             assert "/api/v1/devrev/session-token" in paths or True
             # Use 'or True' to make test non-blocking if docs are different
@@ -242,7 +242,7 @@ class TestDevRevAPI:
     def test_devrev_error_responses(self, client, auth_headers):
         """Test consistent error response format"""
         # Test various error scenarios and check response format
-        
+
         # 1. Invalid endpoint
         response = client.get("/api/v1/devrev/invalid-endpoint")
         assert response.status_code == 404
