@@ -44,8 +44,31 @@ class User(Base):
         nullable=False,
     )
 
+    # DevRev Integration (Phase 1)
+    devrev_app_id = Column(String(500), nullable=True)
+    devrev_application_access_token = Column(String(500), nullable=True)
+    devrev_use_personal_config = Column(Boolean, default=False, nullable=False)
+    devrev_revuser_id = Column(String(200), nullable=True, index=True)
+    devrev_session_token = Column(String(500), nullable=True)
+    devrev_session_expires_at = Column(DateTime, nullable=True)
+
+    # API Key Management (Phase 1)
+    api_key = Column(String(100), nullable=True, unique=True, index=True)
+    api_key_name = Column(String(100), default="User API Key", nullable=True)
+    api_key_created_at = Column(DateTime, nullable=True)
+    api_key_last_used = Column(DateTime, nullable=True)
+
     # リレーションシップ
     # lock = relationship("UserLock", back_populates="user", uselist=False)
+
+    def clear_expired_devrev_session(self) -> None:
+        """期限切れのDevRev Session Tokenをクリアする"""
+        if (
+            self.devrev_session_expires_at
+            and datetime.now(timezone.utc) >= self.devrev_session_expires_at
+        ):
+            self.devrev_session_token = None
+            self.devrev_session_expires_at = None
 
     def __repr__(self):
         return f"<User(id={self.id}, email='{self.email}', role='{self.role}')>"
