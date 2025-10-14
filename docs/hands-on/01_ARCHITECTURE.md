@@ -520,3 +520,5 @@ def decrypt_aat(encrypted_aat: str) -> str:
 ### 次のステップ
 
 👉 [02_FEATURE_COMPARISON.md](./02_FEATURE_COMPARISON.md) で機能比較と実装ギャップを確認
+
+

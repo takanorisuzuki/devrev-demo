@@ -1872,3 +1872,5 @@ def decrypted_devrev_aat(self) -> str | None:
 ## 次のステップ
 
 👉 [05_IMPLEMENTATION_ANALYSIS.md](./05_IMPLEMENTATION_ANALYSIS.md) でギャップ分析とリスク項目を確認
+
+
