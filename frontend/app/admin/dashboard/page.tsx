@@ -40,6 +40,7 @@ import { StoreCreateModal } from "@/components/admin/store-create-modal";
 import { StoreEditModal } from "@/components/admin/store-edit-modal";
 import { StoreDeleteModal } from "@/components/admin/store-delete-modal";
 import { SystemSettingsComponent } from "@/components/admin/system-settings";
+import { DevRevSettingsComponent } from "@/components/admin/devrev-settings";
 import { useAuthStore, useIsAdmin } from "@/lib/stores/auth";
 import { useToast } from "@/components/ui/toast";
 import { adminApi } from "@/lib/api/admin";
@@ -1718,7 +1719,44 @@ function StoresContent() {
 }
 
 function SettingsContent() {
-  return <SystemSettingsComponent />;
+  const [settingsTab, setSettingsTab] = useState<"system" | "devrev">("system");
+
+  return (
+    <div className="space-y-6">
+      {/* タブナビゲーション */}
+      <div className="border-b border-gray-200">
+        <nav className="-mb-px flex space-x-8">
+          <button
+            onClick={() => setSettingsTab("system")}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              settingsTab === "system"
+                ? "border-blue-500 text-blue-600"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            }`}
+          >
+            システム設定
+          </button>
+          <button
+            onClick={() => setSettingsTab("devrev")}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              settingsTab === "devrev"
+                ? "border-blue-500 text-blue-600"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            }`}
+          >
+            DevRev PLuG設定
+          </button>
+        </nav>
+      </div>
+
+      {/* タブコンテンツ */}
+      {settingsTab === "system" ? (
+        <SystemSettingsComponent />
+      ) : (
+        <DevRevSettingsComponent />
+      )}
+    </div>
+  );
 }
 
 // 統計カードコンポーネント
