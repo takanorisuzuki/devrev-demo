@@ -1,0 +1,44 @@
+{
+  "mcpServers": {
+    "GitHub": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "mcp/github"
+      ]
+    },
+    "sequential-thinking": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "mcp/sequentialthinking"
+      ]
+    },
+    "time": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "mcp/time"
+      ]
+    },
+    "serena": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "/Users/takanorisuzuki/work/repos/takanorisuzuki/serena",
+        "run",
+        "serena",
+        "start-mcp-server",
+        "--transport",
+        "stdio"
+      ],
+      "cwd": "/Users/takanorisuzuki/work/repos/takanorisuzuki/devrev-demo"
+    }
+  }
+}

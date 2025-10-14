@@ -23,12 +23,12 @@
 
 ### ステップ 1: あなたの目的を選ぶ
 
-| 目的                                    | おすすめドキュメント                                                                                           | 所要時間 |
-| --------------------------------------- | -------------------------------------------------------------------------------------------------------------- | -------- |
-| **🎯 とりあえず動かしてみたい**         | [DriveRev ラボガイド](./driverev-lab/README.md) → 環境構築から PLuG 動作まで体験                               | 2-3 時間 |
-| **👨‍💻 実装を担当する（開発者）**         | [実装分析](../architecture/implementation-analysis.md) ⭐ → [実装計画](../architecture/implementation-plan.md) | 3-4 時間 |
-| **🏗️ 設計を理解したい（アーキテクト）** | [実装分析](../architecture/implementation-analysis.md) ⭐ → [アーキテクチャ概要](../architecture/overview.md)  | 2-3 時間 |
-| **📊 プロジェクトを管理する（PM）**     | [実装分析](../architecture/implementation-analysis.md) ⭐ → [実装計画](../architecture/implementation-plan.md) | 2-3 時間 |
+| 目的                                    | おすすめドキュメント                                                                                                                                   | 所要時間 |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| **🎯 とりあえず動かしてみたい**         | [DriveRevラボガイド](./driverev-lab/README.md) → 環境構築から PLuG 動作まで体験                                                                        | 2-3 時間 |
+| **👨‍💻 実装を担当する（開発者）**         | [実装分析](../architecture/implementation-analysis.md) ⭐ → [実装計画](../architecture/implementation-plan.md)                                         | 3-4 時間 |
+| **🏗️ 設計を理解したい（アーキテクト）** | [実装分析](../architecture/implementation-analysis.md) ⭐ → [アーキテクチャ概要](../architecture/overview.md)                                           | 2-3 時間 |
+| **📊 プロジェクトを管理する（PM）**     | [実装分析](../architecture/implementation-analysis.md) ⭐ → [実装計画](../architecture/implementation-plan.md)                                         | 2-3 時間 |
 
 ### ステップ 2: 用語を確認する（必要に応じて）
 
@@ -148,15 +148,14 @@ DriveRev と DevRev Platform の関係を理解するための全体図です。
 1. **[アーキテクチャ概要](../architecture/overview.md)** - アーキテクチャ比較と設計方針
 2. **[機能比較分析](../architecture/feature-comparison.md)** - 機能比較と実装ギャップ
 3. **[実装計画](../architecture/implementation-plan.md)** - 段階的実装計画（12 週間）
-4. **[DevRev 統合設計](../architecture/devrev-integration.md)** - DevRev 統合詳細設計
-5. **[実装分析](../architecture/implementation-analysis.md)** ⭐ **重要** - 13 の重要課題分析
+4. **[DevRev統合設計](../architecture/devrev-integration.md)** - DevRev 統合詳細設計
+5. **[実装分析](../architecture/implementation-analysis.md)** ⭐ **重要** - 13の重要課題分析
 
 ### 実践ガイド
 
 **📁 [driverev-lab/](./driverev-lab/)** - DriveRev ハンズオンラボ
 
 1. **[ラボガイド](./driverev-lab/README.md)** - ハンズオンラボガイド（日本語）
-
    - 環境セットアップ
    - ステップバイステップの演習
    - トラブルシューティング
@@ -198,7 +197,7 @@ DriveRev と DevRev Platform の関係を理解するための全体図です。
 2. [実装計画](../architecture/implementation-plan.md) - 実装計画
    - Phase 1 から順に実装
    - タスク依存関係を確認
-3. [DevRev 統合設計](../architecture/devrev-integration.md) - DevRev 統合詳細
+3. [DevRev統合設計](../architecture/devrev-integration.md) - DevRev 統合詳細
    - 実装時のリファレンス
    - **所要時間**: 3-4 時間
    - **前提知識**: Python/TypeScript, FastAPI/Next.js
@@ -348,12 +347,12 @@ npm run dev
 ### 初級（2-3 時間）
 
 1. **環境セットアップ** → [ラボガイド](./driverev-lab/README.md) Section 1
-2. **PLuG 統合** → [DevRev 統合設計](../architecture/devrev-integration.md) + Lab Guide Section 2
+2. **PLuG 統合** → [DevRev統合設計](../architecture/devrev-integration.md) + Lab Guide Section 2
 3. **最初の Workflow** → Lab Guide Section 3
 
 ### 中級（4-6 時間）
 
-4. **API Key 管理** → [DevRev 統合設計](../architecture/devrev-integration.md) Section 3
+4. **API Key 管理** → [DevRev統合設計](../architecture/devrev-integration.md) Section 3
 5. **予約 Workflow 作成** → Lab Guide Section 4
 6. **Knowledge Base 連携** → Lab Guide Section 5
 
@@ -398,3 +397,5 @@ npm run dev
 - 🎯 **すぐ動かしたい**: [ラボガイド](./driverev-lab/README.md)
 - 👨‍💻 **実装する**: [実装分析](../architecture/implementation-analysis.md) ⭐ **必読**
 - 🏗️ **設計を理解**: [アーキテクチャ概要](../architecture/overview.md)
+
+
