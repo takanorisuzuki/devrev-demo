@@ -224,7 +224,9 @@ describe("DevRevSettingsComponent", () => {
       render(<DevRevSettingsComponent />);
 
       await waitFor(() => {
-        expect(screen.getByText(/Personal設定/i)).toBeInTheDocument();
+        // Use getAllByText to handle multiple matches
+        const elements = screen.getAllByText(/Personal設定/i);
+        expect(elements.length).toBeGreaterThan(0);
       });
     });
   });
