@@ -101,6 +101,12 @@ class Settings(BaseSettings):
         # v がリストであればそのまま返し、そうでなければリストでラップする
         return v if isinstance(v, list) else [v]
 
+    # DevRev統合設定
+    DEVREV_API_URL: str = "https://api.devrev.ai"
+    DEVREV_GLOBAL_APP_ID: Optional[str] = None
+    DEVREV_GLOBAL_AAT: Optional[str] = None
+    DEVREV_SESSION_TOKEN_EXPIRY_HOURS: int = 1
+
     model_config = ConfigDict(env_file=".env", case_sensitive=True)
 
 

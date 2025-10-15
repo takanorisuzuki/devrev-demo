@@ -10,6 +10,7 @@ from app.api.v1 import (
     admin_stores,
     admin_users,
     auth,
+    devrev,
     payments,
     reservations,
     stores,
@@ -26,6 +27,7 @@ api_router.include_router(vehicles.router, prefix="/vehicles", tags=["車両"])
 api_router.include_router(stores.router, prefix="/stores", tags=["店舗"])
 api_router.include_router(reservations.router, prefix="/reservations", tags=["予約"])
 api_router.include_router(payments.router, prefix="/payments", tags=["決済"])
+api_router.include_router(devrev.router, prefix="/devrev", tags=["DevRev統合"])
 
 # 管理者機能
 api_router.include_router(
