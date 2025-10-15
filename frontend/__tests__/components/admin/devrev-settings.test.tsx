@@ -40,7 +40,7 @@ describe("DevRevSettingsComponent", () => {
       render(<DevRevSettingsComponent />);
 
       await waitFor(() => {
-        expect(screen.getByText(/DevRev PLuG設定/i)).toBeInTheDocument();
+        expect(screen.getByText(/DevRev PLuG\s+設定/i)).toBeInTheDocument();
       });
 
       // Check form elements exist

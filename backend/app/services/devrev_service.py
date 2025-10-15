@@ -40,7 +40,7 @@ class DevRevService:
             return (
                 user.devrev_session_token,
                 user.devrev_revuser_id,
-                user.devrev_session_expires_at
+                user.devrev_session_expires_at,
             )
 
         # Session Token生成
@@ -99,9 +99,7 @@ class DevRevService:
         revuser_id = data.get("revuser_id")
 
         if not session_token or not revuser_id:
-            raise ValueError(
-                f"DevRev API レスポンスが不正です: {data}"
-            )
+            raise ValueError(f"DevRev API レスポンスが不正です: {data}")
 
         return session_token, revuser_id
 

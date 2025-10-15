@@ -50,8 +50,7 @@ class User(Base):
     devrev_app_id = Column(String(500), nullable=True)
     # 暗号化して保存（セキュリティ対策）
     devrev_application_access_token = Column(
-        StringEncryptedType(String, settings.SECRET_KEY),
-        nullable=True
+        StringEncryptedType(String, settings.SECRET_KEY), nullable=True
     )
     devrev_use_personal_config = Column(Boolean, default=False, nullable=False)
     devrev_revuser_id = Column(String(200), nullable=True, index=True)
@@ -62,7 +61,9 @@ class User(Base):
     # 暗号化して保存（セキュリティ対策）
     api_key = Column(
         StringEncryptedType(String, settings.SECRET_KEY),
-        nullable=True, unique=True, index=True
+        nullable=True,
+        unique=True,
+        index=True,
     )
     api_key_name = Column(String(100), default="User API Key", nullable=True)
     api_key_created_at = Column(DateTime, nullable=True)
