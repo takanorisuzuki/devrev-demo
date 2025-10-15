@@ -1,6 +1,11 @@
 # ================================
-# JP Rental Car Demo - .gitignore
+# DriveRev Demo - .gitignore
 # ================================
+.gitignore
+.claude/
+.cursor/
+.github/
+CLAUDE.md
 
 # --------------------------------
 # Environment & Secrets
