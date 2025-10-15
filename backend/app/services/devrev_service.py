@@ -8,8 +8,8 @@ from typing import Optional
 import httpx
 from sqlalchemy.orm import Session
 
-from app.models.user import User
 from app.core.config import settings
+from app.models.user import User
 
 
 class DevRevService:

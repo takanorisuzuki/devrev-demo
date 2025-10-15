@@ -10,8 +10,8 @@ from sqlalchemy import Boolean, Column, DateTime, Enum, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy_utils import StringEncryptedType
 
-from app.db.database import Base
 from app.core.config import settings
+from app.db.database import Base
 
 
 class UserRole(str, enum.Enum):
