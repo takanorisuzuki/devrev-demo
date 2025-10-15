@@ -2,7 +2,6 @@
 DevRev API統合サービス
 """
 
-import os
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -10,23 +9,18 @@ import httpx
 from sqlalchemy.orm import Session
 
 from app.models.user import User
+from app.core.config import settings
 
 
 class DevRevService:
     """DevRev API統合サービス"""
-
-    # DevRev API Base URL
-    DEVREV_API_URL = "https://api.devrev.ai"
-
-    # Session Token有効期限（デフォルト: 1時間）
-    SESSION_TOKEN_EXPIRY_HOURS = 1
 
     def __init__(self, db: Session):
         self.db = db
 
     async def get_or_create_session_token(
         self, user: User, force_refresh: bool = False
-    ) -> tuple[str, str]:
+    ) -> tuple[str, str, datetime]:
         """
         Session Tokenを取得または生成
 
@@ -35,7 +29,7 @@ class DevRevService:
             force_refresh: 強制的に新しいトークンを生成するか
 
         Returns:
-            tuple[session_token, revuser_id]
+            tuple[session_token, revuser_id, expires_at]
 
         Raises:
             ValueError: DevRev設定が不正な場合
@@ -43,7 +37,11 @@ class DevRevService:
         """
         # 既存のSession Tokenが有効かチェック
         if not force_refresh and self._is_session_token_valid(user):
-            return user.devrev_session_token, user.devrev_revuser_id
+            return (
+                user.devrev_session_token,
+                user.devrev_revuser_id,
+                user.devrev_session_expires_at
+            )
 
         # Session Token生成
         session_token, revuser_id = await self._generate_session_token(user)
@@ -52,12 +50,12 @@ class DevRevService:
         user.devrev_session_token = session_token
         user.devrev_revuser_id = revuser_id
         user.devrev_session_expires_at = datetime.now(timezone.utc) + timedelta(
-            hours=self.SESSION_TOKEN_EXPIRY_HOURS
+            hours=settings.DEVREV_SESSION_TOKEN_EXPIRY_HOURS
         )
         self.db.commit()
         self.db.refresh(user)
 
-        return session_token, revuser_id
+        return session_token, revuser_id, user.devrev_session_expires_at
 
     async def _generate_session_token(self, user: User) -> tuple[str, str]:
         """
@@ -79,7 +77,7 @@ class DevRevService:
 
         # DevRev API: Session Token生成エンドポイント
         # POST /session_tokens.create
-        url = f"{self.DEVREV_API_URL}/internal/session_tokens.create"
+        url = f"{settings.DEVREV_API_URL}/internal/session_tokens.create"
         headers = {"Authorization": aat, "Content-Type": "application/json"}
 
         # ユーザー情報をペイロードに含める
@@ -145,9 +143,8 @@ class DevRevService:
         if user.devrev_use_personal_config and user.devrev_application_access_token:
             return user.devrev_application_access_token
 
-        # Global設定のAAT（環境変数から取得）
-        global_aat = os.getenv("DEVREV_GLOBAL_AAT")
-        return global_aat
+        # Global設定のAAT（settingsから取得）
+        return settings.DEVREV_GLOBAL_AAT
 
     def get_devrev_config(self, user: User) -> dict:
         """
@@ -176,13 +173,13 @@ class DevRevService:
         # Global設定
         return {
             "mode": "global",
-            "app_id": os.getenv("DEVREV_GLOBAL_APP_ID"),
-            "has_aat": bool(os.getenv("DEVREV_GLOBAL_AAT")),
+            "app_id": settings.DEVREV_GLOBAL_APP_ID,
+            "has_aat": bool(settings.DEVREV_GLOBAL_AAT),
             "revuser_id": None,  # Globalモードでは個別のRevUser IDは不要
             "session_token_expires_at": None,
         }
 
-    async def update_devrev_config(
+    def update_devrev_config(
         self,
         user: User,
         app_id: Optional[str] = None,
@@ -224,7 +221,7 @@ class DevRevService:
 
         return user
 
-    async def delete_devrev_config(self, user: User) -> User:
+    def delete_devrev_config(self, user: User) -> User:
         """
         ユーザーのDevRev設定を削除
 

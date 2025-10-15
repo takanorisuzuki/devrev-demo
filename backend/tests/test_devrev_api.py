@@ -40,7 +40,7 @@ class TestDevRevAPI:
         }
 
         with patch(
-            "app.services.devrev_service.DevRevService.get_or_refresh_session_token",
+            "app.services.devrev_service.DevRevService.get_or_create_session_token",
             new=AsyncMock(return_value=mock_result),
         ):
             response = client.post(
@@ -57,7 +57,7 @@ class TestDevRevAPI:
     def test_get_session_token_no_config(self, client, auth_headers):
         """Test session token generation without DevRev config"""
         with patch(
-            "app.services.devrev_service.DevRevService.get_or_refresh_session_token",
+            "app.services.devrev_service.DevRevService.get_or_create_session_token",
             side_effect=ValueError("DevRev設定が見つかりません"),
         ):
             response = client.post(
@@ -188,9 +188,8 @@ class TestDevRevAPI:
                 headers=auth_headers,
             )
 
-            assert response.status_code == 200
-            data = response.json()
-            assert data["message"] == "DevRev設定を削除しました"
+            assert response.status_code == 204
+            assert not response.content  # 204 No Contentにはボディがない
 
     def test_delete_devrev_config_unauthorized(self, client):
         """Test DevRev config deletion without authentication"""

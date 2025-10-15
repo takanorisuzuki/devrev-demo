@@ -2,6 +2,7 @@
 DevRev統合 API エンドポイント
 """
 
+import os
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -76,8 +77,11 @@ async def create_session_token(
     devrev_service = DevRevService(db)
 
     try:
-        session_token, revuser_id = await devrev_service.get_or_create_session_token(
-            current_user, force_refresh=force_refresh
+        # Session Token生成（expires_atも返される）
+        session_token, revuser_id, expires_at = (
+            await devrev_service.get_or_create_session_token(
+                current_user, force_refresh=force_refresh
+            )
         )
 
         # 有効なApp IDを取得
@@ -85,13 +89,12 @@ async def create_session_token(
             app_id = current_user.devrev_app_id
         else:
             # Global設定からApp IDを取得（環境変数）
-            import os
             app_id = os.getenv("DEVREV_GLOBAL_APP_ID")
 
         return SessionTokenResponse(
             session_token=session_token,
             revuser_id=revuser_id,
-            expires_at=current_user.devrev_session_expires_at.isoformat(),
+            expires_at=expires_at.isoformat(),
             app_id=app_id,
         )
 
@@ -100,10 +103,12 @@ async def create_session_token(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
         )
-    except Exception as e:
+    except Exception:
+        # 詳細はサーバーログに記録（実装時に追加）
+        # logger.error("Session Token生成エラー", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Session Token生成エラー: {str(e)}",
+            detail="Session Tokenの生成中にエラーが発生しました。",
         )
 
 
@@ -158,7 +163,7 @@ async def update_devrev_config(
     devrev_service = DevRevService(db)
 
     try:
-        await devrev_service.update_devrev_config(
+        devrev_service.update_devrev_config(
             current_user,
             app_id=request.app_id,
             aat=request.application_access_token,
@@ -169,10 +174,12 @@ async def update_devrev_config(
         config = devrev_service.get_devrev_config(current_user)
         return DevRevConfigResponse(**config)
 
-    except Exception as e:
+    except Exception:
+        # 詳細はサーバーログに記録（実装時に追加）
+        # logger.error("DevRev設定更新エラー", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"DevRev設定更新エラー: {str(e)}",
+            detail="DevRev設定の更新中にエラーが発生しました。",
         )
 
 
@@ -196,9 +203,11 @@ async def delete_devrev_config(
     devrev_service = DevRevService(db)
 
     try:
-        await devrev_service.delete_devrev_config(current_user)
-    except Exception as e:
+        devrev_service.delete_devrev_config(current_user)
+    except Exception:
+        # 詳細はサーバーログに記録（実装時に追加）
+        # logger.error("DevRev設定削除エラー", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"DevRev設定削除エラー: {str(e)}",
+            detail="DevRev設定の削除中にエラーが発生しました。",
         )
