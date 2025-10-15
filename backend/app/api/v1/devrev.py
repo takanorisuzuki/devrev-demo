@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from app.core.auth import get_current_user
+from app.api.v1.auth import get_current_user
 from app.db.database import get_db
 from app.models.user import User
 from app.services.devrev_service import DevRevService
