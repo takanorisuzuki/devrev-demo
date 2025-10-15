@@ -36,8 +36,12 @@ class DevRevConfigUpdateRequest(BaseModel):
     """DevRev設定更新リクエスト"""
 
     app_id: Optional[str] = Field(None, description="DevRev App ID")
-    application_access_token: Optional[str] = Field(None, description="Application Access Token")
-    use_personal_config: Optional[bool] = Field(None, description="Personal設定を有効にするか")
+    application_access_token: Optional[str] = Field(
+        None, description="Application Access Token"
+    )
+    use_personal_config: Optional[bool] = Field(
+        None, description="Personal設定を有効にするか"
+    )
 
 
 class SessionTokenResponse(BaseModel):
@@ -109,6 +113,57 @@ async def create_session_token(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Session Tokenの生成中にエラーが発生しました。",
+        )
+
+
+@router.get(
+    "/anonymous-session",
+    response_model=SessionTokenResponse,
+    summary="匿名Session Token生成",
+    description="未認証ユーザー向けにDevRev PLuG用の匿名Session Tokenを生成します",
+)
+async def create_anonymous_session():
+    """
+    匿名Session Token生成エンドポイント（認証不要）
+
+    セキュリティ:
+    - 認証不要（未ログインユーザー向け）
+    - AATはサーバー側で安全に管理（GitHub Secrets経由）
+    - 短命Session Token（1時間）を返却
+
+    Returns:
+        SessionTokenResponse: 匿名Session Token情報
+    """
+    devrev_service = DevRevService()
+
+    # 匿名ユーザー情報（固定値）
+    anonymous_user_email = "anonymous@guest.driverev.jp"
+    anonymous_user_name = "ゲストユーザー"
+
+    try:
+        # Session Token生成（expires_atも返される）
+        session_token, revuser_id, expires_at = (
+            await devrev_service.create_session_token(
+                user_email=anonymous_user_email,
+                user_display_name=anonymous_user_name,
+            )
+        )
+
+        # Global設定からApp IDを取得（環境変数）
+        app_id = os.getenv("DEVREV_GLOBAL_APP_ID")
+
+        return SessionTokenResponse(
+            session_token=session_token,
+            revuser_id=revuser_id,
+            expires_at=expires_at.isoformat(),
+            app_id=app_id,
+        )
+
+    except Exception as e:
+        # 詳細はサーバーログに記録
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"匿名セッションの作成に失敗しました: {str(e)}",
         )
 
 

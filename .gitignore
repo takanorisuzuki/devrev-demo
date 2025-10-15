@@ -16,6 +16,23 @@ CLAUDE.md
 .env.*.local
 *.env
 
+# DevRev Secrets - 絶対にコミットしない
+**/.env
+**/.env.local
+**/.env.*.local
+**/*.secret
+**/secrets/
+
+# Backend specific
+backend/.env
+backend/.env.production
+backend/.env.development
+
+# Frontend specific
+frontend/.env.local
+frontend/.env.production.local
+frontend/.env.development.local
+
 # --------------------------------
 # Python Backend
 # --------------------------------

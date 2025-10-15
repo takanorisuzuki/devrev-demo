@@ -1,5 +1,10 @@
 "use client";
 
+// ✅ Dynamic Rendering強制（SSGスキップ）
+// 理由: DevRevSettingsComponent が useEffect でBackend API呼び出し
+// Build時にBackendが存在しないため、SSGでタイムアウトが発生
+export const dynamic = "force-dynamic";
+
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";

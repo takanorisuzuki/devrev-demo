@@ -713,12 +713,14 @@ jobs:
           VERSION_WITH_SHA: ${{ steps.version.outputs.version_with_sha }}
           TARGET_BACKEND_VERSION: ${{ steps.version.outputs.backend_version_with_sha }}
           TARGET_FRONTEND_VERSION: ${{ steps.version.outputs.frontend_version_with_sha }}
+          DEVREV_GLOBAL_APP_ID: ${{ secrets.DEVREV_GLOBAL_APP_ID }}
+          DEVREV_GLOBAL_AAT: ${{ secrets.DEVREV_GLOBAL_AAT }}
         with:
           host: ${{ steps.gce-ip.outputs.ip }}
           username: ${{ secrets.GCE_USER }}
           key: ${{ secrets.GCE_SSH_KEY }}
           command_timeout: 10m
-          envs: VERSION,CURRENT_SHA,BACKEND_SHA,FRONTEND_SHA,VERSION_WITH_SHA,TARGET_BACKEND_VERSION,TARGET_FRONTEND_VERSION
+          envs: VERSION,CURRENT_SHA,BACKEND_SHA,FRONTEND_SHA,VERSION_WITH_SHA,TARGET_BACKEND_VERSION,TARGET_FRONTEND_VERSION,DEVREV_GLOBAL_APP_ID,DEVREV_GLOBAL_AAT
           script: |
             set -euo pipefail
             cd ~/app
@@ -727,11 +729,20 @@ jobs:
             source .env.secrets
             export DB_PASSWORD SECRET_KEY EMAIL_HOST EMAIL_USER EMAIL_PASSWORD
 
+            # DevRev Secrets export
+            export DEVREV_GLOBAL_APP_ID DEVREV_GLOBAL_AAT
+
             # Generate production environment file
             VM_IP="${{ steps.gce-ip.outputs.ip }}"
             echo "🔧 Generating production .env with IP: $VM_IP"
             chmod +x scripts/generate-production-env.sh
             ./scripts/generate-production-env.sh "$VM_IP"
+
+            # DevRev環境変数を.envに追加
+            cat >> .env <<EOF
+            DEVREV_GLOBAL_APP_ID=${DEVREV_GLOBAL_APP_ID}
+            DEVREV_GLOBAL_AAT=${DEVREV_GLOBAL_AAT}
+            EOF
 
             # Cleanup secrets file immediately after use
             rm -f .env.secrets

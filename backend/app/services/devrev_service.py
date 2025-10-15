@@ -88,7 +88,9 @@ class DevRevService:
         }
 
         async with httpx.AsyncClient() as client:
-            response = await client.post(url, headers=headers, json=payload, timeout=30.0)
+            response = await client.post(
+                url, headers=headers, json=payload, timeout=30.0
+            )
             response.raise_for_status()
             data = response.json()
 

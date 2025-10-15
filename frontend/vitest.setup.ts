@@ -38,10 +38,7 @@ vi.mock("next/script", () => ({
 
 // Mock environment variables
 process.env.NEXT_PUBLIC_API_URL = "http://localhost:8000";
-Object.defineProperty(process.env, "NODE_ENV", {
-  value: "test",
-  writable: true,
-});
+process.env.NODE_ENV = "test";
 
 // Mock window.matchMedia
 Object.defineProperty(window, "matchMedia", {
