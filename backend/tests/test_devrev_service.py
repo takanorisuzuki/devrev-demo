@@ -77,23 +77,19 @@ class TestDevRevService:
         """Test getting global DevRev config"""
         service = DevRevService(mock_db)
 
-        env_vars = {
-            "DEVREV_GLOBAL_APP_ID": "GLOBAL_APP_ID",
-            "DEVREV_GLOBAL_AAT": "GLOBAL_AAT"
-        }
-        with patch.dict(os.environ, env_vars):
-            config = service.get_devrev_config(test_user)
+        with patch("app.core.config.settings.DEVREV_GLOBAL_APP_ID", "GLOBAL_APP_ID"):
+            with patch("app.core.config.settings.DEVREV_GLOBAL_AAT", "GLOBAL_AAT"):
+                config = service.get_devrev_config(test_user)
 
-            assert config["mode"] == "global"
-            assert config["app_id"] == "GLOBAL_APP_ID"
-            assert config["has_aat"] is True
+                assert config["mode"] == "global"
+                assert config["app_id"] == "GLOBAL_APP_ID"
+                assert config["has_aat"] is True
 
-    @pytest.mark.asyncio
-    async def test_update_devrev_config(self, mock_db, test_user):
+    def test_update_devrev_config(self, mock_db, test_user):
         """Test updating DevRev config"""
         service = DevRevService(mock_db)
 
-        updated_user = await service.update_devrev_config(
+        updated_user = service.update_devrev_config(
             test_user,
             app_id="NEW_APP_ID",
             aat="NEW_AAT",
@@ -106,12 +102,11 @@ class TestDevRevService:
         # Session token should be cleared when AAT is updated
         assert updated_user.devrev_session_token is None
 
-    @pytest.mark.asyncio
-    async def test_delete_devrev_config(self, mock_db, test_user_with_config):
+    def test_delete_devrev_config(self, mock_db, test_user_with_config):
         """Test deleting DevRev config"""
         service = DevRevService(mock_db)
 
-        updated_user = await service.delete_devrev_config(test_user_with_config)
+        updated_user = service.delete_devrev_config(test_user_with_config)
 
         assert updated_user.devrev_app_id is None
         assert updated_user.devrev_application_access_token is None
@@ -159,7 +154,7 @@ class TestDevRevService:
         """Test getting effective AAT with global config"""
         service = DevRevService(mock_db)
 
-        with patch.dict(os.environ, {"DEVREV_GLOBAL_AAT": "GLOBAL_AAT"}):
+        with patch("app.core.config.settings.DEVREV_GLOBAL_AAT", "GLOBAL_AAT"):
             aat = service._get_effective_aat(test_user)
 
             assert aat == "GLOBAL_AAT"
@@ -168,7 +163,7 @@ class TestDevRevService:
         """Test getting effective AAT when none configured"""
         service = DevRevService(mock_db)
 
-        with patch.dict(os.environ, {}, clear=True):
+        with patch("app.core.config.settings.DEVREV_GLOBAL_AAT", None):
             aat = service._get_effective_aat(test_user)
 
             assert aat is None

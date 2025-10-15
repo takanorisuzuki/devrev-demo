@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy import Boolean, Column, DateTime, Enum, String
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy_utils import EncryptedType
+from sqlalchemy_utils import StringEncryptedType
 
 from app.db.database import Base
 from app.core.config import settings
@@ -50,7 +50,7 @@ class User(Base):
     devrev_app_id = Column(String(500), nullable=True)
     # 暗号化して保存（セキュリティ対策）
     devrev_application_access_token = Column(
-        EncryptedType(String, settings.SECRET_KEY),
+        StringEncryptedType(String, settings.SECRET_KEY),
         nullable=True
     )
     devrev_use_personal_config = Column(Boolean, default=False, nullable=False)
@@ -61,7 +61,7 @@ class User(Base):
     # API Key Management (Phase 1)
     # 暗号化して保存（セキュリティ対策）
     api_key = Column(
-        EncryptedType(String, settings.SECRET_KEY),
+        StringEncryptedType(String, settings.SECRET_KEY),
         nullable=True, unique=True, index=True
     )
     api_key_name = Column(String(100), default="User API Key", nullable=True)
