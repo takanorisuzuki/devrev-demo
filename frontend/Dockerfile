@@ -1,7 +1,7 @@
 # DriveRev Frontend - Next.js Dockerfile (Multi-stage optimized)
 
 # Dependencies stage
-FROM node:22.20.0-alpine AS deps
+FROM node:22.22.1-alpine AS deps
 # Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine
 RUN apk add --no-cache libc6-compat curl
 
@@ -12,7 +12,7 @@ COPY package.json package-lock.json* ./
 RUN npm ci --frozen-lockfile
 
 # Builder stage
-FROM node:22.20.0-alpine AS builder
+FROM node:22.22.1-alpine AS builder
 
 WORKDIR /app
 
@@ -46,7 +46,7 @@ ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL} \
 RUN npm run build
 
 # Production image
-FROM node:22.20.0-alpine AS runner
+FROM node:22.22.1-alpine AS runner
 
 RUN apk add --no-cache curl
 WORKDIR /app
